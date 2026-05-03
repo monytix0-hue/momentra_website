@@ -1,0 +1,10 @@
+/.next
+/node_modules
+.next/
+node_modules/
+dist/
+*.log
+.env*.local
+.vercel
+*.md
+!README.md

@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --background: #0A0A0F;
+  --surface: #13131A;
+  --gold: #D4A853;
+  --gold-light: #F0D78C;
+  --blue: #3B82F6;
+  --blue-light: #60A5FA;
+  --green: #10B981;
+  --green-light: #34D399;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: #ffffff;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  ::selection {
+    background-color: rgba(212, 168, 83, 0.3);
+    color: #ffffff;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #D4A853 0%, #F0D78C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-blue {
+    background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-green {
+    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gold-gradient {
+    background: linear-gradient(135deg, #D4A853 0%, #F0D78C 100%);
+  }
+
+  .bg-blue-gradient {
+    background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  }
+
+  .bg-green-gradient {
+    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  }
+
+  .bg-surface {
+    background-color: #13131A;
+  }
+
+  .bg-surface-light {
+    background-color: #1A1A25;
+  }
+
+  .border-surface {
+    border-color: #1A1A25;
+  }
+
+  .glass {
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 40px rgba(212, 168, 83, 0.15);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
+  }
+}

@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     "business expenses",
     "budgeting",
     "expense tracking",
+    "India fintech",
+    "moment based finance",
   ],
   openGraph: {
     title: "Momentra — Money management built around life's moments",
@@ -28,7 +30,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased min-h-screen bg-background text-white">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body className="antialiased min-h-screen bg-base text-[#F5F0FF] font-sans">
         {children}
       </body>
     </html>

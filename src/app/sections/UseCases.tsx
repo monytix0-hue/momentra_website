@@ -2,29 +2,34 @@
 
 import { motion } from "framer-motion";
 import {
-  CalendarDays,
-  Plane,
-  Baby,
-  Home,
-  BarChart3,
-  ClipboardCheck,
-  Bell,
-  PiggyBank,
+  CalendarDays, Plane, Baby, House,
+  BarChart3, ClipboardCheck, Bell, PiggyBank,
 } from "lucide-react";
 import SectionHeading from "@/app/components/SectionHeading";
-import UseCaseCard from "@/app/components/UseCaseCard";
-import { staggerContainer } from "@/lib/animations";
+import { staggerContainer, fadeUp } from "@/lib/animations";
 
-const useCases = [
-  { icon: CalendarDays, title: "Manage monthly money" },
-  { icon: Plane, title: "Track shared trips" },
-  { icon: Baby, title: "Split family expenses" },
-  { icon: Home, title: "Handle roommate payments" },
-  { icon: BarChart3, title: "Monitor business costs" },
-  { icon: ClipboardCheck, title: "Approve team expenses" },
-  { icon: Bell, title: "Track bills and EMIs" },
-  { icon: PiggyBank, title: "Plan savings goals" },
+const cases = [
+  { icon: CalendarDays, label: "Manage monthly money", accent: "personal" },
+  { icon: Plane, label: "Track shared trips", accent: "group" },
+  { icon: Baby, label: "Split family expenses", accent: "group" },
+  { icon: House, label: "Handle roommate payments", accent: "group" },
+  { icon: BarChart3, label: "Monitor business costs", accent: "business" },
+  { icon: ClipboardCheck, label: "Approve team expenses", accent: "business" },
+  { icon: Bell, label: "Track bills and EMIs", accent: "personal" },
+  { icon: PiggyBank, label: "Plan savings goals", accent: "personal" },
 ];
+
+const accentBorder: Record<string, string> = {
+  personal: "hover:border-personal/[0.25]",
+  group: "hover:border-group/[0.25]",
+  business: "hover:border-business/[0.25]",
+};
+
+const accentIcon: Record<string, string> = {
+  personal: "text-personal-accent bg-personal/[0.05]",
+  group: "text-group-accent bg-group/[0.05]",
+  business: "text-business-accent bg-business/[0.05]",
+};
 
 export default function UseCases() {
   return (
@@ -33,23 +38,32 @@ export default function UseCases() {
         <SectionHeading
           title="Use Momentra for every money moment."
           subtitle="From daily budgeting to once-in-a-lifetime events, Momentra adapts to your financial life."
-          accent="blue"
+          accent="circle"
         />
 
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, margin: "-80px" }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
         >
-          {useCases.map((useCase) => (
-            <UseCaseCard
-              key={useCase.title}
-              icon={useCase.icon}
-              title={useCase.title}
-            />
-          ))}
+          {cases.map((item) => {
+            const Icon = item.icon;
+            return (
+              <motion.div
+                key={item.label}
+                variants={fadeUp}
+                whileHover={{ y: -3, scale: 1.02, transition: { duration: 0.3 } }}
+                className={`flex items-center gap-4 bg-base-s100 border border-[rgba(245,240,255,0.05)] rounded-xl p-4 sm:p-5 ${accentBorder[item.accent]} transition-all duration-500 cursor-default`}
+              >
+                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${accentIcon[item.accent]}`}>
+                  <Icon size={20} />
+                </div>
+                <span className="text-sm sm:text-base font-medium text-[#F5F0FF]">{item.label}</span>
+              </motion.div>
+            );
+          })}
         </motion.div>
       </div>
     </section>

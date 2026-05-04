@@ -2,103 +2,151 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  --background: #0A0A0F;
-  --surface: #13131A;
-  --gold: #D4A853;
-  --gold-light: #F0D78C;
-  --blue: #3B82F6;
-  --blue-light: #60A5FA;
-  --green: #10B981;
-  --green-light: #34D399;
+  --base-bg: #120F20;
+  --base-s100: #1A1728;
+  --base-s200: #241F38;
+  --base-s300: #302A48;
+  --brand: #6C4EF2;
+  --brand-light: #8B6FF5;
+  --brand-deep: #2D1F5E;
+  --on-dark: #F5F0FF;
+
+  --personal-accent: #6C4EF2;
+  --personal-text: #C4B5FD;
+  --group-accent: #0EC97F;
+  --group-text: #A7F3D0;
+  --business-accent: #D4880A;
+  --business-text: #FDE68A;
+  --circle-accent: #D946EF;
+  --circle-text: #F5D0FE;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
-  background-color: var(--background);
-  color: #ffffff;
-  font-family: "Inter", system-ui, sans-serif;
+  background-color: var(--base-bg);
+  color: var(--on-dark);
+  font-family: "Plus Jakarta Sans", "DM Sans", -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 @layer base {
   ::selection {
-    background-color: rgba(212, 168, 83, 0.3);
-    color: #ffffff;
+    background-color: rgba(108, 78, 242, 0.35);
+    color: var(--on-dark);
   }
 }
 
 @layer utilities {
-  .text-gradient-gold {
-    background: linear-gradient(135deg, #D4A853 0%, #F0D78C 100%);
+  .text-gradient-personal {
+    background: linear-gradient(135deg, #6C4EF2 0%, #8B6FF5 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-
-  .text-gradient-blue {
-    background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  .text-gradient-group {
+    background: linear-gradient(135deg, #0EC97F 0%, #34D399 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-
-  .text-gradient-green {
-    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  .text-gradient-business {
+    background: linear-gradient(135deg, #D4880A 0%, #F5A623 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-
-  .bg-gold-gradient {
-    background: linear-gradient(135deg, #D4A853 0%, #F0D78C 100%);
+  .text-gradient-circle {
+    background: linear-gradient(135deg, #D946EF 0%, #E879F9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
-
-  .bg-blue-gradient {
-    background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  .bg-gradient-personal {
+    background: linear-gradient(135deg, #6C4EF2 0%, #8B6FF5 100%);
   }
-
-  .bg-green-gradient {
-    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  .bg-gradient-group {
+    background: linear-gradient(135deg, #0EC97F 0%, #34D399 100%);
   }
-
-  .bg-surface {
-    background-color: #13131A;
+  .bg-gradient-business {
+    background: linear-gradient(135deg, #D4880A 0%, #F5A623 100%);
   }
-
-  .bg-surface-light {
-    background-color: #1A1A25;
+  .bg-gradient-circle {
+    background: linear-gradient(135deg, #D946EF 0%, #E879F9 100%);
   }
-
-  .border-surface {
-    border-color: #1A1A25;
+  .bg-gradient-header-personal {
+    background: linear-gradient(180deg, #1A0E38 0%, #120F20 100%);
   }
-
-  .glass {
-    background: rgba(10, 10, 15, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  .bg-gradient-header-group {
+    background: linear-gradient(180deg, #0A2A1A 0%, #120F20 100%);
   }
-
-  .glow-gold {
-    box-shadow: 0 0 40px rgba(212, 168, 83, 0.15);
+  .bg-gradient-header-business {
+    background: linear-gradient(180deg, #1A1200 0%, #120F20 100%);
   }
-
-  .glow-blue {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+  .bg-gradient-header-circle {
+    background: linear-gradient(180deg, #1A0828 0%, #120F20 100%);
   }
-
-  .glow-green {
-    box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
+  .bg-base { background-color: #120F20; }
+  .bg-s100 { background-color: #1A1728; }
+  .bg-s200 { background-color: #241F38; }
+  .bg-s300 { background-color: #302A48; }
+  .border-s300 { border-color: #302A48; }
+  .glow-personal {
+    box-shadow: 0 0 60px rgba(108, 78, 242, 0.15), 0 0 120px rgba(108, 78, 242, 0.05);
+  }
+  .glow-group {
+    box-shadow: 0 0 60px rgba(14, 201, 127, 0.15), 0 0 120px rgba(14, 201, 127, 0.05);
+  }
+  .glow-business {
+    box-shadow: 0 0 60px rgba(212, 136, 10, 0.15), 0 0 120px rgba(212, 136, 10, 0.05);
+  }
+  .glow-circle {
+    box-shadow: 0 0 60px rgba(217, 70, 239, 0.15), 0 0 120px rgba(217, 70, 239, 0.05);
+  }
+  .glow-personal-sm {
+    box-shadow: 0 0 30px rgba(108, 78, 242, 0.2);
+  }
+  .glow-group-sm {
+    box-shadow: 0 0 30px rgba(14, 201, 127, 0.2);
+  }
+  .glow-business-sm {
+    box-shadow: 0 0 30px rgba(212, 136, 10, 0.2);
+  }
+  .glow-circle-sm {
+    box-shadow: 0 0 30px rgba(217, 70, 239, 0.2);
+  }
+  .orb-personal {
+    background: radial-gradient(circle, rgba(108,78,242,0.18) 0%, transparent 70%);
+  }
+  .orb-group {
+    background: radial-gradient(circle, rgba(14,201,127,0.18) 0%, transparent 70%);
+  }
+  .orb-business {
+    background: radial-gradient(circle, rgba(212,136,10,0.18) 0%, transparent 70%);
+  }
+  .orb-circle {
+    background: radial-gradient(circle, rgba(217,70,239,0.18) 0%, transparent 70%);
   }
 }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }

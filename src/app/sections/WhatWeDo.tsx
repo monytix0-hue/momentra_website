@@ -12,21 +12,21 @@ const features = [
     title: "Personal",
     description:
       "Track all your accounts, spending, budgets, bills, and savings goals in one place. Get smart nudges before you overspend and see exactly where your money goes.",
-    accentColor: "gold" as const,
+    accentColor: "personal" as const,
   },
   {
     icon: Users,
     title: "Group",
     description:
       "Create shared moments for trips, roommates, events, and family. See who paid what, who owes whom, and settle up instantly without awkward conversations.",
-    accentColor: "blue" as const,
+    accentColor: "group" as const,
   },
   {
     icon: Building2,
     title: "Business",
     description:
       "Manage company expenses with built-in approvals, vendor tracking, and team spending limits. From startup to studio, keep business finances crystal clear.",
-    accentColor: "green" as const,
+    accentColor: "business" as const,
   },
 ];
 
@@ -36,7 +36,7 @@ export default function WhatWeDo() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
           title="One app for personal, group, and business money moments."
-          accent="gold"
+          accent="brand"
         />
 
         <motion.div

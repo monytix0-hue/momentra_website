@@ -2,151 +2,245 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 :root {
-  --base-bg: #120F20;
-  --base-s100: #1A1728;
-  --base-s200: #241F38;
-  --base-s300: #302A48;
-  --brand: #6C4EF2;
-  --brand-light: #8B6FF5;
-  --brand-deep: #2D1F5E;
-  --on-dark: #F5F0FF;
+  /* Primary — Deep Indigo */
+  --color-indigo-50: #eee9ff;
+  --color-indigo-100: #c4bdee;
+  --color-indigo-300: #8c83d4;
+  --color-indigo-500: #4b3ea8;
+  --color-indigo-700: #2d1f5e;
+  --color-indigo-900: #1a0f3d;
 
-  --personal-accent: #6C4EF2;
-  --personal-text: #C4B5FD;
-  --group-accent: #0EC97F;
-  --group-text: #A7F3D0;
-  --business-accent: #D4880A;
-  --business-text: #FDE68A;
-  --circle-accent: #D946EF;
-  --circle-text: #F5D0FE;
+  /* Accent — Ember Orange */
+  --color-ember-300: #f59060;
+  --color-ember-500: #e8621a;
+  --color-ember-700: #a8390a;
+
+  /* Accent — Golden Amber */
+  --color-amber-300: #f5c84a;
+  --color-amber-500: #f5a623;
+  --color-amber-700: #a86800;
+
+  /* Support — Sage Teal */
+  --color-teal-300: #3ab893;
+  --color-teal-500: #1d9e75;
+
+  /* Semantic */
+  --color-text-on-dark: #f5f0ff;
+  --color-text-on-ember: #fff5f0;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-html { scroll-behavior: smooth; }
-
+html,
 body {
-  background-color: var(--base-bg);
-  color: var(--on-dark);
-  font-family: "Plus Jakarta Sans", "DM Sans", -apple-system, sans-serif;
+  background: var(--color-indigo-900);
+  color: var(--color-text-on-dark);
+}
+
+/* Marketing routes: prevent light body from bleeding through */
+html.marketing-active,
+html.marketing-active body {
+  background: var(--color-indigo-900);
+  color: var(--color-text-on-dark);
+}
+
+/* ── Marketing landing — product brand tokens ───────────────── */
+.marketing-root {
+  --font-sans: var(--font-plus-jakarta), "Plus Jakarta Sans", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
+  background-color: var(--color-indigo-900);
+  color: var(--color-text-on-dark);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  min-height: 100dvh;
+  scroll-behavior: smooth;
 }
 
-@layer base {
-  ::selection {
-    background-color: rgba(108, 78, 242, 0.35);
-    color: var(--on-dark);
-  }
+.marketing-root ::selection {
+  background-color: color-mix(in srgb, var(--color-ember-500) 40%, transparent);
+  color: var(--color-text-on-dark);
 }
 
-@layer utilities {
-  .text-gradient-personal {
-    background: linear-gradient(135deg, #6C4EF2 0%, #8B6FF5 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .text-gradient-group {
-    background: linear-gradient(135deg, #0EC97F 0%, #34D399 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .text-gradient-business {
-    background: linear-gradient(135deg, #D4880A 0%, #F5A623 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .text-gradient-circle {
-    background: linear-gradient(135deg, #D946EF 0%, #E879F9 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .bg-gradient-personal {
-    background: linear-gradient(135deg, #6C4EF2 0%, #8B6FF5 100%);
-  }
-  .bg-gradient-group {
-    background: linear-gradient(135deg, #0EC97F 0%, #34D399 100%);
-  }
-  .bg-gradient-business {
-    background: linear-gradient(135deg, #D4880A 0%, #F5A623 100%);
-  }
-  .bg-gradient-circle {
-    background: linear-gradient(135deg, #D946EF 0%, #E879F9 100%);
-  }
-  .bg-gradient-header-personal {
-    background: linear-gradient(180deg, #1A0E38 0%, #120F20 100%);
-  }
-  .bg-gradient-header-group {
-    background: linear-gradient(180deg, #0A2A1A 0%, #120F20 100%);
-  }
-  .bg-gradient-header-business {
-    background: linear-gradient(180deg, #1A1200 0%, #120F20 100%);
-  }
-  .bg-gradient-header-circle {
-    background: linear-gradient(180deg, #1A0828 0%, #120F20 100%);
-  }
-  .bg-base { background-color: #120F20; }
-  .bg-s100 { background-color: #1A1728; }
-  .bg-s200 { background-color: #241F38; }
-  .bg-s300 { background-color: #302A48; }
-  .border-s300 { border-color: #302A48; }
-  .glow-personal {
-    box-shadow: 0 0 60px rgba(108, 78, 242, 0.15), 0 0 120px rgba(108, 78, 242, 0.05);
-  }
-  .glow-group {
-    box-shadow: 0 0 60px rgba(14, 201, 127, 0.15), 0 0 120px rgba(14, 201, 127, 0.05);
-  }
-  .glow-business {
-    box-shadow: 0 0 60px rgba(212, 136, 10, 0.15), 0 0 120px rgba(212, 136, 10, 0.05);
-  }
-  .glow-circle {
-    box-shadow: 0 0 60px rgba(217, 70, 239, 0.15), 0 0 120px rgba(217, 70, 239, 0.05);
-  }
-  .glow-personal-sm {
-    box-shadow: 0 0 30px rgba(108, 78, 242, 0.2);
-  }
-  .glow-group-sm {
-    box-shadow: 0 0 30px rgba(14, 201, 127, 0.2);
-  }
-  .glow-business-sm {
-    box-shadow: 0 0 30px rgba(212, 136, 10, 0.2);
-  }
-  .glow-circle-sm {
-    box-shadow: 0 0 30px rgba(217, 70, 239, 0.2);
-  }
-  .orb-personal {
-    background: radial-gradient(circle, rgba(108,78,242,0.18) 0%, transparent 70%);
-  }
-  .orb-group {
-    background: radial-gradient(circle, rgba(14,201,127,0.18) 0%, transparent 70%);
-  }
-  .orb-business {
-    background: radial-gradient(circle, rgba(212,136,10,0.18) 0%, transparent 70%);
-  }
-  .orb-circle {
-    background: radial-gradient(circle, rgba(217,70,239,0.18) 0%, transparent 70%);
-  }
+.marketing-root .text-gradient-personal {
+  background: linear-gradient(
+    135deg,
+    var(--color-indigo-300) 0%,
+    var(--color-indigo-100) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.marketing-root .text-gradient-group {
+  background: linear-gradient(
+    135deg,
+    var(--color-teal-500) 0%,
+    var(--color-teal-300) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.marketing-root .text-gradient-business {
+  background: linear-gradient(
+    135deg,
+    var(--color-amber-500) 0%,
+    var(--color-amber-300) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.marketing-root .text-gradient-circle {
+  background: linear-gradient(
+    135deg,
+    var(--color-ember-500) 0%,
+    var(--color-ember-300) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Primary marketing fills — brand indigo (not ember; CTAs use ember separately) */
+.marketing-root .bg-gradient-personal {
+  background: linear-gradient(
+    135deg,
+    var(--color-indigo-500) 0%,
+    var(--color-indigo-700) 100%
+  );
 }
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.marketing-root .bg-gradient-cta {
+  background: var(--color-ember-500);
+  color: var(--color-text-on-ember);
+}
+.marketing-root .bg-gradient-group {
+  background: linear-gradient(
+    135deg,
+    var(--color-teal-500) 0%,
+    var(--color-teal-300) 100%
+  );
+}
+.marketing-root .bg-gradient-business {
+  background: linear-gradient(
+    135deg,
+    var(--color-amber-700) 0%,
+    var(--color-amber-500) 100%
+  );
+}
+.marketing-root .bg-gradient-circle {
+  background: linear-gradient(
+    135deg,
+    var(--color-ember-700) 0%,
+    var(--color-ember-500) 100%
+  );
 }
 
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-.stagger-6 { animation-delay: 0.6s; }
+.marketing-root .mkt-surface,
+.marketing-root .bg-s100 {
+  background-color: var(--color-indigo-700);
+}
+
+.marketing-root .glow-personal {
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--color-indigo-500) 25%, transparent),
+    0 0 120px color-mix(in srgb, var(--color-indigo-500) 8%, transparent);
+}
+.marketing-root .glow-group {
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--color-teal-500) 25%, transparent),
+    0 0 120px color-mix(in srgb, var(--color-teal-500) 8%, transparent);
+}
+.marketing-root .glow-business {
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--color-amber-500) 25%, transparent),
+    0 0 120px color-mix(in srgb, var(--color-amber-500) 8%, transparent);
+}
+.marketing-root .glow-circle {
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--color-ember-500) 25%, transparent),
+    0 0 120px color-mix(in srgb, var(--color-ember-500) 8%, transparent);
+}
+.marketing-root .glow-personal-sm {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--color-indigo-500) 30%, transparent);
+}
+.marketing-root .glow-group-sm {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--color-teal-500) 30%, transparent);
+}
+.marketing-root .glow-business-sm {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--color-amber-500) 30%, transparent);
+}
+.marketing-root .glow-circle-sm {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--color-ember-500) 30%, transparent);
+}
+
+.marketing-root .orb-personal {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-indigo-500) 28%, transparent) 0%,
+    transparent 70%
+  );
+}
+.marketing-root .orb-group {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-teal-500) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+.marketing-root .orb-business {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-amber-500) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+.marketing-root .orb-circle {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-ember-500) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.marketing-root .mkt-muted {
+  color: color-mix(in srgb, var(--color-text-on-dark) 55%, transparent);
+}
+.marketing-root .mkt-nav {
+  background-color: color-mix(in srgb, var(--color-indigo-700) 92%, transparent);
+}
+
+/* World-tab atmosphere helpers */
+.marketing-root .world-atmosphere-personal {
+  background: linear-gradient(
+    145deg,
+    var(--color-indigo-900) 0%,
+    #1a1548 45%,
+    var(--color-indigo-900) 100%
+  );
+}
+.marketing-root .world-atmosphere-group {
+  background: linear-gradient(
+    145deg,
+    #2a1520 0%,
+    #1f1a2e 45%,
+    #152828 100%
+  );
+}
+.marketing-root .world-atmosphere-business {
+  background: linear-gradient(
+    145deg,
+    #0f1a2e 0%,
+    var(--color-indigo-900) 45%,
+    #12241a 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-root * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -4,8 +4,10 @@
 node_modules/
 dist/
 *.log
+.env*
 .env*.local
 .vercel
+tsconfig.tsbuildinfo
 *.md
 !README.md
 *.tar.gz

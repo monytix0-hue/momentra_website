@@ -1,29 +1,31 @@
-import Navbar from "./components/Navbar";
-import Hero from "./sections/Hero";
-import Problem from "./sections/Problem";
-import WhatWeDo from "./sections/WhatWeDo";
-import CoreConcept from "./sections/CoreConcept";
-import SmartActions from "./sections/SmartActions";
-import ProductModules from "./sections/ProductModules";
-import WhyDifferent from "./sections/WhyDifferent";
-import UseCases from "./sections/UseCases";
-import CTASection from "./sections/CTASection";
-import Footer from "./sections/Footer";
+import Hero from "@/components/marketing/sections/Hero";
+import Philosophy from "@/components/marketing/sections/Philosophy";
+import WhatIsAMoment from "@/components/marketing/sections/WhatIsAMoment";
+import WorldsTabs from "@/components/marketing/sections/WorldsTabs";
+import SharedArchitecture from "@/components/marketing/sections/SharedArchitecture";
+import MomentLifecycle from "@/components/marketing/sections/MomentLifecycle";
+import Intelligence from "@/components/marketing/sections/Intelligence";
+import Comparison from "@/components/marketing/sections/Comparison";
+import BookBridge from "@/components/marketing/sections/BookBridge";
+import EmotionalStatement from "@/components/marketing/sections/EmotionalStatement";
+import UseCaseMosaic from "@/components/marketing/sections/UseCaseMosaic";
+import FinalCTA from "@/components/marketing/sections/FinalCTA";
 
-export default function Home() {
+export default function MarketingHome() {
   return (
     <main className="relative">
-      <Navbar />
       <Hero />
-      <Problem />
-      <WhatWeDo />
-      <CoreConcept />
-      <SmartActions />
-      <ProductModules />
-      <WhyDifferent />
-      <UseCases />
-      <CTASection />
-      <Footer />
+      <Philosophy />
+      <WhatIsAMoment />
+      <WorldsTabs />
+      <SharedArchitecture />
+      <MomentLifecycle />
+      <Intelligence />
+      <Comparison />
+      <BookBridge />
+      <EmotionalStatement />
+      <UseCaseMosaic />
+      <FinalCTA />
     </main>
   );
 }

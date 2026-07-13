@@ -13,6 +13,8 @@ npm run dev
 
 This project uses [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare).
 
+The Cloudflare Worker name is **`momentra`** (must match Workers Builds).
+
 ```bash
 npm install
 npm run deploy
@@ -24,8 +26,10 @@ Preview the Workers runtime locally:
 npm run preview
 ```
 
-Or connect this GitHub repo to **Cloudflare Workers Builds** and set the deploy command to:
+### Cloudflare Workers Builds settings
 
-```bash
-npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy
-```
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` (optional; OpenNext rebuilds) |
+| Deploy command | `npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy` |
+| Worker name | `momentra` |

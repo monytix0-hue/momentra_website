@@ -2,12 +2,13 @@
 /node_modules
 .next/
 node_modules/
+.open-next/
+.wrangler/
 dist/
 *.log
 .env*
 .env*.local
+.dev.vars
 .vercel
 tsconfig.tsbuildinfo
-*.md
-!README.md
 *.tar.gz

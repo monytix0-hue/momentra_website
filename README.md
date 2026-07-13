@@ -30,6 +30,18 @@ npm run preview
 
 | Setting | Value |
 |---|---|
-| Build command | `npm run build` (optional; OpenNext rebuilds) |
+| Build command | leave empty, or `true` |
 | Deploy command | `npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy` |
 | Worker name | `momentra` |
+
+### App CTAs (`Start a Moment` / `Open the App`)
+
+This repo is **marketing only**. There is no `/app` product route here.
+
+Set a Cloudflare build env var:
+
+```
+NEXT_PUBLIC_APP_URL=https://your-real-app-host
+```
+
+Until that is set, CTAs go to `/contact`.

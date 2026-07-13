@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { MarketingPageShell, ContentBlock } from "@/components/marketing/MarketingPageShell";
-import { pageCopy, worlds } from "@/lib/marketing/copy";
+import { pageCopy, worlds, APP_URL } from "@/lib/marketing/copy";
 
 export const metadata: Metadata = {
   title: "Group Moments",
@@ -17,7 +17,7 @@ export default function GroupPage() {
       description={w.supporting}
       primaryCta={{
         label: "Start Your First Moment",
-        href: "/app",
+        href: APP_URL,
         event: "start_first_moment",
       }}
       secondaryCta={{

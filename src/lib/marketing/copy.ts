@@ -1,5 +1,15 @@
 /** Momentra marketing copy — philosophy-led, moment-centric positioning */
 
+/**
+ * Product app URL for CTAs.
+ * This Cloudflare site is marketing-only — there is no /app route here.
+ * Set NEXT_PUBLIC_APP_URL in Cloudflare (e.g. https://app.momentra.tech).
+ * Falls back to /contact until the app is hosted.
+ */
+export const APP_URL = (
+  process.env.NEXT_PUBLIC_APP_URL || "/contact"
+).replace(/\/$/, "");
+
 export const siteMeta = {
   title: "Momentra — Life Happens in Moments",
   description:
@@ -27,8 +37,8 @@ export const nav = {
     { label: "How Moments Work", href: "/how-moments-work" },
     { label: "The Book", href: "/book" },
   ],
-  primaryCta: { label: "Start a Moment", href: "/app", event: "start_a_moment" },
-  secondaryCta: { label: "Open the App", href: "/app", event: "open_app" },
+  primaryCta: { label: "Start a Moment", href: APP_URL, event: "start_a_moment" },
+  secondaryCta: { label: "Open the App", href: APP_URL, event: "open_app" },
 };
 
 export const hero = {
@@ -38,7 +48,7 @@ export const hero = {
     "Every goal, trip, celebration, responsibility, project, and new beginning carries more than money. It carries people, plans, expectations, progress, and memories. Momentra brings all of them together.",
   primaryCta: {
     label: "Start Your First Moment",
-    href: "/app",
+    href: APP_URL,
     event: "start_first_moment",
   },
   secondaryCta: {
@@ -454,7 +464,7 @@ export const book = {
   },
   experienceCta: {
     label: "Experience Momentra",
-    href: "/app",
+    href: APP_URL,
     event: "start_first_moment",
   },
 };
@@ -579,12 +589,12 @@ export const finalCta = {
   close: "Give it a place to live.",
   primaryCta: {
     label: "Start Your First Moment",
-    href: "/app",
+    href: APP_URL,
     event: "start_first_moment",
   },
   secondaryCta: {
     label: "Open Momentra",
-    href: "/app",
+    href: APP_URL,
     event: "open_app",
   },
   line: "Personal. Group. Business. One platform built around the way life actually happens.",
@@ -600,7 +610,7 @@ export const footer = {
         { label: "Group", href: "/group" },
         { label: "Business", href: "/business" },
         { label: "How Moments Work", href: "/how-moments-work" },
-        { label: "Open the App", href: "/app" },
+        { label: "Open the App", href: APP_URL },
       ],
     },
     {

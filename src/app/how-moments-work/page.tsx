@@ -41,6 +41,9 @@ export default function HowMomentsWorkPage() {
             <li key={a.name}>
               <span className="font-semibold text-text-on-dark">{a.name}</span>
               <span className="mkt-muted"> — {a.description}</span>
+              {"supporting" in a && a.supporting ? (
+                <span className="mkt-muted"> {a.supporting}</span>
+              ) : null}
             </li>
           ))}
         </ul>

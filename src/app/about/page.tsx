@@ -22,7 +22,7 @@ export default function AboutPage() {
           through these moments. Momentra begins with the moment itself.
         </p>
         <p>
-          The same living architecture—Pulse, Moments, Create, Live, and
+          The same living architecture—Pulse, Moments, Create, Life, and
           Memory—serves personal life, shared life, and business life.
         </p>
         <p>

@@ -52,6 +52,11 @@ export default function SharedArchitecture() {
               <p className="mkt-muted mb-3 text-sm leading-relaxed">
                 {area.description}
               </p>
+              {"supporting" in area && area.supporting ? (
+                <p className="mkt-muted mb-3 text-sm leading-relaxed">
+                  {area.supporting}
+                </p>
+              ) : null}
               {area.points.length > 0 ? (
                 <ul className="space-y-1">
                   {area.points.map((p) => (

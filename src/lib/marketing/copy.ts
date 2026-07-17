@@ -366,10 +366,17 @@ export const sharedArchitecture = {
       points: [],
     },
     {
-      name: "Live",
-      description:
-        "Follow activity, contributions, changes, risks, and participation as they happen.",
-      points: [],
+      name: "Life",
+      description: "See how all your moments are shaping your life.",
+      supporting:
+        "Life brings Personal, Group, and Business together into one connected view—showing where your time, money, participation, and attention are moving.",
+      points: [
+        "Personal rhythm",
+        "Shared commitments",
+        "Business responsibilities",
+        "Cross-moment demands",
+        "What is changing across your life",
+      ],
     },
     {
       name: "Memory",

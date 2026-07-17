@@ -115,7 +115,7 @@ function PhoneMockup({ world }: { world: WorldId }) {
           </div>
 
           <div className="flex justify-around border-t border-white/10 px-2 py-2.5 text-[9px] uppercase tracking-wide text-white/35">
-            {(["Pulse", "Moments", "Create", "Live", "Memory"] as const).map(
+            {(["Pulse", "Moments", "Create", "Life", "Memory"] as const).map(
               (n) => (
                 <span
                   key={n}

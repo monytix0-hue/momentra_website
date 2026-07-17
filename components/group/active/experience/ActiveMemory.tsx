@@ -216,7 +216,7 @@ export function ActiveMemory({
       {gallery.length > 0 ? (
         <div>
           <SectionLabel>Memory Gallery</SectionLabel>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {gallery.slice(0, 4).map((item) => (
               <div
                 key={item.memory_id ?? item.title}

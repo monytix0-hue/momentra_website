@@ -156,11 +156,11 @@ export default function WorldsTabs() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 flex justify-center">
+        <div className="mb-10 flex w-full min-w-0 justify-center">
           <div
             role="tablist"
             aria-label="Personal, Group, and Business"
-            className="inline-flex rounded-full border border-white/15 bg-black/20 p-1 backdrop-blur-md"
+            className="inline-flex max-w-full snap-x snap-mandatory gap-0 overflow-x-auto rounded-full border border-white/15 bg-black/20 p-1 backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {tabs.map((id) => (
               <button
@@ -169,7 +169,7 @@ export default function WorldsTabs() {
                 role="tab"
                 aria-selected={active === id}
                 onClick={() => setActive(id)}
-                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 sm:px-7 ${
+                className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 sm:px-7 sm:py-2.5 ${
                   active === id
                     ? accentTab[id]
                     : "text-white/55 hover:text-white/85"
@@ -191,7 +191,7 @@ export default function WorldsTabs() {
             className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16"
           >
             <div>
-              <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-text-on-dark sm:text-4xl md:text-5xl">
+              <h2 className="mb-4 text-3xl font-extrabold tracking-tight break-words text-text-on-dark sm:text-4xl md:text-5xl">
                 {world.heading}
               </h2>
               <p className="mkt-muted mb-8 max-w-xl text-base leading-relaxed sm:text-lg">

@@ -676,7 +676,7 @@ export function ExperiencePulse({
                 {participationPct}%
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-6">
+            <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-6 min-w-0">
               {(
                 [
                   ["active", activeCount],
@@ -684,8 +684,8 @@ export function ExperiencePulse({
                   ["inactive", inactiveCount],
                 ] as const
               ).map(([key, count]) => (
-                <div key={key} className="text-center">
-                  <span className="block text-[10px] uppercase tracking-tighter" style={{ color: colors.textSecondary }}>
+                <div key={key} className="min-w-0 text-center">
+                  <span className="block text-[10px] uppercase tracking-tighter break-words" style={{ color: colors.textSecondary }}>
                     {key}
                   </span>
                   <span className="font-bold" style={{ color: colors.textPrimary }}>

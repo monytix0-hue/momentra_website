@@ -357,7 +357,7 @@ export function RunwayMomentsHero({
         </h2>
         {isActive ? <Badge text="Active" tone={RUNWAY.primary} /> : null}
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <div>
           <p className="text-sm font-bold">{formatRunwayMonths(months)}</p>
           <p className="text-[10px]" style={{ color: RUNWAY.onVariant }}>

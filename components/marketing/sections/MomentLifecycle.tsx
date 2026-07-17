@@ -35,20 +35,20 @@ export default function MomentLifecycle() {
           initial="hidden"
           whileInView="visible"
           viewport={viewportConfig}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex w-full min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-3 md:overflow-visible lg:grid-cols-4 xl:grid-cols-6 [&::-webkit-scrollbar]:hidden"
         >
           {lifecycle.stages.map((stage, i) => (
             <motion.div
               key={stage.name}
               variants={fadeUp}
-              className="relative w-[200px] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:w-[220px]"
+              className="relative w-[min(200px,80vw)] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:w-[220px] md:w-auto md:min-w-0"
             >
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ember-500/20 text-xs font-bold text-ember-300">
                   {i + 1}
                 </span>
                 {i < lifecycle.stages.length - 1 ? (
-                  <span className="h-px flex-1 bg-gradient-to-r from-white/25 to-transparent" />
+                  <span className="h-px flex-1 bg-gradient-to-r from-white/25 to-transparent md:hidden" />
                 ) : null}
               </div>
               <h3 className="mb-2 text-base font-bold text-text-on-dark">

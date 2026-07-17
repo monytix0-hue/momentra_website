@@ -1,36 +1,67 @@
-# Momentra Website + App
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Unified Next.js project for Momentra — marketing (`/`) and product (`/app`) on one deploy.
+## Momentra API
 
-> Life Happens in Moments.
+Web uses the shared backend at `/api/v1` (not a separate `backend_v1`).
 
-## Local development
+1. Start the API: `cd ../backend && ./run-dev.sh` (port **8002**)
+2. Copy `web/.env.example` → `.env.local` and set Firebase + `NEXT_PUBLIC_API_BASE_URL=https://veggie-handmade-splashed.ngrok-free.dev`
+3. Auth: Firebase sign-in → `POST api/v1/auth/firebase/exchange` → backend JWTs
+
+See [`docs/API_INTEGRATION.md`](../docs/API_INTEGRATION.md) for client rollout and DTO porting from `ios/` / `apk/`.
+
+## Empty-screen assets
+
+Download Personal, Group, and Business design images into `public/` (and native copy targets):
 
 ```bash
-npm install
-cp .env.example .env.local   # fill Firebase, API, Supabase
-npm run dev
+# from web/
+npm run bundle-empty-assets
+# or
+node scripts/bundle-context-empty-assets.mjs
+
+# from repo root
+node scripts/bundle-context-empty-assets.mjs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for marketing and [http://localhost:3000/app](http://localhost:3000/app) for the product.
+## Getting Started
 
-## Deploy (Vercel)
+First, run the development server:
 
-This repo is a standard Next.js app (not Cloudflare OpenNext).
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-| Setting | Value |
-|---------|--------|
-| Root Directory | `.` (repo root) |
-| Framework | Next.js |
-| Install | `npm ci` |
-| Build | `npm run build` |
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Set env vars from `.env.example` in the Vercel project.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-After deploy:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-- `/` — marketing
-- `/app` — product (login / app shell)
-- **Start a Moment** / **Open the App** → `/app`
+## Learn More
 
-See [VERCEL.md](./VERCEL.md) for details.
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+Marketing (`/`) and the product app (`/app`) deploy together as one Next.js project.
+
+1. Import this repo in [Vercel](https://vercel.com/new)
+2. Set **Root Directory** to `web`
+3. Copy env vars from [`.env.example`](.env.example) into the Vercel project
+4. Deploy — details in [`VERCEL.md`](./VERCEL.md)
+
+```bash
+npm run build && npm start   # local production check
+```

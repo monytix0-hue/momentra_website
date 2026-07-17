@@ -43,7 +43,7 @@ function TileCard({
 }) {
   return (
     <div
-      className={`mkt-surface min-w-[200px] snap-start rounded-xl border p-4 ${accent}`}
+      className={`mkt-surface min-w-[200px] snap-start rounded-xl border p-4 sm:min-w-0 ${accent}`}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <h4 className="text-sm font-semibold text-text-on-dark">{tile.title}</h4>
@@ -86,9 +86,9 @@ export default function UseCaseMosaic() {
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest text-white/45">
                 {col.label}
               </h3>
-              <div className="flex snap-x gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-5 md:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-full min-w-0 snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible md:grid-cols-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {col.tiles.map((tile) => (
-                  <motion.div key={tile.title} variants={fadeUp}>
+                  <motion.div key={tile.title} variants={fadeUp} className="min-w-0">
                     <TileCard tile={tile} accent={col.accent} />
                   </motion.div>
                 ))}

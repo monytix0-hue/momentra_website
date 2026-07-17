@@ -91,7 +91,7 @@ export function LifeEmpty({ onCreateMoment, bottomPadding = 0 }: LifeEmptyProps)
         {/* Your Future Business */}
         <section className="space-y-4">
           <h3 className="text-base font-semibold">{copy.futureBusiness.sectionTitle}</h3>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {copy.futureBusiness.cards.map((card, i) => {
               const Icon = futureIcons[i] ?? Users;
               return (

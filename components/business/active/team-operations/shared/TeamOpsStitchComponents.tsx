@@ -231,7 +231,7 @@ export function StitchSignalsGrid({
   return (
     <section>
       <StitchSectionHeader title="Signals" />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {items.map((item, index) => (
           <div
             key={`${item.signal_type ?? "signal"}-${index}`}
@@ -397,11 +397,11 @@ export function StitchMomentsHero({
           </p>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-0">
+      <div className="grid grid-cols-3 gap-0 min-w-0">
         {stats.map((stat, index) => (
           <div
             key={stat.label}
-            className="text-center"
+            className="min-w-0 text-center px-1"
             style={{
               borderLeft: index === 1 ? `1px solid ${TEAM_OPS.outline}33` : undefined,
               borderRight: index === 1 ? `1px solid ${TEAM_OPS.outline}33` : undefined,

@@ -246,7 +246,7 @@ export function GroupLifeEvolutionSection({ series }: { series: GroupLifeEvoluti
   return (
     <section className="space-y-3">
       <SectionHeading>Evolution</SectionHeading>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {series.map((item) => {
           const color = lifeColorToken(tokens, item.color_token);
           return (

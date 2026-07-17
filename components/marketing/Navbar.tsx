@@ -53,7 +53,7 @@ export default function Navbar() {
             })}
           </div>
 
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             <Link
               href={nav.secondaryCta.href}
               onClick={() => trackMarketingCta(nav.secondaryCta.event)}

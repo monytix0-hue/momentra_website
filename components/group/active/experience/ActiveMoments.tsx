@@ -200,7 +200,7 @@ export function ActiveMoments({
       </ExperienceGlassCard>
 
       <SectionLabel action="View all">Activity & Operations</SectionLabel>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {(hub.activity_ops ?? []).map((tile) => (
           <ExperienceGlassCard key={tile.tile_id ?? tile.label} className="!p-4 text-center">
             <MaterialIcon name={tile.icon ?? "event"} style={{ color: tripStitchTheme.primary }} />
@@ -220,7 +220,7 @@ export function ActiveMoments({
       {(hub.assets ?? []).length > 0 ? (
         <>
           <SectionLabel action="View all">Assets & Resources</SectionLabel>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {hub.assets!.map((asset) => (
               <div key={asset.asset_id ?? asset.label} className="text-center">
                 <div

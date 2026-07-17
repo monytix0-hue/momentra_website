@@ -22,9 +22,9 @@ export function MarketingPageShell({
   secondaryCta?: Cta;
 }) {
   return (
-    <main className="relative pt-24 sm:pt-28">
+    <main className="relative min-w-0 pt-24 pb-24 sm:pt-28 md:pb-0">
       <section className="pb-16 sm:pb-20">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full min-w-0 max-w-4xl px-4 sm:px-6 lg:px-8">
           <motion.div
             variants={staggerContainer}
             initial="hidden"
@@ -40,7 +40,7 @@ export function MarketingPageShell({
             ) : null}
             <motion.h1
               variants={fadeUp}
-              className="mb-5 text-3xl font-extrabold tracking-tight text-text-on-dark sm:text-4xl md:text-5xl"
+              className="mb-5 text-3xl font-extrabold tracking-tight break-words text-text-on-dark sm:text-4xl md:text-5xl"
             >
               {title}
             </motion.h1>
@@ -53,13 +53,14 @@ export function MarketingPageShell({
             {(primaryCta || secondaryCta) && (
               <motion.div
                 variants={fadeUp}
-                className="flex flex-col gap-3 sm:flex-row"
+                className="flex w-full flex-col gap-3 sm:flex-row"
               >
                 {primaryCta ? (
                   <CTAButton
                     variant="primary"
                     href={primaryCta.href}
                     event={primaryCta.event}
+                    className="w-full max-w-sm sm:w-auto"
                   >
                     {primaryCta.label}
                   </CTAButton>
@@ -69,6 +70,7 @@ export function MarketingPageShell({
                     variant="secondary"
                     href={secondaryCta.href}
                     event={secondaryCta.event}
+                    className="w-full max-w-sm sm:w-auto"
                   >
                     {secondaryCta.label}
                   </CTAButton>
@@ -101,13 +103,13 @@ export function ContentBlock({
 }) {
   return (
     <section className="pb-16 sm:pb-20">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-4xl px-4 sm:px-6 lg:px-8">
         {title ? (
-          <h2 className="mb-4 text-xl font-bold text-text-on-dark sm:text-2xl">
+          <h2 className="mb-4 text-xl font-bold break-words text-text-on-dark sm:text-2xl">
             {title}
           </h2>
         ) : null}
-        <div className="mkt-muted space-y-4 text-base leading-relaxed">
+        <div className="mkt-muted space-y-4 break-words text-base leading-relaxed">
           {children}
         </div>
       </div>

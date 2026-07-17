@@ -57,7 +57,7 @@ export function LifeEmpty({ onCreateMoment, bottomPadding = 0 }: LifeEmptyProps)
         </section>
 
         <section data-group-life-dimensions>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {GROUP_LIFE_DIMENSIONS.map((dimension) => {
               const Icon = dimension.icon;
               return (

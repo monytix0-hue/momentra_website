@@ -1,0 +1,108 @@
+{
+  "catalog_version": 1,
+  "template_version": 1,
+  "setup_version": 1,
+  "estimated_minutes": 3,
+  "choices": {
+    "focus_area": [
+      { "value": "HABITS", "label": "Habits" },
+      { "value": "FINANCE", "label": "Money" },
+      { "value": "HEALTH", "label": "Health" },
+      { "value": "RELATIONSHIPS", "label": "Relationships" },
+      { "value": "GOALS", "label": "Goals" },
+      { "value": "CUSTOM", "label": "Something else" }
+    ],
+    "privacy": [
+      { "value": "PRIVATE", "label": "Only me" },
+      { "value": "SHARED", "label": "Shared with selected people" }
+    ]
+  },
+  "templates": {
+    "personal_default": {
+      "title": "Personal moment setup",
+      "activate_cta": "Activate",
+      "activation_success": "Personal moment activated",
+      "steps": [
+        {
+          "step": 1,
+          "id": "basics",
+          "title": "Moment basics",
+          "shortTitle": "Basics",
+          "description": "Name this personal moment and choose what it is about.",
+          "fields": [
+            {
+              "key": "moment_name",
+              "label": "What should we call this moment?",
+              "control": "text",
+              "maxLength": 60
+            },
+            {
+              "key": "focus_area",
+              "label": "What is this mainly about?",
+              "control": "chips",
+              "choices": "focus_area"
+            },
+            {
+              "key": "description",
+              "label": "A short note for yourself",
+              "control": "text",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "id": "preferences",
+          "title": "Preferences and goals",
+          "shortTitle": "Preferences",
+          "description": "Set preferences that shape how this moment works for you.",
+          "fields": [
+            {
+              "key": "currency_code",
+              "label": "Currency",
+              "control": "suggested_picker",
+              "suggested": ["INR", "USD", "EUR", "GBP"],
+              "optional": true
+            },
+            {
+              "key": "privacy",
+              "label": "Who can see this?",
+              "control": "chips",
+              "choices": "privacy"
+            },
+            {
+              "key": "goal_note",
+              "label": "What does success look like?",
+              "control": "text",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "id": "supporting",
+          "title": "Supporting details",
+          "shortTitle": "Details",
+          "description": "Add habits, priorities, or relationship context when it helps — skip if not needed.",
+          "optional": true,
+          "hiddenWhen": "answers.skip_supporting === true",
+          "fields": [
+            {
+              "key": "supporting_notes",
+              "label": "Anything else to remember?",
+              "control": "text",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "step": 4,
+          "id": "review",
+          "title": "Review and activate",
+          "shortTitle": "Review",
+          "description": "Confirm your choices, then activate this personal moment."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,241 @@
+{
+  "catalog_version": 1,
+  "template_version": 1,
+  "setup_version": 1,
+  "estimated_minutes": 4,
+  "choices": {
+    "experience_type": [
+      { "value": "TRIP", "label": "Trip" },
+      { "value": "EVENT", "label": "Event" },
+      { "value": "ACTIVITY", "label": "Activity" },
+      { "value": "CUSTOM", "label": "Custom" }
+    ],
+    "split_method": [
+      { "value": "EQUAL", "label": "Equal" },
+      { "value": "SHARES", "label": "Shares" },
+      { "value": "PERCENT", "label": "Percent" },
+      { "value": "CUSTOM", "label": "Custom amounts" }
+    ],
+    "invite_methods": [
+      { "value": "EMAIL", "label": "Email" },
+      { "value": "WHATSAPP", "label": "WhatsApp" },
+      { "value": "LINK", "label": "Share link" },
+      { "value": "QR", "label": "QR code" },
+      { "value": "MESSAGE", "label": "Message" }
+    ]
+  },
+  "templates": {
+    "shared_experience": {
+      "title": "Shared Experience Setup",
+      "activate_cta": "Activate Shared Experience",
+      "activation_success": "Shared Experience activated",
+      "steps": [
+        {
+          "step": 1,
+          "id": "basics",
+          "title": "Experience basics",
+          "shortTitle": "Basics",
+          "description": "Name the experience and set the tone for what you are planning together.",
+          "fields": [
+            {
+              "key": "moment_name",
+              "label": "What should we call this experience?",
+              "control": "text",
+              "maxLength": 60
+            },
+            {
+              "key": "experience_type",
+              "label": "What kind of experience is this?",
+              "control": "chips",
+              "choices": "experience_type"
+            },
+            {
+              "key": "description",
+              "label": "Short description",
+              "control": "text",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "id": "dates_money",
+          "title": "Dates, destination, and money",
+          "shortTitle": "Details",
+          "description": "Add timing, place, and how money will be shared.",
+          "fields": [
+            { "key": "start_date", "label": "Start date", "control": "date" },
+            { "key": "end_date", "label": "End date", "control": "date", "optional": true },
+            { "key": "destination", "label": "Destination or venue", "control": "text", "optional": true },
+            {
+              "key": "currency_code",
+              "label": "Currency",
+              "control": "suggested_picker",
+              "suggested": ["INR", "USD", "EUR", "GBP"]
+            },
+            {
+              "key": "budget_minor",
+              "label": "Approximate group budget",
+              "control": "money",
+              "optional": true
+            },
+            {
+              "key": "split_method",
+              "label": "How should costs be split?",
+              "control": "chips",
+              "choices": "split_method"
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "id": "participants",
+          "title": "Participants and invitations",
+          "shortTitle": "People",
+          "description": "Invite the people joining this experience. You can add more later."
+        },
+        {
+          "step": 4,
+          "id": "review",
+          "title": "Review and activate",
+          "shortTitle": "Review",
+          "description": "Confirm the plan, then activate Shared Experience."
+        }
+      ]
+    },
+    "shared_purchase": {
+      "title": "Shared Purchase Setup",
+      "activate_cta": "Activate Shared Purchase",
+      "activation_success": "Shared Purchase activated",
+      "steps": [
+        {
+          "step": 1,
+          "id": "basics",
+          "title": "Purchase basics",
+          "shortTitle": "Basics",
+          "description": "Describe what you are buying together and why.",
+          "fields": [
+            {
+              "key": "moment_name",
+              "label": "What are you buying together?",
+              "control": "text",
+              "maxLength": 60
+            },
+            {
+              "key": "item_description",
+              "label": "Item or goal description",
+              "control": "text",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "id": "goal_rules",
+          "title": "Goal, amount, and contribution rules",
+          "shortTitle": "Goal",
+          "description": "Set the target amount and how contributions work.",
+          "fields": [
+            {
+              "key": "currency_code",
+              "label": "Currency",
+              "control": "suggested_picker",
+              "suggested": ["INR", "USD", "EUR", "GBP"]
+            },
+            { "key": "target_amount_minor", "label": "Target amount", "control": "money" },
+            {
+              "key": "split_method",
+              "label": "How should contributions work?",
+              "control": "chips",
+              "choices": "split_method"
+            },
+            { "key": "target_date", "label": "Target date", "control": "date", "optional": true }
+          ]
+        },
+        {
+          "step": 3,
+          "id": "members",
+          "title": "Members and ownership",
+          "shortTitle": "People",
+          "description": "Add contributors and who owns the purchase decision."
+        },
+        {
+          "step": 4,
+          "id": "review",
+          "title": "Review and activate",
+          "shortTitle": "Review",
+          "description": "Confirm the goal and members, then activate Shared Purchase."
+        }
+      ]
+    },
+    "shared_living": {
+      "title": "Shared Living Setup",
+      "activate_cta": "Activate Shared Living",
+      "activation_success": "Shared Living activated",
+      "steps": [
+        {
+          "step": 1,
+          "id": "basics",
+          "title": "Home basics",
+          "shortTitle": "Basics",
+          "description": "Name the household and set shared living defaults.",
+          "fields": [
+            {
+              "key": "moment_name",
+              "label": "What should we call this home?",
+              "control": "text",
+              "maxLength": 60
+            },
+            {
+              "key": "address_label",
+              "label": "Address or nickname",
+              "control": "text",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "id": "budget_prefs",
+          "title": "Budget, responsibilities, and preferences",
+          "shortTitle": "Budget",
+          "description": "Set shared budget and how responsibilities are tracked.",
+          "fields": [
+            {
+              "key": "currency_code",
+              "label": "Currency",
+              "control": "suggested_picker",
+              "suggested": ["INR", "USD", "EUR", "GBP"]
+            },
+            {
+              "key": "monthly_budget_minor",
+              "label": "Approximate monthly household budget",
+              "control": "money",
+              "optional": true
+            },
+            {
+              "key": "split_method",
+              "label": "How should shared costs be split?",
+              "control": "chips",
+              "choices": "split_method"
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "id": "members",
+          "title": "Members and roles",
+          "shortTitle": "People",
+          "description": "Add household members and their roles."
+        },
+        {
+          "step": 4,
+          "id": "review",
+          "title": "Review and activate",
+          "shortTitle": "Review",
+          "description": "Confirm the home setup, then activate Shared Living."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "ops_index": 0,
+  "ops_index_delta_month": null,
+  "status_band": "UNKNOWN",
+  "axis_scores": { "pressure": 0, "recovery": 0, "discipline": 0, "attention": 0 },
+  "capacity": {
+    "budget_minor": 0,
+    "used_minor": 0,
+    "remaining_minor": 0,
+    "utilization_percent": 0
+  },
+  "signals": [],
+  "financial_segments": [],
+  "trends_30d": { "recovery": [], "pressure": [] },
+  "score_drivers": [],
+  "gauges": [],
+  "opportunity": { "priority_id": "none", "stress_impact": 0, "capacity_boost": 0 },
+  "intelligence": { "pattern_id": "none", "confidence_percent": 0 }
+}

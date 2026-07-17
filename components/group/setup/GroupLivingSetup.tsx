@@ -1,0 +1,1 @@
+export { GroupLivingSetup } from "./GroupMomentSetup";

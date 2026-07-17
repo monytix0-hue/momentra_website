@@ -1,47 +1,36 @@
-# Momentra Website
+# Momentra Website + App
 
-Marketing site for Momentra — *Life Happens in Moments*.
+Unified Next.js project for Momentra — marketing (`/`) and product (`/app`) on one deploy.
+
+> Life Happens in Moments.
 
 ## Local development
 
 ```bash
 npm install
+cp .env.example .env.local   # fill Firebase, API, Supabase
 npm run dev
 ```
 
-## Deploy (Cloudflare Workers)
+Open [http://localhost:3000](http://localhost:3000) for marketing and [http://localhost:3000/app](http://localhost:3000/app) for the product.
 
-This project uses [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare).
+## Deploy (Vercel)
 
-The Cloudflare Worker name is **`momentra`** (must match Workers Builds).
-
-```bash
-npm install
-npm run deploy
-```
-
-Preview the Workers runtime locally:
-
-```bash
-npm run preview
-```
-
-### Cloudflare Workers Builds settings
+This repo is a standard Next.js app (not Cloudflare OpenNext).
 
 | Setting | Value |
-|---|---|
-| Build command | leave empty, or `true` |
-| Deploy command | `npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy` |
-| Worker name | `momentra` |
+|---------|--------|
+| Root Directory | `.` (repo root) |
+| Framework | Next.js |
+| Install | `npm ci` |
+| Build | `npm run build` |
 
-### App CTAs (`Start a Moment` / `Open the App`)
+Set env vars from `.env.example` in the Vercel project.
 
-This repo is **marketing only**. There is no `/app` product route here.
+After deploy:
 
-Set a Cloudflare build env var:
+- `/` — marketing
+- `/app` — product (login / app shell)
+- **Start a Moment** / **Open the App** → `/app`
 
-```
-NEXT_PUBLIC_APP_URL=https://your-real-app-host
-```
-
-Until that is set, CTAs go to `/contact`.
+See [VERCEL.md](./VERCEL.md) for details.

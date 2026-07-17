@@ -1,34 +1,48 @@
 {
-  "name": "momentra-website",
-  "version": "1.0.0",
+  "name": "web",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "sync-theme": "node scripts/sync-theme.mjs && node scripts/sync-context-tokens.mjs",
+    "postinstall": "node scripts/patch-gifted-charts.mjs",
+    "bundle-empty-assets": "node ../scripts/bundle-context-empty-assets.mjs",
+    "predev": "npm run sync-theme",
+    "dev": "node ./node_modules/next/dist/bin/next dev -H 0.0.0.0",
+    "prebuild": "npm run sync-theme",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "^1.6.5",
-    "clsx": "^2.0.0",
-    "framer-motion": "^11.0.0",
-    "lucide-react": "^0.400.0",
-    "next": "^15.5.18",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.0.0"
+    "@react-spring/web": "^10.1.1",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.1",
+    "firebase": "^12.14.0",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "^1.18.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-gifted-charts": "^0.0.12",
+    "react-qr-code": "^2.2.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.0.0",
-    "autoprefixer": "^10.0.0",
-    "postcss": "^8.0.0",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5.0.0",
-    "wrangler": "^4.20.0"
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.6"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-x64": "^4.62.2",
+    "lightningcss": "^1.32.0"
   }
 }

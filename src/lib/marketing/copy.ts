@@ -358,12 +358,22 @@ export const sharedArchitecture = {
     {
       name: "Moments",
       description: "See every active, upcoming, and completed moment.",
-      points: [],
+      points: [
+        "Active moments",
+        "Upcoming plans",
+        "Completed history",
+        "One clear timeline",
+      ],
     },
     {
       name: "Create",
       description: "Turn an intent into a structured moment.",
-      points: [],
+      points: [
+        "Capture intent",
+        "Define structure",
+        "Assign what matters",
+        "Launch the moment",
+      ],
     },
     {
       name: "Life",
@@ -382,7 +392,12 @@ export const sharedArchitecture = {
       name: "Memory",
       description:
         "Preserve what happened, what changed, and what the moment taught you.",
-      points: [],
+      points: [
+        "What happened",
+        "What changed",
+        "What you learned",
+        "What to carry forward",
+      ],
     },
   ],
 };

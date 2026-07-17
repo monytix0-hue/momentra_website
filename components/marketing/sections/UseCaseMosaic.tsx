@@ -43,10 +43,12 @@ function TileCard({
 }) {
   return (
     <div
-      className={`mkt-surface min-w-[200px] snap-start rounded-xl border p-4 sm:min-w-0 ${accent}`}
+      className={`mkt-surface w-full min-w-0 snap-start rounded-xl border p-4 ${accent}`}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
-        <h4 className="text-sm font-semibold text-text-on-dark">{tile.title}</h4>
+        <h4 className="min-w-0 break-words text-sm font-semibold text-text-on-dark">
+          {tile.title}
+        </h4>
         <span className="shrink-0 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/50">
           {tile.stage}
         </span>
@@ -63,7 +65,7 @@ function TileCard({
 export default function UseCaseMosaic() {
   return (
     <section id="mosaic" className="py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.h2
           variants={fadeUp}
           initial="hidden"
@@ -88,7 +90,11 @@ export default function UseCaseMosaic() {
               </h3>
               <div className="flex w-full min-w-0 snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible md:grid-cols-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {col.tiles.map((tile) => (
-                  <motion.div key={tile.title} variants={fadeUp} className="min-w-0">
+                  <motion.div
+                    key={tile.title}
+                    variants={fadeUp}
+                    className="w-[min(200px,75vw)] shrink-0 sm:w-auto sm:min-w-0"
+                  >
                     <TileCard tile={tile} accent={col.accent} />
                   </motion.div>
                 ))}

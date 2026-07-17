@@ -83,7 +83,7 @@ export default function WhatIsAMoment() {
         >
           <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-3xl" />
           <MomentCore />
-          <div className="relative z-10 flex max-w-md flex-wrap justify-center gap-2">
+          <div className="relative z-10 flex w-full max-w-md flex-wrap justify-center gap-2 px-1">
             {whatIsAMoment.facets.map((facet, i) => (
               <FacetChip key={facet} facet={facet} delay={i * 0.06} />
             ))}

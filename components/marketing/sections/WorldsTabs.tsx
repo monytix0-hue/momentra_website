@@ -37,7 +37,7 @@ function PhoneMockup({ world }: { world: WorldId }) {
         : data.mockup.memory;
 
   return (
-    <div className="mx-auto w-full max-w-[280px]">
+    <div className="mx-auto w-full max-w-[min(280px,100%)]">
       <div className="rounded-[2rem] border border-white/15 bg-[#0e0e12] p-3 shadow-2xl">
         <div className="mb-3 flex items-center justify-center">
           <div className="h-1.5 w-16 rounded-full bg-white/20" />
@@ -155,7 +155,7 @@ export default function WorldsTabs() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 flex w-full min-w-0 justify-center">
           <div
             role="tablist"
@@ -188,17 +188,17 @@ export default function WorldsTabs() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16"
+            className="grid min-w-0 items-start gap-12 lg:grid-cols-2 lg:gap-16"
           >
-            <div>
+            <div className="min-w-0 w-full">
               <h2 className="mb-4 text-3xl font-extrabold tracking-tight break-words text-text-on-dark sm:text-4xl md:text-5xl">
                 {world.heading}
               </h2>
-              <p className="mkt-muted mb-8 max-w-xl text-base leading-relaxed sm:text-lg">
+              <p className="mkt-muted mb-8 max-w-xl break-words text-base leading-relaxed sm:text-lg">
                 {world.supporting}
               </p>
 
-              <div className="mb-8 flex snap-x gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="mb-8 flex w-full min-w-0 max-w-full snap-x gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {world.examples.map((ex) => (
                   <span
                     key={ex}
@@ -209,26 +209,26 @@ export default function WorldsTabs() {
                 ))}
               </div>
 
-              <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+              <div className="mb-8 min-w-0 max-w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
                 <p className="mb-1 text-xs font-medium uppercase tracking-wider text-white/40">
                   Featured
                 </p>
-                <h3 className="mb-2 text-xl font-bold text-text-on-dark">
+                <h3 className="mb-2 break-words text-xl font-bold text-text-on-dark">
                   {world.featured.title}
                 </h3>
-                <p className="mkt-muted mb-5 text-sm leading-relaxed">
+                <p className="mkt-muted mb-5 break-words text-sm leading-relaxed">
                   {world.featured.copy}
                 </p>
                 <ol className="space-y-2">
                   {world.lifecycle.map((step, i) => (
                     <li
                       key={step}
-                      className="flex gap-3 text-sm text-white/75"
+                      className="flex min-w-0 gap-3 break-words text-sm text-white/75"
                     >
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-semibold text-white/80">
                         {i + 1}
                       </span>
-                      {step}
+                      <span className="min-w-0">{step}</span>
                     </li>
                   ))}
                 </ol>
@@ -246,7 +246,7 @@ export default function WorldsTabs() {
                 ) : null}
               </div>
 
-              <p className="mb-6 max-w-xl text-base font-medium leading-relaxed text-indigo-100/90 italic">
+              <p className="mb-6 max-w-xl break-words text-base font-medium leading-relaxed text-indigo-100/90 italic">
                 {world.emotional}
               </p>
 
@@ -259,7 +259,7 @@ export default function WorldsTabs() {
               </CTAButton>
             </div>
 
-            <div className="flex justify-center lg:justify-end">
+            <div className="flex min-w-0 w-full justify-center lg:justify-end">
               <PhoneMockup world={active} />
             </div>
           </motion.div>

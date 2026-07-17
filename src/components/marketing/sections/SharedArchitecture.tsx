@@ -12,9 +12,9 @@ function BulletList({ points }: { points: string[] }) {
   if (points.length === 0) return null;
 
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-1.5">
       {points.map((p) => (
-        <li key={p} className="text-xs text-white/55">
+        <li key={p} className="text-xs leading-relaxed text-white/55 sm:text-sm">
           · {p}
         </li>
       ))}
@@ -22,16 +22,35 @@ function BulletList({ points }: { points: string[] }) {
   );
 }
 
+function AreaHeader({
+  index,
+  name,
+}: {
+  index: number;
+  name: string;
+}) {
+  return (
+    <>
+      <p className="mb-2 text-xs font-medium uppercase tracking-widest text-ember-500">
+        {String(index + 1).padStart(2, "0")}
+      </p>
+      <h3 className="mb-2 text-lg font-bold text-text-on-dark sm:text-xl">
+        {name}
+      </h3>
+    </>
+  );
+}
+
 export default function SharedArchitecture() {
   return (
-    <section id="architecture" className="py-24 sm:py-32">
+    <section id="architecture" className="py-16 sm:py-24 lg:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={viewportConfig}
-          className="mb-14 text-center"
+          className="mb-10 text-center sm:mb-14"
         >
           <motion.h2
             variants={fadeUp}
@@ -46,7 +65,7 @@ export default function SharedArchitecture() {
           initial="hidden"
           whileInView="visible"
           viewport={viewportConfig}
-          className="relative flex snap-x gap-4 overflow-x-auto pb-4 lg:grid lg:grid-cols-6 lg:overflow-visible lg:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="relative flex flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-6 lg:gap-4"
         >
           {sharedArchitecture.areas.map((area, i) => {
             const isLife = area.name === "Life";
@@ -57,7 +76,7 @@ export default function SharedArchitecture() {
               <motion.div
                 key={area.name}
                 variants={fadeUp}
-                className={`relative mkt-surface flex h-full w-[220px] shrink-0 snap-center flex-col rounded-2xl border border-white/10 p-5 lg:w-auto ${
+                className={`relative mkt-surface flex w-full flex-col rounded-2xl border border-white/10 p-5 sm:p-6 ${
                   isLife ? "lg:col-span-2" : "lg:col-span-1"
                 }`}
               >
@@ -66,36 +85,26 @@ export default function SharedArchitecture() {
                 ) : null}
 
                 {isLife ? (
-                  <div className="flex h-full flex-col lg:grid lg:grid-cols-2 lg:gap-4">
+                  <div className="flex flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-2 lg:gap-4">
                     <div>
-                      <p className="mb-2 text-xs font-medium uppercase tracking-widest text-ember-500">
-                        {String(i + 1).padStart(2, "0")}
-                      </p>
-                      <h3 className="mb-2 text-lg font-bold text-text-on-dark">
-                        {area.name}
-                      </h3>
-                      <p className="mkt-muted mb-2 text-sm leading-relaxed">
+                      <AreaHeader index={i} name={area.name} />
+                      <p className="mkt-muted mb-2 text-sm leading-relaxed sm:text-base">
                         {area.description}
                       </p>
                       {supporting ? (
-                        <p className="mkt-muted mb-3 text-sm leading-relaxed lg:mb-0">
+                        <p className="mkt-muted text-sm leading-relaxed sm:text-base lg:mb-0">
                           {supporting}
                         </p>
                       ) : null}
                     </div>
-                    <div className="mt-3 lg:mt-0 lg:flex lg:flex-col lg:justify-center">
+                    <div className="border-t border-white/10 pt-4 lg:border-t-0 lg:pt-0 lg:flex lg:flex-col lg:justify-center">
                       <BulletList points={area.points} />
                     </div>
                   </div>
                 ) : (
                   <>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-widest text-ember-500">
-                      {String(i + 1).padStart(2, "0")}
-                    </p>
-                    <h3 className="mb-2 text-lg font-bold text-text-on-dark">
-                      {area.name}
-                    </h3>
-                    <p className="mkt-muted mb-3 text-sm leading-relaxed">
+                    <AreaHeader index={i} name={area.name} />
+                    <p className="mkt-muted mb-4 text-sm leading-relaxed sm:text-base">
                       {area.description}
                     </p>
                     <BulletList points={area.points} />

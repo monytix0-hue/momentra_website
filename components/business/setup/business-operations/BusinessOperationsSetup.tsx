@@ -8,6 +8,7 @@ import {
   type BudgetAllocationDraft,
 } from "@/components/business/setup/business-operations/BudgetAllocationEditor";
 import { SetupAdvancedDisclosure } from "@/components/business/setup/shared/SetupAdvancedDisclosure";
+import { SetupChoiceCards } from "@/components/business/setup/shared/SetupChoiceCards";
 import { SetupChoiceChips } from "@/components/business/setup/shared/SetupChoiceChips";
 import { SetupInviteButton } from "@/components/business/setup/shared/SetupInviteSheet";
 import { SetupMoneyField } from "@/components/business/setup/shared/SetupMoneyField";
@@ -18,6 +19,8 @@ import { SetupTextInput } from "@/components/business/setup/shared/SetupTextInpu
 import { SetupToggleReveal } from "@/components/business/setup/shared/SetupToggleReveal";
 import { useBusinessSetupFlow } from "@/hooks/useBusinessSetupFlow";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { buildBusinessLiveSummary } from "@/lib/business/buildBusinessLiveSummary";
+import { setupExplainer } from "@/lib/business/setupExplainers";
 import {
   BUSINESS_SETUP_COPY,
   choiceLabel,
@@ -29,6 +32,7 @@ import {
   SETUP_CURRENCY_FALLBACK,
   SETUP_LOCALE_FALLBACK,
   SETUP_TIMEZONE_FALLBACK,
+  SETUP_ESTIMATED_MINUTES,
   businessGuidedSteps,
 } from "@/lib/business/setupCatalog";
 import { formatMinor } from "@/lib/reference_data/money";
@@ -300,9 +304,9 @@ export function BusinessOperationsSetup({
 
   const go = async (next: number) => {
     if (interactionsDisabled) return;
-    if (next > step && !validateStep(step)) return;
     const flushed = await flushPendingSave();
     if (!flushed) return;
+    if (next > step && !validateStep(step)) return;
     const completed = Array.from({ length: Math.max(0, next - 1) }, (_, i) => i + 1);
     setStep(next);
     setFieldErrors({});
@@ -454,18 +458,33 @@ export function BusinessOperationsSetup({
       : []),
   ];
 
+  const liveSummary = buildBusinessLiveSummary({
+    templateId: "business_operations",
+    answers,
+    currentStep: step,
+    totalSteps: guidedSteps.length,
+    estimatedMinutes: SETUP_ESTIMATED_MINUTES,
+    memberCount: members.length,
+  });
+
   return (
     <BusinessSetupShell
+      contextType="business"
+      templateId="business_operations"
+      momentTypeCode={setup?.moment_type_code}
+      momentId={momentId}
       title={META.title}
       steps={guidedSteps}
       currentStep={step}
       totalSteps={guidedSteps.length}
       saveStatus={saveStatus}
-      liveSummary={[
-        { label: "Moment", value: String(answers.moment_name ?? "") },
-        { label: "Currency", value: currency },
-      ].filter((r) => r.value)}
+      liveSummary={liveSummary}
       contextHelp={stepMeta?.intro}
+      tip={
+        step === 1
+          ? "Country and timezone use suggested defaults plus a searchable picker — never a long chip wall."
+          : null
+      }
       error={error}
       submitting={submitting}
       canActivate={preview?.activation_ready === true}
@@ -475,6 +494,7 @@ export function BusinessOperationsSetup({
       activateLabel={META.activate_cta}
       onActivationSuccessDone={onActivated}
       onClose={onClose}
+      onRetrySave={() => void flushPendingSave()}
       onBack={step > 1 && ready ? () => void go(step - 1) : undefined}
       onNext={step < 4 && ready ? () => void go(step + 1) : undefined}
       onPreview={step === 4 && ready ? () => void requestPreview() : undefined}
@@ -497,9 +517,10 @@ export function BusinessOperationsSetup({
             <>
               <SetupSectionCard title="Operations basics">
                 <SetupTextInput
-                  label="Moment name"
+                  label="What should we call this moment?"
                   helper="How this operating chapter appears in Momentra."
-                  placeholder="Example: Retail Operations"
+                  placeholder="Retail Operations"
+                  maxLength={60}
                   value={String(answers.moment_name ?? "")}
                   error={fieldErrors.moment_name}
                   onChange={(v) => updateAnswer("moment_name", v)}
@@ -507,6 +528,7 @@ export function BusinessOperationsSetup({
                 <SetupTextInput
                   label="Operations name"
                   helper="The function, department, or portfolio being managed."
+                  maxLength={60}
                   value={String(answers.operations_name ?? "")}
                   error={fieldErrors.operations_name}
                   onChange={(v) => {
@@ -514,29 +536,31 @@ export function BusinessOperationsSetup({
                     if (!answers.moment_name) updateAnswer("moment_name", v);
                   }}
                 />
-                <SetupChoiceChips
-                  label="Operations scope"
+                <SetupChoiceCards
+                  label="What part of the business is this?"
                   helper="Choose the part of the business this moment will monitor."
                   value={String(answers.operations_scope ?? "")}
-                  options={setupChoices("operations_scope")}
+                  options={setupChoices("operations_scope").filter((c) => c.value !== "CUSTOM")}
                   error={fieldErrors.operations_scope}
                   onChange={(v) => updateAnswer("operations_scope", v)}
                 />
-                <SetupChoiceChips
+                <SetupChoiceCards
                   label="How is work organized?"
                   helper="How are operating decisions and responsibilities organized?"
                   value={String(answers.operating_model ?? "")}
-                  options={setupChoices("operating_model")}
+                  options={setupChoices("operating_model").filter((c) => c.value !== "CUSTOM")}
                   error={fieldErrors.operating_model}
+                  explainer={setupExplainer("operating_model")}
                   onChange={(v) => updateAnswer("operating_model", v)}
                 />
-                <SetupSearchPicker
+                <SuggestedChipsPicker
                   label="Operating currency"
                   value={currency}
                   options={SETUP_CURRENCY_FALLBACK.map((c) => ({
                     value: c.value,
                     label: c.label,
                   }))}
+                  suggested={["INR", "USD", "EUR", "GBP"]}
                   error={fieldErrors.operating_currency_code}
                   onChange={(v) =>
                     updateAnswers({
@@ -550,6 +574,7 @@ export function BusinessOperationsSetup({
                   value={String(answers.review_cycle ?? "")}
                   options={setupChoices("review_cycle").filter((c) => c.value !== "CUSTOM")}
                   error={fieldErrors.review_cycle}
+                  explainer={setupExplainer("review_cycle")}
                   onChange={(v) => updateAnswer("review_cycle", v)}
                 />
               </SetupSectionCard>
@@ -557,10 +582,11 @@ export function BusinessOperationsSetup({
                 title={BUSINESS_SETUP_COPY.shared.regional_section.title}
                 helper={BUSINESS_SETUP_COPY.shared.regional_section.helper}
               >
-                <SetupSearchPicker
+                <SuggestedChipsPicker
                   label="Country"
                   value={String(answers.country_code ?? "")}
                   options={SETUP_COUNTRY_FALLBACK}
+                  suggested={["IN", "US", "GB", "AE"]}
                   onChange={(v) => updateAnswer("country_code", v)}
                 />
                 <SetupSearchPicker
@@ -569,10 +595,16 @@ export function BusinessOperationsSetup({
                   options={SETUP_LOCALE_FALLBACK}
                   onChange={(v) => updateAnswer("locale", v)}
                 />
-                <SetupSearchPicker
+                <SuggestedChipsPicker
                   label="Timezone"
                   value={String(answers.timezone ?? "")}
                   options={SETUP_TIMEZONE_FALLBACK}
+                  suggested={[
+                    "Asia/Kolkata",
+                    "America/New_York",
+                    "Europe/London",
+                    "Asia/Dubai",
+                  ]}
                   onChange={(v) => updateAnswer("timezone", v)}
                 />
               </SetupAdvancedDisclosure>
@@ -629,6 +661,7 @@ export function BusinessOperationsSetup({
                   helper="Vendor dependency describes how severely operations would be affected if a key vendor stopped delivering."
                   value={String(answers.vendor_dependency_level ?? "")}
                   options={setupChoices("vendor_dependency_level")}
+                  explainer={setupExplainer("vendor_dependency_level")}
                   onChange={(v) => updateAnswer("vendor_dependency_level", v)}
                 />
                 <SetupChoiceChips
@@ -636,6 +669,7 @@ export function BusinessOperationsSetup({
                   helper="Issue sensitivity controls how quickly Momentra highlights operational problems."
                   value={String(answers.issue_sensitivity ?? "")}
                   options={setupChoices("issue_sensitivity")}
+                  explainer={setupExplainer("issue_sensitivity")}
                   onChange={(v) => updateAnswer("issue_sensitivity", v)}
                 />
               </SetupSectionCard>
@@ -644,6 +678,7 @@ export function BusinessOperationsSetup({
                   label="How closely should Momentra monitor this?"
                   value={String(answers.monitoring_level ?? "STANDARD")}
                   options={setupChoices("ops_monitoring_level")}
+                  explainer={setupExplainer("monitoring_level")}
                   onChange={(v) => updateAnswer("monitoring_level", v)}
                 />
                 <SetupChoiceChips
@@ -655,6 +690,7 @@ export function BusinessOperationsSetup({
                 {needsThreshold ? (
                   <SetupMoneyField
                     label="Approval required above"
+                    helper="Enter the amount in normal currency units (not minor units)."
                     amountMinor={
                       answers.approval_threshold_minor == null
                         ? null
@@ -662,6 +698,7 @@ export function BusinessOperationsSetup({
                     }
                     currencyCode={currency}
                     currencies={currencies}
+                    explainer={setupExplainer("approval_threshold_minor")}
                     onChange={(v) => updateAnswer("approval_threshold_minor", v)}
                   />
                 ) : null}

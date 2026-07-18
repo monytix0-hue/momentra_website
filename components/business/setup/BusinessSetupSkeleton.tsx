@@ -7,6 +7,9 @@ export function BusinessSetupSkeleton({ rows = 4 }: { rows?: number }) {
   const { colors } = useThemeTokens();
   return (
     <div className="space-y-4" aria-busy="true" aria-label="Loading setup">
+      <p className="text-sm font-medium opacity-80" role="status" aria-live="polite">
+        Loading setup…
+      </p>
       <div
         className="h-5 w-40 animate-pulse rounded"
         style={{ background: colors.surfaceContainer }}

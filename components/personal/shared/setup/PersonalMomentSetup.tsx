@@ -1,7 +1,7 @@
 "use client";
 
-import { Activity, Heart, Loader2, Palette, Rocket } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Activity, Heart, Loader2, Palette, RefreshCw, Rocket } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { glassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
 import {
@@ -14,11 +14,12 @@ import {
   DomainSectionHeader,
 } from "@/components/personal/shared/domain/DomainWidgets";
 import { GuidedSetupShell } from "@/components/setup/GuidedSetupShell";
+import type { GuidedSetupStep } from "@/components/setup/guidedSetupTypes";
 import { useSetupFlow } from "@/hooks/useSetupFlow";
 import {
   PERSONAL_SETUP_COPY,
-  personalGuidedSteps,
   personalSetupTemplate,
+  personalTemplateForMomentType,
 } from "@/lib/personal/setupCatalog";
 import type {
   PersonalSetupField,
@@ -35,6 +36,13 @@ import {
   momentTypeBadge,
   type PersonalMomentTypeCode,
 } from "@/lib/personal/personalMomentSession";
+
+const SINGLE_SCROLL_STEP: GuidedSetupStep = {
+  id: "setup",
+  title: "Setup",
+  shortTitle: "Setup",
+  description: "",
+};
 
 type PersonalMomentSetupProps = {
   momentId: string;
@@ -88,51 +96,30 @@ export function PersonalMomentSetup({
     submit,
   } = useSetupFlow(momentId);
 
-  const catalog = personalSetupTemplate();
-  const steps = useMemo(() => personalGuidedSteps(answers), [answers]);
-  const [step, setStep] = useState(1);
-
-  const fieldBuckets = useMemo(() => {
-    if (!setup) return [[], [], [], []] as PersonalSetupField[][];
-    const catalogKeys = catalog.steps.map((s) =>
-      ((s as { fields?: { key: string }[] }).fields ?? []).map((f) => f.key),
-    );
-    const used = new Set<string>();
-    const buckets = catalogKeys.map((keys) => {
-      const set = new Set(keys);
-      const matched = setup.fields.filter((f) => set.has(f.field_key));
-      matched.forEach((f) => used.add(f.field_key));
-      return matched;
-    });
-    const leftover = setup.fields.filter((f) => !used.has(f.field_key));
-    if (leftover.length) {
-      // Put unmatched server fields in Preferences (step 2) when present
-      const idx = Math.min(1, Math.max(0, buckets.length - 2));
-      buckets[idx] = [...buckets[idx], ...leftover];
-    }
-    return buckets;
-  }, [setup, catalog.steps]);
+  const templateId = personalTemplateForMomentType(setup?.moment_type_code);
+  const catalog = personalSetupTemplate(templateId);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answersKey = JSON.stringify(answers);
 
   useEffect(() => {
-    if (step > steps.length) setStep(steps.length);
-  }, [step, steps.length]);
-
-  useEffect(() => {
-    if (step === steps.length) void requestPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, steps.length]);
+    if (!setup) return;
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = setTimeout(() => {
+      previewTimer.current = null;
+      void requestPreview();
+    }, 450);
+    return () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+    };
+    // Debounced preview when answers change (personal single-scroll).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- answersKey tracks answer changes
+  }, [setup, answersKey]);
 
   async function handleSubmit() {
     const flushed = await flushPendingSave();
     if (!flushed) return;
     const ok = await submit();
     if (ok) onActivated();
-  }
-
-  async function go(next: number) {
-    const flushed = await flushPendingSave();
-    if (!flushed) return;
-    setStep(next);
   }
 
   if (loading || !setup) {
@@ -164,8 +151,6 @@ export function PersonalMomentSetup({
 
   const typeCode = setup.moment_type_code as PersonalMomentTypeCode;
   const MissionIcon = missionIcon(typeCode);
-  const isReview = step >= steps.length;
-  const stepFields = fieldBuckets[Math.min(step, fieldBuckets.length) - 1] ?? [];
   const liveSummary = [
     {
       label: "Moment",
@@ -173,32 +158,33 @@ export function PersonalMomentSetup({
     },
     {
       label: "Focus",
-      value: String(answers.focus_area ?? ""),
+      value: String(answers.focus_area ?? answers.building_focus ?? ""),
     },
   ].filter((r) => r.value);
 
   return (
     <GuidedSetupShell
-      templateId="personal_default"
+      contextType="personal"
+      layout="singleScroll"
+      templateId={templateId}
       momentTypeCode={setup.moment_type_code}
       title={catalog.title}
+      subtitle={catalog.subtitle}
       estimatedDuration={PERSONAL_SETUP_COPY.estimated_minutes}
-      currentStep={step}
-      steps={steps}
+      currentStep={1}
+      steps={[SINGLE_SCROLL_STEP]}
       saveState={saveStatus}
-      canGoBack={step > 1}
-      canContinue={!isReview}
-      canPreview={isReview}
+      canGoBack={false}
+      canContinue={false}
+      canPreview
       liveSummary={liveSummary}
-      contextHelp={steps[step - 1]?.description}
+      contextHelp={catalog.subtitle}
       footerPrimaryLabel={
-        isReview ? (setup.cta_label ?? catalog.activate_cta ?? defaultSetupCta(typeCode)) : "Continue"
+        setup.cta_label ?? catalog.activate_cta ?? defaultSetupCta(typeCode)
       }
       error={error}
       submitting={submitting}
       canActivate={canSubmit}
-      onBack={() => void go(step - 1)}
-      onContinue={() => void go(step + 1)}
       onClose={onClose}
       onPreview={() => void requestPreview()}
       onActivate={() => void handleSubmit()}
@@ -208,11 +194,9 @@ export function PersonalMomentSetup({
           {template?.hero.badge_label ?? momentTypeBadge(typeCode)}
         </p>
 
-        {step === 1 && setup.mission ? (
-          <MissionCard mission={setup.mission} icon={MissionIcon} />
-        ) : null}
+        {setup.mission ? <MissionCard mission={setup.mission} icon={MissionIcon} /> : null}
 
-        {stepFields.map((field) => (
+        {setup.fields.map((field) => (
           <FieldSection
             key={field.field_key}
             field={field}
@@ -223,14 +207,10 @@ export function PersonalMomentSetup({
           />
         ))}
 
-        {isReview ? (
-          <>
-            {preview ? <PreviewPanel preview={preview} typeCode={typeCode} /> : null}
-            <SummaryPanel setup={setup} answers={answers} />
-          </>
-        ) : null}
+        {preview ? <PreviewPanel preview={preview} typeCode={typeCode} /> : null}
+        <SummaryPanel setup={setup} answers={answers} />
 
-        {setup.footer_note && isReview ? (
+        {setup.footer_note ? (
           <p
             className="text-center text-[11px] font-medium tracking-[0.2em] opacity-70"
             style={{ color: colors.textSecondary }}

@@ -4,9 +4,25 @@
 import copyJson from "@/lib/personal/personal_setup_copy.json";
 import type { GuidedSetupStep } from "@/components/setup/GuidedSetupShell";
 
+export type PersonalSetupTemplateId =
+  | "life_operations"
+  | "future_building"
+  | "lifestyle"
+  | "relationships";
+
 export const PERSONAL_SETUP_COPY = copyJson;
 
-export function personalSetupTemplate(id: "personal_default" = "personal_default") {
+export function personalTemplateForMomentType(
+  momentTypeCode: string | null | undefined,
+): PersonalSetupTemplateId {
+  const code = (momentTypeCode ?? "").toUpperCase();
+  if (code === "FUTURE_BUILDING") return "future_building";
+  if (code === "LIFESTYLE") return "lifestyle";
+  if (code === "RELATIONSHIPS" || code === "EMOTIONAL_SECURITY") return "relationships";
+  return "life_operations";
+}
+
+export function personalSetupTemplate(id: PersonalSetupTemplateId) {
   return PERSONAL_SETUP_COPY.templates[id];
 }
 
@@ -29,8 +45,11 @@ export function evaluateHiddenWhen(
   return false;
 }
 
-export function personalGuidedSteps(answers: Record<string, unknown> = {}): GuidedSetupStep[] {
-  return personalSetupTemplate()
+export function personalGuidedSteps(
+  id: PersonalSetupTemplateId,
+  answers: Record<string, unknown> = {},
+): GuidedSetupStep[] {
+  return personalSetupTemplate(id)
     .steps.filter((s) => !evaluateHiddenWhen(s.hiddenWhen, answers))
     .map((s) => ({
       id: s.id,

@@ -1,81 +1,53 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { Check, ChevronRight, List, X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Check, X } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { GuidedSetupContent } from "@/components/setup/GuidedSetupContent";
+import { GuidedSetupFooter } from "@/components/setup/GuidedSetupFooter";
+import { GuidedSetupHeader } from "@/components/setup/GuidedSetupHeader";
+import { GuidedSetupLiveSummary } from "@/components/setup/GuidedSetupLiveSummary";
+import { GuidedSetupStepNav } from "@/components/setup/GuidedSetupStepNav";
+import { GuidedSetupThemeProvider } from "@/components/setup/GuidedSetupTheme";
+import { normalizeLiveSummary } from "@/components/setup/guidedSetupSummary";
+import type { GuidedSetupShellProps } from "@/components/setup/guidedSetupTypes";
 
-export type GuidedSetupStep = {
-  id: string;
-  title: string;
-  shortTitle: string;
-  description: string;
-  optional?: boolean;
-  hiddenWhen?: string;
-};
+export type {
+  GuidedSetupContextType,
+  GuidedSetupLayout,
+  GuidedSetupSaveState,
+  GuidedSetupShellProps,
+  GuidedSetupStep,
+  GuidedSetupStepVisualState,
+  GuidedSetupSummaryRow,
+} from "@/components/setup/guidedSetupTypes";
 
-export type GuidedSetupSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+export type { GuidedSetupSummary, GuidedSetupSummaryItem } from "@/components/setup/guidedSetupSummary";
+export type { GuidedSetupAnalyticsEvent } from "@/components/setup/guidedSetupAnalytics";
 
-export type GuidedSetupSummaryRow = {
-  label: string;
-  value: string;
-};
-
-export type GuidedSetupShellProps = {
-  templateId?: string;
-  momentTypeCode?: string;
-  title: string;
-  subtitle?: string;
-  estimatedDuration?: number;
-  currentStep: number;
-  steps: GuidedSetupStep[];
-  saveState?: GuidedSetupSaveState;
-  canGoBack?: boolean;
-  canContinue?: boolean;
-  canPreview?: boolean;
-  liveSummary?: GuidedSetupSummaryRow[];
-  contextHelp?: string | null;
-  footerPrimaryLabel?: string;
-  footerSecondaryLabel?: string;
-  error?: string | null;
-  submitting?: boolean;
-  canActivate?: boolean;
-  interactionsDisabled?: boolean;
-  activationSuccess?: boolean;
-  activationSuccessMessage?: string;
-  onActivationSuccessDone?: () => void;
-  onBack?: () => void;
-  onContinue?: () => void;
-  onClose: () => void;
-  onRetrySave?: () => void;
-  onOpenSummary?: () => void;
-  onPreview?: () => void;
-  onActivate?: () => void;
-  children: ReactNode;
-};
-
-function stepVisualState(
-  index: number,
-  currentStep: number,
-): "incomplete" | "current" | "complete" {
-  const n = index + 1;
-  if (n === currentStep) return "current";
-  if (n < currentStep) return "complete";
-  return "incomplete";
-}
-
+/**
+ * Shared guided setup presentation shell.
+ * Owns layout, theme, summary chrome, and generic analytics hooks only —
+ * no Business / Group / Personal field keys or template labels.
+ */
 export function GuidedSetupShell({
+  contextType = "business",
+  templateId,
+  momentTypeCode,
+  momentId,
   title,
   subtitle,
   estimatedDuration,
+  layout = "guided",
   currentStep,
   steps,
   saveState = "idle",
   canGoBack = false,
   canContinue = false,
   canPreview = false,
-  liveSummary = [],
+  liveSummary,
   contextHelp,
+  tip,
   footerPrimaryLabel = "Continue",
   footerSecondaryLabel = "Preview",
   error,
@@ -84,6 +56,7 @@ export function GuidedSetupShell({
   interactionsDisabled = false,
   activationSuccess = false,
   activationSuccessMessage = "Moment activated",
+  activationSuccessSubtitle = "Your moment is live on Pulse.",
   onActivationSuccessDone,
   onBack,
   onContinue,
@@ -92,292 +65,273 @@ export function GuidedSetupShell({
   onOpenSummary,
   onPreview,
   onActivate,
+  onAnalytics,
   children,
 }: GuidedSetupShellProps) {
   const { colors } = useThemeTokens();
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const summaryCloseRef = useRef<HTMLButtonElement>(null);
+  const summaryTitleId = useId();
+  const singleScroll = layout === "singleScroll";
   const totalSteps = Math.max(1, steps.length);
   const active = steps[Math.min(currentStep, totalSteps) - 1];
-  const isReview = currentStep >= totalSteps;
+  const isReview = singleScroll || currentStep >= totalSteps;
+  const summaryRows = normalizeLiveSummary(liveSummary);
+  const openedAtRef = useRef(
+    typeof performance !== "undefined" ? performance.now() : Date.now(),
+  );
 
-  const saveLabel =
-    saveState === "dirty"
-      ? "Unsaved changes"
-      : saveState === "saving"
-        ? "Saving…"
-        : saveState === "saved"
-          ? "✓ Saved"
-          : saveState === "error"
-            ? "Couldn't save"
-            : "";
+  const elapsedMs = () =>
+    Math.round(
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+        openedAtRef.current,
+    );
+
+  useEffect(() => {
+    onAnalytics?.({
+      type: "setup_open",
+      contextType,
+      templateId,
+      momentTypeCode,
+      momentId,
+      elapsedMs: 0,
+    });
+    // Fire once per mount for this setup session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    onAnalytics?.({
+      type: "step_changed",
+      stepId: active.id,
+      stepIndex: currentStep,
+      templateId,
+      contextType,
+      saveState,
+      elapsedMs: elapsedMs(),
+    });
+  }, [active, currentStep, onAnalytics, templateId, contextType, saveState]);
+
+  useEffect(() => {
+    if (!isReview) return;
+    onAnalytics?.({
+      type: "review_opened",
+      templateId,
+      contextType,
+      elapsedMs: elapsedMs(),
+    });
+  }, [isReview, onAnalytics, templateId, contextType]);
+
+  useEffect(() => {
+    if (saveState === "saving") {
+      onAnalytics?.({
+        type: "autosave_started",
+        templateId,
+        contextType,
+        stepId: active?.id,
+        saveState,
+      });
+    } else if (saveState === "saved") {
+      onAnalytics?.({
+        type: "autosave_completed",
+        templateId,
+        contextType,
+        stepId: active?.id,
+        elapsedMs: elapsedMs(),
+      });
+    } else if (saveState === "error") {
+      onAnalytics?.({
+        type: "autosave_failed",
+        templateId,
+        contextType,
+        stepId: active?.id,
+      });
+    }
+  }, [saveState, onAnalytics, templateId, contextType, active?.id]);
 
   useEffect(() => {
     if (!activationSuccess || !onActivationSuccessDone) return;
+    onAnalytics?.({
+      type: "activation_completed",
+      templateId,
+      momentId,
+      contextType,
+      elapsedMs: elapsedMs(),
+    });
     const timer = window.setTimeout(() => onActivationSuccessDone(), 1200);
     return () => window.clearTimeout(timer);
-  }, [activationSuccess, onActivationSuccessDone]);
+  }, [
+    activationSuccess,
+    onActivationSuccessDone,
+    onAnalytics,
+    templateId,
+    momentId,
+    contextType,
+  ]);
 
-  const summaryPanel =
-    liveSummary.length > 0 || contextHelp ? (
-      <aside
-        className="space-y-4 rounded-2xl border p-4"
-        style={{
-          borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)`,
-          background: colors.surfaceContainer,
-        }}
-        aria-label="Live summary"
-      >
-        <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Summary</p>
-        {liveSummary.length === 0 ? (
-          <p className="text-sm opacity-60">Answers appear here as you go.</p>
-        ) : (
-          <dl className="space-y-2">
-            {liveSummary.map((row) => (
-              <div key={row.label} className="flex justify-between gap-3 text-sm">
-                <dt className="opacity-60">{row.label}</dt>
-                <dd className="max-w-[60%] truncate text-right font-medium">{row.value || "—"}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-        {contextHelp ? (
-          <p className="text-xs leading-relaxed opacity-75" style={{ color: colors.textSecondary }}>
-            {contextHelp}
-          </p>
-        ) : null}
-        {estimatedDuration ? (
-          <p className="text-[10px] opacity-50">About {estimatedDuration} minutes</p>
-        ) : null}
-      </aside>
-    ) : null;
+  useEffect(() => {
+    if (!summaryOpen) return;
+    summaryCloseRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSummaryOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [summaryOpen]);
+
+  const openSummary = () => {
+    onOpenSummary?.();
+    setSummaryOpen(true);
+  };
+
+  const handleActivate = () => {
+    onAnalytics?.({
+      type: "activation_started",
+      templateId,
+      momentId,
+      contextType,
+    });
+    onActivate?.();
+  };
+
+  const summaryPanel = (
+    <GuidedSetupLiveSummary
+      rows={summaryRows}
+      contextHelp={contextHelp}
+      estimatedDuration={estimatedDuration}
+      currentStepTitle={active?.shortTitle ?? active?.title}
+    />
+  );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col motion-safe:animate-in motion-safe:fade-in"
-      style={{ background: colors.background, color: colors.textPrimary }}
-      data-guided-setup-shell
-    >
-      {activationSuccess ? (
-        <div
-          className="absolute inset-0 z-30 flex items-center justify-center"
-          style={{ background: `color-mix(in srgb, ${colors.background} 88%, transparent)` }}
-          role="status"
-          aria-live="polite"
-        >
+    <GuidedSetupThemeProvider contextType={contextType}>
+      <div
+        className="fixed inset-0 z-50 flex flex-col motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        style={{ background: colors.background, color: colors.textPrimary }}
+        data-guided-setup-shell
+        data-guided-setup-context={contextType}
+        data-guided-setup-template={templateId ?? ""}
+      >
+        {activationSuccess ? (
           <div
-            className="mx-6 flex max-w-sm flex-col items-center gap-3 rounded-2xl px-8 py-7 text-center shadow-lg"
-            style={{ background: colors.primaryContainer, color: colors.brandOnPrimary }}
+            className="absolute inset-0 z-30 flex items-center justify-center"
+            style={{ background: `color-mix(in srgb, ${colors.background} 88%, transparent)` }}
+            role="status"
+            aria-live="polite"
           >
-            <span
-              className="flex size-12 items-center justify-center rounded-full"
-              style={{ background: "color-mix(in srgb, white 22%, transparent)" }}
+            <div
+              className="mx-6 flex max-w-sm flex-col items-center gap-3 rounded-2xl px-8 py-7 text-center shadow-lg"
+              style={{ background: colors.primaryContainer, color: colors.brandOnPrimary }}
             >
-              <Check className="size-6" strokeWidth={2.5} />
-            </span>
-            <p className="text-lg font-bold">{activationSuccessMessage}</p>
-            <p className="text-sm opacity-90">Your moment is live on Pulse.</p>
-          </div>
-        </div>
-      ) : null}
-
-      <header
-        className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur"
-        style={{
-          borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)`,
-          background: `color-mix(in srgb, ${colors.background} 92%, transparent)`,
-        }}
-      >
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-widest opacity-60">
-            Step {currentStep} of {totalSteps}
-            {estimatedDuration ? ` · About ${estimatedDuration} minutes` : ""}
-          </p>
-          <h2 className="truncate text-lg font-semibold">{title}</h2>
-          {subtitle ? (
-            <p className="truncate text-xs opacity-60" style={{ color: colors.textSecondary }}>
-              {subtitle}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          {onOpenSummary || liveSummary.length > 0 ? (
-            <button
-              type="button"
-              className="flex size-10 items-center justify-center rounded-full lg:hidden"
-              style={{ background: colors.surfaceContainer }}
-              aria-label="Open summary"
-              onClick={() => {
-                onOpenSummary?.();
-                setSummaryOpen(true);
-              }}
-            >
-              <List className="size-5" />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close setup"
-            className="flex size-10 items-center justify-center rounded-full"
-            style={{ background: colors.surfaceContainer }}
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-      </header>
-
-      {error ? (
-        <div
-          className="mx-4 mt-3 shrink-0 rounded-xl px-3 py-2 text-sm"
-          style={{ background: "rgba(239,68,68,0.12)", color: colors.error }}
-          role="alert"
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <nav
-        className="shrink-0 overflow-x-auto border-b px-4 py-2"
-        style={{ borderColor: `color-mix(in srgb, ${colors.border} 30%, transparent)` }}
-        aria-label="Setup steps"
-      >
-        <ol className="flex min-w-max items-center gap-1">
-          {steps.map((step, index) => {
-            const state = stepVisualState(index, currentStep);
-            return (
-              <li key={step.id} className="flex items-center gap-1">
-                {index > 0 ? <ChevronRight className="size-3.5 opacity-40" aria-hidden /> : null}
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{
-                    background:
-                      state === "current"
-                        ? colors.primaryContainer
-                        : state === "complete"
-                          ? `color-mix(in srgb, ${colors.primary} 18%, transparent)`
-                          : colors.surfaceContainer,
-                    color: state === "current" ? colors.brandOnPrimary : colors.textPrimary,
-                    opacity: state === "incomplete" ? 0.55 : 1,
-                  }}
-                  aria-current={state === "current" ? "step" : undefined}
-                >
-                  {step.shortTitle}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto grid w-full max-w-[1100px] gap-6 px-4 pb-32 pt-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="min-w-0">
-            {active ? (
-              <div className="mb-6 space-y-2">
-                <h3 className="text-xl font-semibold">{active.title}</h3>
-                <p className="text-sm leading-relaxed opacity-75" style={{ color: colors.textSecondary }}>
-                  {active.description}
-                </p>
-              </div>
-            ) : null}
-            {children}
-          </div>
-          <div className="hidden lg:block">{summaryPanel}</div>
-        </div>
-      </div>
-
-      {summaryOpen ? (
-        <div
-          className="absolute inset-0 z-20 flex flex-col justify-end bg-black/40 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Setup summary"
-          onClick={() => setSummaryOpen(false)}
-        >
-          <div
-            className="max-h-[70vh] overflow-y-auto rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-            style={{ background: colors.background }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold">Summary</p>
-              <button type="button" aria-label="Close summary" onClick={() => setSummaryOpen(false)}>
-                <X className="size-5" />
-              </button>
-            </div>
-            {summaryPanel}
-          </div>
-        </div>
-      ) : null}
-
-      <footer
-        className="sticky bottom-0 z-10 shrink-0 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur"
-        style={{
-          borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)`,
-          background: `color-mix(in srgb, ${colors.background} 94%, transparent)`,
-        }}
-      >
-        <div className="mx-auto flex w-full max-w-[1100px] flex-wrap items-center gap-2">
-          {canGoBack && onBack ? (
-            <button
-              type="button"
-              onClick={onBack}
-              disabled={interactionsDisabled}
-              className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
-              style={{ borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)` }}
-            >
-              Back
-            </button>
-          ) : null}
-
-          <div className="min-w-0 flex-1 px-1">
-            {saveState === "error" && onRetrySave ? (
-              <button type="button" onClick={onRetrySave} className="text-xs font-semibold underline opacity-80">
-                {saveLabel} — Retry
-              </button>
-            ) : saveLabel ? (
-              <span className="text-xs opacity-60" aria-live="polite">
-                {saveLabel}
+              <span
+                className="flex size-12 items-center justify-center rounded-full"
+                style={{ background: "color-mix(in srgb, white 22%, transparent)" }}
+              >
+                <Check className="size-6" strokeWidth={2.5} aria-hidden />
               </span>
-            ) : null}
+              <p className="text-lg font-bold">{activationSuccessMessage}</p>
+              {activationSuccessSubtitle ? (
+                <p className="text-sm opacity-90">{activationSuccessSubtitle}</p>
+              ) : null}
+            </div>
           </div>
+        ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            {canPreview && onPreview ? (
-              <button
-                type="button"
-                onClick={onPreview}
-                disabled={interactionsDisabled}
-                className="rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.surfaceContainer }}
-              >
-                {footerSecondaryLabel}
-              </button>
-            ) : null}
-            {isReview && onActivate ? (
-              <button
-                type="button"
-                disabled={!canActivate || submitting || interactionsDisabled}
-                onClick={onActivate}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.primaryContainer, color: colors.brandOnPrimary }}
-              >
-                {submitting ? "Activating…" : footerPrimaryLabel}
-              </button>
-            ) : canContinue && onContinue ? (
-              <button
-                type="button"
-                onClick={onContinue}
-                disabled={interactionsDisabled}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.primaryContainer, color: colors.brandOnPrimary }}
-              >
-                {footerPrimaryLabel}
-              </button>
-            ) : null}
+        <GuidedSetupHeader
+          title={title}
+          subtitle={subtitle}
+          currentStep={currentStep}
+          totalSteps={totalSteps}
+          estimatedDuration={estimatedDuration}
+          hideStepProgress={singleScroll}
+          showSummaryButton={summaryRows.length > 0 || Boolean(contextHelp) || Boolean(tip)}
+          onOpenSummary={openSummary}
+          onClose={onClose}
+        />
+
+        {error ? (
+          <div
+            className="mx-4 mt-3 shrink-0 rounded-xl px-3 py-2 text-sm"
+            style={{ background: "rgba(239,68,68,0.12)", color: colors.error }}
+            role="alert"
+          >
+            {error}
+          </div>
+        ) : null}
+
+        {singleScroll ? null : (
+          <GuidedSetupStepNav steps={steps} currentStep={currentStep} orientation="horizontal" />
+        )}
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            className={
+              singleScroll
+                ? "mx-auto grid w-full max-w-[1200px] gap-6 px-4 pb-32 pt-6 lg:grid-cols-[minmax(0,1fr)_260px]"
+                : "mx-auto grid w-full max-w-[1200px] gap-6 px-4 pb-32 pt-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]"
+            }
+          >
+            {singleScroll ? null : (
+              <GuidedSetupStepNav steps={steps} currentStep={currentStep} orientation="vertical" />
+            )}
+            <GuidedSetupContent activeStep={active} tip={tip}>
+              {children}
+            </GuidedSetupContent>
+            <div className="hidden lg:block">{summaryPanel}</div>
           </div>
         </div>
-      </footer>
-    </div>
+
+        {summaryOpen ? (
+          <div
+            className="absolute inset-0 z-20 flex flex-col justify-end bg-black/40 lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={summaryTitleId}
+            onClick={() => setSummaryOpen(false)}
+          >
+            <div
+              className="max-h-[70vh] overflow-y-auto rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              style={{ background: colors.background }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <p id={summaryTitleId} className="text-sm font-semibold">
+                  Summary
+                </p>
+                <button
+                  ref={summaryCloseRef}
+                  type="button"
+                  className="flex size-11 items-center justify-center"
+                  aria-label="Close summary"
+                  onClick={() => setSummaryOpen(false)}
+                >
+                  <X className="size-5" aria-hidden />
+                </button>
+              </div>
+              {summaryPanel}
+            </div>
+          </div>
+        ) : null}
+
+        <GuidedSetupFooter
+          saveState={saveState}
+          canGoBack={canGoBack}
+          canContinue={canContinue}
+          canActivate={canActivate}
+          canPreview={canPreview}
+          isReview={isReview}
+          submitting={submitting}
+          interactionsDisabled={interactionsDisabled}
+          footerPrimaryLabel={footerPrimaryLabel}
+          footerSecondaryLabel={footerSecondaryLabel}
+          onBack={onBack}
+          onContinue={onContinue}
+          onPreview={onPreview}
+          onActivate={onActivate ? handleActivate : undefined}
+          onRetrySave={onRetrySave}
+        />
+      </div>
+    </GuidedSetupThemeProvider>
   );
 }

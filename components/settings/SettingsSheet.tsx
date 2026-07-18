@@ -27,6 +27,7 @@ type SettingsSheetProps = {
   onClose: () => void;
   onSignOut: () => void;
   onUserUpdated: (user: UserResponse) => void;
+  onViewIntro?: () => void;
 };
 
 export function SettingsSheet({
@@ -35,6 +36,7 @@ export function SettingsSheet({
   onClose,
   onSignOut,
   onUserUpdated,
+  onViewIntro,
 }: SettingsSheetProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState(user.display_name ?? "");
@@ -283,6 +285,15 @@ export function SettingsSheet({
         ) : null}
 
         <div className="mt-6 flex flex-col gap-2">
+          {onViewIntro ? (
+            <button
+              type="button"
+              className="w-full rounded-lg border border-indigo-200 px-4 py-2 text-sm font-medium text-indigo-800"
+              onClick={onViewIntro}
+            >
+              View intro
+            </button>
+          ) : null}
           <button type="button" className="btn-ghost w-full" onClick={onClose}>
             Close
           </button>

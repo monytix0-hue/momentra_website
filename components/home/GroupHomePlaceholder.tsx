@@ -14,15 +14,9 @@ import { MomentsEmpty as GroupMomentsEmpty } from "@/components/group/empty/mome
 
 import { PulseEmpty as GroupPulseEmpty } from "@/components/group/empty/pulse/PulseEmpty";
 
-import {
-
-  GroupLivingSetup,
-
-  GroupPurchaseSetup,
-
-  GroupTripSetup,
-
-} from "@/components/group/setup/GroupMomentSetup";
+import { GroupLivingSetup } from "@/components/group/setup/GroupLivingSetup";
+import { GroupPurchaseSetup } from "@/components/group/setup/GroupPurchaseSetup";
+import { GroupTripSetup } from "@/components/group/setup/GroupTripSetup";
 
 import { GroupMomentHeader } from "@/components/group/shared/GroupMomentHeader";
 
@@ -197,6 +191,43 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
     const timeout = window.setTimeout(() => setQuickAddSuccess(null), 2200);
     return () => window.clearTimeout(timeout);
   }, [quickAddSuccess]);
+
+  // Open the joined moment after invite accept (QR scan or /invite/[token]).
+  useEffect(() => {
+    const onInviteJoined = (event: Event) => {
+      const detail = (event as CustomEvent<{ moment_id?: string; moment_type?: string | null }>)
+        .detail;
+      const momentId = detail?.moment_id?.trim();
+      if (!momentId) return;
+      void (async () => {
+        try {
+          const session = await GroupRepository.getSessionBootstrap();
+          setSessionBootstrap(session);
+          const options = resolveGroupMomentSwitcherOptions(session);
+          const match = options.find((o) => o.momentId === momentId);
+          const typeFromResult = (detail.moment_type || "").toUpperCase();
+          const typeCode = (match?.typeCode ||
+            (typeFromResult.includes("PURCHASE")
+              ? "SHARED_PURCHASE"
+              : typeFromResult.includes("LIVING")
+                ? "SHARED_LIVING"
+                : typeFromResult.includes("EXPERIENCE") || typeFromResult.includes("TRIP")
+                  ? "SHARED_EXPERIENCE"
+                  : null)) as GroupMomentTypeCode | null;
+          if (typeCode) {
+            setSelectedGroupMomentTypeCode(typeCode);
+            setActiveMomentType(typeCode);
+          }
+          setActiveMomentId(momentId);
+          setSelectedTab("pulse");
+        } catch {
+          setActiveMomentId(momentId);
+        }
+      })();
+    };
+    window.addEventListener("momentra:invite-joined", onInviteJoined);
+    return () => window.removeEventListener("momentra:invite-joined", onInviteJoined);
+  }, []);
 
 
   const appContext = "group";

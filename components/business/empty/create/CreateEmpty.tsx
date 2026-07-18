@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { businessCardStyle } from "@/components/business/empty/shared/emptyStyles";
 import type { BusinessCreateOptionCard, BusinessCreateOptionsResponse } from "@/lib/api/business";
@@ -9,6 +9,8 @@ type CreateEmptyProps = {
   options?: BusinessCreateOptionsResponse | null;
   onCreateMoment: (typeCode?: string) => void;
   onClose: () => void;
+  /** Set while createDraft is in flight — shows Loading setup… and disables interaction. */
+  creatingType?: string | null;
 };
 
 const CREATE_IMAGE_BY_TYPE: Record<string, string> = {
@@ -118,9 +120,15 @@ function createImageFor(typeCode: string): string {
   return CREATE_IMAGE_BY_TYPE[typeCode] ?? "/business/create-custom.jpg";
 }
 
-export function CreateEmpty({ options, onCreateMoment, onClose }: CreateEmptyProps) {
+export function CreateEmpty({
+  options,
+  onCreateMoment,
+  onClose,
+  creatingType = null,
+}: CreateEmptyProps) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
+  const creating = Boolean(creatingType);
   const cards =
     options?.cards && options.cards.length > 0
       ? [...options.cards].sort((a, b) => a.display_order - b.display_order)
@@ -130,12 +138,26 @@ export function CreateEmpty({ options, onCreateMoment, onClose }: CreateEmptyPro
     <div
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto"
       style={{ background: colors.background, color: colors.textPrimary }}
+      aria-busy={creating}
     >
+      {creating ? (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3"
+          style={{ background: `color-mix(in srgb, ${colors.background} 82%, transparent)` }}
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="size-8 animate-spin opacity-80" aria-hidden />
+          <p className="text-sm font-medium">Loading setup…</p>
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={onClose}
+        disabled={creating}
         aria-label="Close"
-        className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full"
+        className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full disabled:opacity-50"
         style={{ background: colors.surfaceContainer }}
       >
         <X className="size-5" />
@@ -152,7 +174,7 @@ export function CreateEmpty({ options, onCreateMoment, onClose }: CreateEmptyPro
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {cards.map((card) => {
-            const available = card.is_available !== false;
+            const available = card.is_available !== false && !creating;
             const wide = card.moment_type_code === "CUSTOM_OPERATIONAL_MOMENT";
             const image = createImageFor(card.moment_type_code);
             return (
@@ -185,7 +207,7 @@ export function CreateEmpty({ options, onCreateMoment, onClose }: CreateEmptyPro
                 />
                 <div className="relative flex h-full min-h-[10rem] flex-col justify-between p-4">
                   <span className="text-[9px] font-bold tracking-widest opacity-80">
-                    {card.badge_label ?? (available ? "AVAILABLE" : "COMING SOON")}
+                    {card.badge_label ?? (card.is_available !== false ? "AVAILABLE" : "COMING SOON")}
                   </span>
                   <div>
                     <h3 className="font-semibold">{card.moment_type_name}</h3>
@@ -220,16 +242,18 @@ export function CreateEmpty({ options, onCreateMoment, onClose }: CreateEmptyPro
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
+              disabled={creating}
               onClick={() => onCreateMoment("TEAM_OPERATIONS")}
-              className="flex-1 rounded-xl py-3 text-sm font-semibold"
+              className="flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
               style={{ background: colors.primaryContainer, color: colors.brandOnPrimary }}
             >
               Continue Setup
             </button>
             <button
               type="button"
+              disabled={creating}
               onClick={onClose}
-              className="flex-1 rounded-xl border py-3 text-sm font-semibold"
+              className="flex-1 rounded-xl border py-3 text-sm font-semibold disabled:opacity-50"
               style={{ borderColor: `color-mix(in srgb, ${colors.border} 30%, transparent)` }}
             >
               Explore Later

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BusinessSetupShell } from "@/components/business/setup/BusinessSetupShell";
 import { BusinessSetupSkeleton } from "@/components/business/setup/BusinessSetupSkeleton";
 import { SetupAdvancedDisclosure } from "@/components/business/setup/shared/SetupAdvancedDisclosure";
+import { SetupChoiceCards } from "@/components/business/setup/shared/SetupChoiceCards";
 import { SetupChoiceChips } from "@/components/business/setup/shared/SetupChoiceChips";
 import { SetupInviteButton } from "@/components/business/setup/shared/SetupInviteSheet";
 import { SetupMoneyField } from "@/components/business/setup/shared/SetupMoneyField";
@@ -14,6 +15,8 @@ import { SetupTextInput } from "@/components/business/setup/shared/SetupTextInpu
 import { SetupToggleReveal } from "@/components/business/setup/shared/SetupToggleReveal";
 import { useBusinessSetupFlow } from "@/hooks/useBusinessSetupFlow";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { buildBusinessLiveSummary } from "@/lib/business/buildBusinessLiveSummary";
+import { setupExplainer } from "@/lib/business/setupExplainers";
 import {
   BUSINESS_SETUP_COPY,
   choiceLabel,
@@ -25,6 +28,7 @@ import {
   SETUP_CURRENCY_FALLBACK,
   SETUP_LOCALE_FALLBACK,
   SETUP_TIMEZONE_FALLBACK,
+  SETUP_ESTIMATED_MINUTES,
   businessGuidedSteps,
 } from "@/lib/business/setupCatalog";
 import type { BusinessSetupState } from "@/lib/api/business";
@@ -162,9 +166,10 @@ export function TeamOperationsSetup({
 
   const go = async (next: number) => {
     if (interactionsDisabled) return;
-    if (next > step && !validateStep(step)) return;
+    // Continue: cancel debounce → flush → validate → advance
     const flushed = await flushPendingSave();
     if (!flushed) return;
+    if (next > step && !validateStep(step)) return;
     const completed = Array.from({ length: Math.max(0, next - 1) }, (_, i) => i + 1);
     setStep(next);
     setFieldErrors({});
@@ -263,16 +268,21 @@ export function TeamOperationsSetup({
       : []),
   ];
 
-  const liveSummary = [
-    { label: "Moment", value: String(answers.moment_name ?? "") },
-    { label: "Team", value: String(answers.team_name ?? "") },
-    { label: "Size", value: choiceLabel("team_size", String(answers.team_size ?? "")) },
-    { label: "Currency", value: currency },
-    { label: "Members", value: String(members.length) },
-  ].filter((r) => r.value);
+  const liveSummary = buildBusinessLiveSummary({
+    templateId: "team_ops",
+    answers,
+    currentStep: step,
+    totalSteps: guidedSteps.length,
+    estimatedMinutes: SETUP_ESTIMATED_MINUTES,
+    memberCount: members.length,
+  });
 
   return (
     <BusinessSetupShell
+      contextType="business"
+      templateId="team_ops"
+      momentTypeCode={setup?.moment_type_code}
+      momentId={momentId}
       title={META.title}
       steps={guidedSteps}
       currentStep={step}
@@ -280,6 +290,13 @@ export function TeamOperationsSetup({
       saveStatus={saveStatus}
       liveSummary={liveSummary}
       contextHelp={stepMeta?.intro}
+      tip={
+        step === 1
+          ? "Choosing Hybrid allows both remote and office employees."
+          : step === 3
+            ? "Owner is locked. Invite teammates by QR, WhatsApp, email, or link."
+            : null
+      }
       error={error}
       submitting={submitting}
       canActivate={preview?.activation_ready === true}
@@ -289,6 +306,7 @@ export function TeamOperationsSetup({
       activateLabel={META.activate_cta}
       onActivationSuccessDone={onActivated}
       onClose={onClose}
+      onRetrySave={() => void flushPendingSave()}
       onBack={step > 1 && ready ? () => void go(step - 1) : undefined}
       onNext={step < 4 && ready ? () => void go(step + 1) : undefined}
       onPreview={step === 4 && ready ? () => void requestPreview() : undefined}
@@ -311,9 +329,11 @@ export function TeamOperationsSetup({
             <>
               <SetupSectionCard title="Team basics">
                 <SetupTextInput
-                  label="Moment name"
+                  label="What should we call this moment?"
                   helper="How this operating chapter appears in Momentra."
-                  placeholder="Example: Product Team Operations"
+                  placeholder="Engineering Team"
+                  examples={["Product Team Operations", "Engineering Team"]}
+                  maxLength={60}
                   value={String(answers.moment_name ?? "")}
                   error={fieldErrors.moment_name}
                   onChange={(v) => updateAnswer("moment_name", v)}
@@ -321,6 +341,8 @@ export function TeamOperationsSetup({
                 <SetupTextInput
                   label="Team name"
                   helper="The real team or function being managed."
+                  placeholder="Product"
+                  maxLength={60}
                   value={String(answers.team_name ?? "")}
                   error={fieldErrors.team_name}
                   onChange={(v) => {
@@ -329,21 +351,22 @@ export function TeamOperationsSetup({
                   }}
                 />
                 <SetupTextInput
-                  label="Team purpose"
-                  placeholder="Example: Plan releases, coordinate work and track approvals"
+                  label="What is this team for?"
+                  placeholder="Plan releases, coordinate work and track approvals"
+                  examples={["Plan releases, coordinate work and track approvals"]}
                   multiline
                   value={String(answers.team_purpose ?? "")}
                   error={fieldErrors.team_purpose}
                   onChange={(v) => updateAnswer("team_purpose", v)}
                 />
-                <SetupChoiceChips
+                <SetupChoiceCards
                   label="How big is your team?"
                   value={String(answers.team_size ?? "")}
                   options={setupChoices("team_size")}
                   error={fieldErrors.team_size}
                   onChange={(v) => updateAnswer("team_size", v)}
                 />
-                <SetupChoiceChips
+                <SetupChoiceCards
                   label="How does the team usually work?"
                   helper="Choosing Hybrid allows both remote and office employees."
                   value={String(answers.work_style ?? "")}
@@ -411,7 +434,7 @@ export function TeamOperationsSetup({
 
           {step === 2 ? (
             <>
-              <SetupSectionCard title="Coordination">
+              <SetupSectionCard title="Governance">
                 <SetupChoiceChips
                   label="Coordination style"
                   value={String(answers.coordination_style ?? "SHARED_OWNERSHIP")}
@@ -422,12 +445,14 @@ export function TeamOperationsSetup({
                   label="Review cycle"
                   value={String(answers.review_cycle ?? "MONTHLY")}
                   options={setupChoices("review_cycle").filter((c) => c.value !== "CUSTOM")}
+                  explainer={setupExplainer("review_cycle")}
                   onChange={(v) => updateAnswer("review_cycle", v)}
                 />
                 <SetupChoiceChips
                   label="How closely should Momentra monitor this?"
                   value={String(answers.monitoring_level ?? "STANDARD")}
                   options={setupChoices("team_monitoring_level")}
+                  explainer={setupExplainer("monitoring_level")}
                   onChange={(v) => updateAnswer("monitoring_level", v)}
                 />
               </SetupSectionCard>
@@ -445,6 +470,7 @@ export function TeamOperationsSetup({
                         : Number(answers.approval_threshold_minor)
                     }
                     currencyCode={currency}
+                    explainer={setupExplainer("approval_threshold_minor")}
                     onChange={(v) => updateAnswer("approval_threshold_minor", v)}
                   />
                 </SetupToggleReveal>
@@ -460,6 +486,15 @@ export function TeamOperationsSetup({
                   value={String(answers.visibility ?? "TEAM")}
                   options={setupChoices("visibility_team")}
                   onChange={(v) => updateAnswer("visibility", v)}
+                />
+                <SetupChoiceChips
+                  label="Notifications"
+                  value={answers.notify_members === false ? "OFF" : "ON"}
+                  options={[
+                    { value: "ON", label: "Notify members" },
+                    { value: "OFF", label: "Quiet for now" },
+                  ]}
+                  onChange={(v) => updateAnswer("notify_members", v === "ON")}
                 />
               </SetupSectionCard>
             </>

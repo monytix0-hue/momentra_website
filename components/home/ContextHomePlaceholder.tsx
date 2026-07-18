@@ -311,6 +311,7 @@ function ContextHomePlaceholderLegacy({
     pulse: personalPulse,
     loading: pulseLoading,
     refreshing: pulseRefreshing,
+    rebuilding: pulseRebuilding,
     error: pulseError,
     reload: reloadPulse,
     refreshAfterSetup,
@@ -983,11 +984,15 @@ function ContextHomePlaceholderLegacy({
     const refreshedCreateOptions = await fetchPersonalCreateOptions(true);
     setCreateOptions(refreshedCreateOptions);
     setShellCreateOptions(refreshedCreateOptions);
+    // Forced pulse first so cold bootstrap cannot settle on empty and trap skeletons.
+    await refreshAfterSetup();
     await Promise.all([
-      refreshAfterSetup(),
       refreshMomentsAfterSetup(),
       refreshMemoryAfterSetup(),
       refreshLifeAfterSetup(),
+      refreshTemplateMomentsAfterSetup(),
+      refreshTemplateLifeAfterSetup(),
+      refreshTemplateMemoryAfterSetup(),
     ]);
   }
 
@@ -1244,7 +1249,7 @@ function ContextHomePlaceholderLegacy({
           if (!shouldRenderActivePulseDashboard("LIFE_OPERATIONS")) return null;
           return (
             <SkeletonCrossfade
-              showSkeleton={pulseLoading && !personalPulse.life_operations?.metrics}
+              showSkeleton={(pulseLoading || pulseRefreshing || pulseRebuilding) && !personalPulse.life_operations?.metrics}
               skeleton={<LifeOperationsPulseSkeleton />}
             >
               {personalPulse.life_operations ? (
@@ -1254,6 +1259,7 @@ function ContextHomePlaceholderLegacy({
                   onQuickAdd={(eventType) => openQuickAdd(eventType)}
                   onViewAllActivity={() => setShowLifeOpsActivity(true)}
                   onEditActivity={(id, eventType) => setEditingActivity({ id, eventType })}
+                  onRetryLoad={() => void reloadPulse()}
                 />
               ) : (
                 <LifeOperationsPulseSkeleton />
@@ -1267,7 +1273,11 @@ function ContextHomePlaceholderLegacy({
       return pulseSkeletonForType(selectedMomentTypeCode, { bottomPadding });
     }
 
-    if (pulseError && !personalPulse && !hasDraft) {
+    if (hasActive && (pulseLoading || pulseRefreshing || pulseRebuilding)) {
+      return pulseSkeletonForType(selectedMomentTypeCode, { bottomPadding });
+    }
+
+    if (pulseError && !hasDraft && (!personalPulse || personalPulse.is_empty || !pulseHasTypePayload(personalPulse, selectedMomentTypeCode))) {
       return (
         <div
           className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6"
@@ -1303,8 +1313,37 @@ function ContextHomePlaceholderLegacy({
       );
     }
 
-    if (hasActive && personalPulse?.is_empty !== false) {
-      return pulseSkeletonForType(selectedMomentTypeCode, { bottomPadding });
+    // ACTIVE inventory but settled without usable pulse payload — Retry, never infinite skeleton.
+    if (
+      hasActive &&
+      !pulseLoading &&
+      !pulseRefreshing &&
+      !pulseRebuilding &&
+      (!personalPulse ||
+        personalPulse.is_empty ||
+        !pulseHasTypePayload(personalPulse, selectedMomentTypeCode))
+    ) {
+      return (
+        <div
+          className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6"
+          style={{ paddingBottom: bottomPadding }}
+        >
+          <p className="text-center text-sm" style={{ color: tokens.colors.textSecondary }}>
+            Your moment is active. Pulse is still preparing — tap Retry if this takes too long.
+          </p>
+          <button
+            type="button"
+            onClick={() => void reloadPulse()}
+            className="rounded-xl px-6 py-2 text-sm font-semibold"
+            style={{
+              background: tokens.colors.primaryContainer,
+              color: tokens.colors.brandOnPrimary,
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      );
     }
 
     return <PersonalPulseEmpty onCreateMoment={openCreateOverlay} bottomPadding={bottomPadding} />;
@@ -2502,6 +2541,7 @@ function ContextHomePlaceholderLegacy({
       {variant === "business" && showCreateOverlay ? (
         <BusinessCreateEmpty
           options={businessCreateOptions}
+          creatingType={creatingBusinessType}
           onCreateMoment={async (typeCode) => {
             const code = (typeCode ?? "TEAM_OPERATIONS").toUpperCase();
             if (

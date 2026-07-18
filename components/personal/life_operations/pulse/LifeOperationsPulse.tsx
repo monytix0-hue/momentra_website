@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalAtmosphericOrbs } from "@/components/personal/empty/shared/PersonalAtmosphericOrbs";
 import {
@@ -36,6 +37,8 @@ type LifeOperationsPulseProps = {
   onQuickAdd?: (action: string) => void;
   onViewAllActivity?: () => void;
   onEditActivity?: (id: string, eventType: string) => void;
+  /** Called once when metrics are missing so parent can force-refresh. */
+  onRetryLoad?: () => void;
 };
 
 function SectionHeader({ title, tokens }: { title: string; tokens: ReturnType<typeof useThemeTokens> }) {
@@ -88,21 +91,50 @@ function buildStatusPills(metrics: PersonalLifeOpsPulseMetrics) {
   return pills;
 }
 
-export function LifeOperationsPulse({ pulse, bottomPadding = 0, hideScreenHeader = false, onQuickAdd, onViewAllActivity, onEditActivity }: LifeOperationsPulseProps) {
+export function LifeOperationsPulse({
+  pulse,
+  bottomPadding = 0,
+  hideScreenHeader = false,
+  onQuickAdd,
+  onViewAllActivity,
+  onEditActivity,
+  onRetryLoad,
+}: LifeOperationsPulseProps) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const reducedMotion = useReducedMotion();
   const metrics = pulse.metrics;
+  const didAutoRetry = useRef(false);
+
+  useEffect(() => {
+    if (metrics || !onRetryLoad || didAutoRetry.current) return;
+    didAutoRetry.current = true;
+    const timer = window.setTimeout(() => onRetryLoad(), 400);
+    return () => window.clearTimeout(timer);
+  }, [metrics, onRetryLoad]);
 
   if (!metrics) {
     return (
       <div
         data-momentra-context="personal"
-        className="relative flex min-h-0 flex-1 items-center justify-center"
+        className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3"
         style={scrollShellStyle(tokens, bottomPadding)}
       >
         <PersonalAtmosphericOrbs />
         <p style={{ ...personalTypography.bodyMd, opacity: 0.7 }}>Loading your pulse…</p>
+        {onRetryLoad ? (
+          <button
+            type="button"
+            onClick={() => onRetryLoad()}
+            className="rounded-xl px-6 py-2 text-sm font-semibold"
+            style={{
+              background: colors.primaryContainer,
+              color: colors.brandOnPrimary,
+            }}
+          >
+            Retry
+          </button>
+        ) : null}
       </div>
     );
   }

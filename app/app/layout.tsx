@@ -1,4 +1,5 @@
 import { AuthGate } from "@/components/auth/AuthGate";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import { SplashGate } from "@/components/SplashGate";
 
 export default function AppLayout({
@@ -8,7 +9,9 @@ export default function AppLayout({
 }>) {
   return (
     <SplashGate>
-      <AuthGate>{children}</AuthGate>
+      <OnboardingGate>
+        <AuthGate>{children}</AuthGate>
+      </OnboardingGate>
     </SplashGate>
   );
 }

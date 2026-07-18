@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError } from "@/lib/api/client";
 import { PersonalRepository } from "@/repositories/PersonalRepository";
 import type { PersonalPulseResponse } from "@/lib/api/personal";
 import { usePersonalMomentSession } from "@/hooks/usePersonalMomentSession";
@@ -19,6 +20,8 @@ import { persistPulse } from "@/stores/personalSessionStore";
 import { ensurePersonalSessionBootstrap } from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
+const SNAPSHOT_REBUILDING_MAX_ATTEMPTS = 6;
+const SNAPSHOT_REBUILDING_DELAY_MS = 1500;
 
 type CacheEntry = { data: PersonalPulseResponse; at: number };
 const cache = new Map<PersonalMomentTypeCode, CacheEntry>();
@@ -44,6 +47,19 @@ export function getPersonalPulseCache(
   return cache.get(typeCode)?.data ?? null;
 }
 
+function isSnapshotRebuilding(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  if (err.code === "snapshot_rebuilding") return true;
+  return (
+    err.status === 503 &&
+    /rebuild|snapshot/i.test(err.message || "")
+  );
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function usePersonalPulse(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
@@ -51,7 +67,9 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
   const [pulse, setPulse] = useState<PersonalPulseResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   useEffect(() => {
     return subscribeOptimisticPulse((typeCode, nextPulse) => {
@@ -65,6 +83,7 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
 
   const load = useCallback(
     async (force = false) => {
+      const gen = ++loadGeneration.current;
       const entry = cache.get(momentTypeCode);
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
@@ -73,6 +92,7 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
         setPulse(entry.data);
         setLoading(false);
         setRefreshing(false);
+        setRebuilding(false);
         return;
       }
       if (staleUsable && entry) {
@@ -88,34 +108,59 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
         setRefreshing(false);
       }
       setError(null);
-      try {
-        const bootstrapKey = `personal:session_bootstrap:${momentTypeCode}`;
-        const shouldTryBootstrap =
-          !force &&
-          !entry &&
-          (isInflight(bootstrapKey) || !isInflight(`personal:pulse:${momentTypeCode}`));
-        let data: PersonalPulseResponse;
-        if (shouldTryBootstrap) {
-          const bootstrap = await ensurePersonalSessionBootstrap(momentTypeCode, force);
-          data = bootstrap.pulse;
-        } else {
-          data = await dedupeFetch(`personal:pulse:${momentTypeCode}`, () =>
-            PersonalRepository.getPulse({
-              momentTypeCode,
-              forceRefresh: force,
-            }),
-          );
+
+      let attempt = 0;
+      while (true) {
+        try {
+          const bootstrapKey = `personal:session_bootstrap:${momentTypeCode}`;
+          const shouldTryBootstrap =
+            !force &&
+            !entry &&
+            attempt === 0 &&
+            (isInflight(bootstrapKey) || !isInflight(`personal:pulse:${momentTypeCode}`));
+          let data: PersonalPulseResponse;
+          if (shouldTryBootstrap) {
+            const bootstrap = await ensurePersonalSessionBootstrap(momentTypeCode, force);
+            data = bootstrap.pulse;
+          } else {
+            data = await dedupeFetch(
+              `personal:pulse:${momentTypeCode}${force ? `:force:${attempt}` : ""}`,
+              () =>
+                PersonalRepository.getPulse({
+                  momentTypeCode,
+                  forceRefresh: force,
+                }),
+            );
+          }
+          if (gen !== loadGeneration.current) return;
+          cache.set(momentTypeCode, { data, at: Date.now() });
+          persistPulse(momentTypeCode, data);
+          setPulse(data);
+          setRebuilding(false);
+          endLoginToPulseSpan();
+          break;
+        } catch (err) {
+          if (gen !== loadGeneration.current) return;
+          if (force && isSnapshotRebuilding(err) && attempt < SNAPSHOT_REBUILDING_MAX_ATTEMPTS) {
+            attempt += 1;
+            setRebuilding(true);
+            setRefreshing(true);
+            setLoading(false);
+            setError(null);
+            await delay(SNAPSHOT_REBUILDING_DELAY_MS);
+            if (gen !== loadGeneration.current) return;
+            continue;
+          }
+          setRebuilding(false);
+          setError(err instanceof Error ? err.message : "Failed to load pulse");
+          break;
         }
-        cache.set(momentTypeCode, { data, at: Date.now() });
-        persistPulse(momentTypeCode, data);
-        setPulse(data);
-        endLoginToPulseSpan();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load pulse");
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
       }
+
+      if (gen !== loadGeneration.current) return;
+      setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
     },
     [momentTypeCode],
   );
@@ -124,12 +169,16 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
     if (!enabled) {
       setLoading(false);
       setRefreshing(false);
+      setRebuilding(false);
       return;
     }
     const entry = cache.get(momentTypeCode);
     setPulse(entry?.data ?? null);
     setLoading(!entry);
     setRefreshing(false);
+    setRebuilding(false);
+    // Prefer skipping cold bootstrap when cache was just invalidated (no entry):
+    // callers that need force use reload/refreshAfterSetup.
     void load(false);
   }, [momentTypeCode, load, enabled]);
 
@@ -179,6 +228,7 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
     pulse,
     loading,
     refreshing,
+    rebuilding,
     error,
     momentTypeCode,
     reload: () => load(true),

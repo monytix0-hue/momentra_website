@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
-import type { SetupChoice } from "@/lib/business/setupCatalog";
-import { SetupField } from "@/components/business/setup/shared/SetupField";
-import { SetupSearchPicker } from "@/components/business/setup/shared/SetupSearchPicker";
+import type { SetupChoice } from "@/components/setup/shared/setupControlTypes";
+import { SetupField } from "@/components/setup/shared/SetupField";
+import { SetupSearchPicker } from "@/components/setup/shared/SetupSearchPicker";
 
 type Props = {
   label: string;
@@ -81,14 +81,14 @@ export function SuggestedChipsPicker({
               type="button"
               disabled={disabled}
               onClick={() => onChange(opt.value)}
-              className="rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50"
+              className="min-h-11 rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50"
               style={{
                 background: selected ? colors.primaryContainer : colors.surfaceContainer,
                 color: selected ? colors.brandOnPrimary : colors.textPrimary,
               }}
               aria-pressed={selected}
             >
-              {opt.label.includes(opt.value) ? opt.label : `${opt.value}`}
+              {opt.label}
             </button>
           );
         })}

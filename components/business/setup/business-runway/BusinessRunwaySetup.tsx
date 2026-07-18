@@ -4,11 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BusinessSetupShell } from "@/components/business/setup/BusinessSetupShell";
 import { BusinessSetupSkeleton } from "@/components/business/setup/BusinessSetupSkeleton";
 import { SetupAdvancedDisclosure } from "@/components/business/setup/shared/SetupAdvancedDisclosure";
+import { SetupChoiceCards } from "@/components/business/setup/shared/SetupChoiceCards";
 import { SetupChoiceChips } from "@/components/business/setup/shared/SetupChoiceChips";
 import { SetupInviteButton } from "@/components/business/setup/shared/SetupInviteSheet";
 import { SetupLiveSummary } from "@/components/business/setup/shared/SetupLiveSummary";
 import { SetupMoneyField } from "@/components/business/setup/shared/SetupMoneyField";
+import { SetupMultiCards } from "@/components/business/setup/shared/SetupMultiCards";
 import { SetupMultiChips } from "@/components/business/setup/shared/SetupMultiChips";
+import { SetupPercentField } from "@/components/business/setup/shared/SetupPercentField";
 import { SetupReviewSummary } from "@/components/business/setup/shared/SetupReviewSummary";
 import { SetupSearchPicker } from "@/components/business/setup/shared/SetupSearchPicker";
 import { SetupSectionCard } from "@/components/business/setup/shared/SetupSectionCard";
@@ -16,6 +19,8 @@ import { SetupTextInput } from "@/components/business/setup/shared/SetupTextInpu
 import { SetupToggleReveal } from "@/components/business/setup/shared/SetupToggleReveal";
 import { useBusinessSetupFlow } from "@/hooks/useBusinessSetupFlow";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { buildBusinessLiveSummary } from "@/lib/business/buildBusinessLiveSummary";
+import { setupExplainer } from "@/lib/business/setupExplainers";
 import {
   BUSINESS_SETUP_COPY,
   choiceLabel,
@@ -27,6 +32,7 @@ import {
   SETUP_CURRENCY_FALLBACK,
   SETUP_LOCALE_FALLBACK,
   SETUP_TIMEZONE_FALLBACK,
+  SETUP_ESTIMATED_MINUTES,
   businessGuidedSteps,
 } from "@/lib/business/setupCatalog";
 import {
@@ -234,9 +240,9 @@ export function BusinessRunwaySetup({
 
   const go = async (next: number) => {
     if (interactionsDisabled) return;
-    if (next > step && !validateStep(step)) return;
     const flushed = await flushPendingSave();
     if (!flushed) return;
+    if (next > step && !validateStep(step)) return;
     const completed = Array.from({ length: Math.max(0, next - 1) }, (_, i) => i + 1);
     setStep(next);
     setFieldErrors({});
@@ -377,18 +383,39 @@ export function BusinessRunwaySetup({
 
   const warnings = [...(preview?.warnings ?? [])];
 
+  const liveSummary = [
+    ...buildBusinessLiveSummary({
+      templateId: "business_runway",
+      answers,
+      currentStep: step,
+      totalSteps: guidedSteps.length,
+      estimatedMinutes: SETUP_ESTIMATED_MINUTES,
+      memberCount: members.length,
+    }),
+    {
+      label: "Runway estimate",
+      value: formatRunwayEstimatePrimary(runwayEstimate),
+    },
+  ].filter((r) => r.value);
+
   return (
     <BusinessSetupShell
+      contextType="business"
+      templateId="business_runway"
+      momentTypeCode={setup?.moment_type_code}
+      momentId={momentId}
       title={META.title}
       steps={guidedSteps}
       currentStep={step}
       totalSteps={guidedSteps.length}
       saveStatus={saveStatus}
-      liveSummary={[
-        { label: "Moment", value: String(answers.moment_name ?? "") },
-        { label: "Currency", value: currency },
-      ].filter((r) => r.value)}
+      liveSummary={liveSummary}
       contextHelp={stepMeta?.intro}
+      tip={
+        step === 2
+          ? "Your runway estimate updates locally as you enter cash, burn, and collection rate."
+          : null
+      }
       error={error}
       submitting={submitting}
       canActivate={preview?.activation_ready === true}
@@ -398,6 +425,7 @@ export function BusinessRunwaySetup({
       activateLabel={META.activate_cta}
       onActivationSuccessDone={onActivated}
       onClose={onClose}
+      onRetrySave={() => void flushPendingSave()}
       onBack={step > 1 && ready ? () => void go(step - 1) : undefined}
       onNext={step < 4 && ready ? () => void go(step + 1) : undefined}
       onPreview={step === 4 && ready ? () => void requestPreview() : undefined}
@@ -420,9 +448,10 @@ export function BusinessRunwaySetup({
             <>
               <SetupSectionCard title="Runway basics">
                 <SetupTextInput
-                  label="Moment name"
+                  label="What should we call this moment?"
                   helper="How this runway chapter appears in Momentra."
-                  placeholder="Example: Acme Runway"
+                  placeholder="Acme Runway"
+                  maxLength={60}
                   value={String(answers.moment_name ?? "")}
                   error={fieldErrors.moment_name}
                   onChange={(v) => updateAnswer("moment_name", v)}
@@ -430,6 +459,7 @@ export function BusinessRunwaySetup({
                 <SetupTextInput
                   label="Runway name"
                   helper="The business or venture this runway tracks."
+                  maxLength={60}
                   value={String(answers.runway_name ?? "")}
                   error={fieldErrors.runway_name}
                   onChange={(v) => {
@@ -437,10 +467,10 @@ export function BusinessRunwaySetup({
                     if (!answers.moment_name) updateAnswer("moment_name", v);
                   }}
                 />
-                <SetupChoiceChips
-                  label="Business stage"
+                <SetupChoiceCards
+                  label="Where is the business today?"
                   value={String(answers.business_stage ?? "")}
-                  options={setupChoices("business_stage")}
+                  options={setupChoices("business_stage").filter((c) => c.value !== "CUSTOM")}
                   error={fieldErrors.business_stage}
                   onChange={(v) => updateAnswer("business_stage", v)}
                 />
@@ -554,7 +584,7 @@ export function BusinessRunwaySetup({
                 <SetupChoiceChips
                   label="Current revenue stage"
                   value={revenueStatus}
-                  options={setupChoices("revenue_status")}
+                  options={setupChoices("revenue_status").filter((c) => c.value !== "CUSTOM")}
                   onChange={(v) => updateAnswer("revenue_status", v)}
                 />
                 {!hideRevenueAmounts ? (
@@ -569,28 +599,20 @@ export function BusinessRunwaySetup({
                       currencyCode={currency}
                       onChange={(v) => updateAnswer("estimated_monthly_revenue_minor", v)}
                     />
-                    <SetupTextInput
+                    <SetupPercentField
                       label="Payment collection rate"
-                      helper="The percentage of expected revenue that normally reaches your account. Example: if ₹10 lakh is expected and ₹8 lakh is usually received, enter 80%."
-                      inputMode="numeric"
-                      value={
-                        answers.collection_rate_percent == null
-                          ? ""
-                          : String(answers.collection_rate_percent)
-                      }
-                      onChange={(v) =>
-                        updateAnswer(
-                          "collection_rate_percent",
-                          v.trim() === "" ? null : Number(v),
-                        )
-                      }
+                      helper="What percentage of expected revenue actually reaches your account?"
+                      value={asInt(answers.collection_rate_percent)}
+                      explainer={setupExplainer("collection_rate_percent")}
+                      onChange={(v) => updateAnswer("collection_rate_percent", v)}
                     />
                   </>
                 ) : null}
-                <SetupChoiceChips
+                <SetupChoiceCards
                   label="Revenue model"
                   value={String(answers.revenue_model ?? "")}
-                  options={setupChoices("revenue_model")}
+                  options={setupChoices("revenue_model").filter((c) => c.value !== "CUSTOM")}
+                  explainer={setupExplainer("revenue_model")}
                   onChange={(v) => updateAnswer("revenue_model", v)}
                 />
               </SetupSectionCard>
@@ -598,8 +620,10 @@ export function BusinessRunwaySetup({
               <SetupSectionCard title="Risk and funding">
                 <SetupChoiceChips
                   label="Warn me when runway falls below"
+                  helper="Get alerted before cash runway gets critically short."
                   value={alertChip}
                   options={setupChoices("alert_threshold_presets")}
+                  explainer={setupExplainer("runway_alert_threshold_months")}
                   onChange={(v) => {
                     if (v === "CUSTOM") {
                       if (alertChip !== "CUSTOM") {
@@ -627,14 +651,15 @@ export function BusinessRunwaySetup({
                     }
                   />
                 ) : null}
-                <SetupMultiChips
+                <SetupMultiCards
                   label="How is the business funded?"
                   values={fundingSources}
                   options={setupChoices("funding_sources")}
+                  explainer={setupExplainer("funding_sources")}
                   onChange={(v) => updateAnswer("funding_sources", v)}
                 />
                 <SetupMultiChips
-                  label="Burn categories"
+                  label="Where does spending go?"
                   values={burnCategories}
                   options={setupChoices("burn_categories")}
                   onChange={(v) => updateAnswer("burn_categories", v)}

@@ -59,13 +59,15 @@ export function FutureBuildingMemory({ memory, bottomPadding = 0, hideScreenHead
             <FbReturnBehaviorsSection behaviors={metrics.highest_return_behaviors} />
           </div>
           <div className="lg:col-span-2">
-            <FbEmotionalDnaSection dna={metrics.emotional_dna} />
+            {metrics.emotional_dna ? <FbEmotionalDnaSection dna={metrics.emotional_dna} /> : null}
           </div>
         </div>
         <FbBehavioralPatternsSection patterns={metrics.behavioral_patterns} />
         <FbEvolutionTimelineSection phases={metrics.evolution_timeline} />
-        <FbAiInterpretationSection quote={metrics.ai_interpretation.quote} />
-        <FbGrowthEdgeSection edge={metrics.next_growth_edge} />
+        {metrics.ai_interpretation?.quote ? (
+          <FbAiInterpretationSection quote={metrics.ai_interpretation.quote} />
+        ) : null}
+        {metrics.next_growth_edge ? <FbGrowthEdgeSection edge={metrics.next_growth_edge} /> : null}
       </div>
     </div>
   );

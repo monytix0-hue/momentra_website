@@ -4,13 +4,9 @@
  */
 
 import copyJson from "@/lib/business/business_setup_copy.json";
+import type { SetupChoice } from "@/components/setup/shared/setupControlTypes";
 
-export type SetupChoice = {
-  value: string;
-  label: string;
-  description?: string;
-  icon?: string;
-};
+export type { SetupChoice };
 
 export type SetupFieldPresentation = {
   label: string;

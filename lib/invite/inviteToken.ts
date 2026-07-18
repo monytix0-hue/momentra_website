@@ -9,8 +9,16 @@ export function extractInviteToken(raw: string): string | null {
     const pathParts = url.pathname.split("/").filter(Boolean);
     const isInviteHost = host === "invite";
     const inviteIdx = pathParts.findIndex((p) => p.toLowerCase() === "invite");
+    const isMomentraHttps =
+      url.protocol === "https:" &&
+      (host === "momentra.tech" || host === "www.momentra.tech");
 
-    if (url.protocol === "momentra:" || isInviteHost || inviteIdx >= 0) {
+    if (
+      url.protocol === "momentra:" ||
+      isInviteHost ||
+      inviteIdx >= 0 ||
+      isMomentraHttps
+    ) {
       const q = url.searchParams.get("token");
       if (q?.trim()) return q.trim();
       if (isInviteHost) {

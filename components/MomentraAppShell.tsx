@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MomentraTopBar } from "@/components/MomentraTopBar";
 import { InviteQrScanModal } from "@/components/invite/InviteQrScanModal";
 import { MomentraContextSwitcher } from "@/components/shell/MomentraContextSwitcher";
 import { SettingsSheet } from "@/components/settings/SettingsSheet";
+import { OnboardingScreen } from "@/components/onboarding/OnboardingScreen";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   useAppContextState,
   useThemeTokens,
 } from "@/components/theme/AppContextProvider";
 import { MomentraAnalytics } from "@/lib/analytics";
+import { acceptInvite } from "@/lib/api/group";
 import { openBusinessCreateOverlay } from "@/lib/businessShellEvents";
 import { openGroupCreateOverlay } from "@/lib/groupShellEvents";
 import { openPersonalCreateOverlay } from "@/lib/personalShellEvents";
 import { isBusinessMomentType } from "@/lib/invite/inviteToken";
+import { consumeInviteJoinedResult, consumePendingInvite } from "@/lib/invite/pendingInvite";
 import type { AppContext } from "@/lib/appContext";
 import {
   clearSwitchError,
@@ -22,6 +25,15 @@ import {
   subscribeContextStore,
 } from "@/stores/contextStore";
 
+function dispatchInviteJoined(detail: {
+  moment_id: string;
+  moment_name: string;
+  moment_type?: string | null;
+  already_member?: boolean;
+  participant_id?: string | null;
+}) {
+  window.dispatchEvent(new CustomEvent("momentra:invite-joined", { detail }));
+}
 type MomentraAppShellProps = {
   children: (context: AppContext) => React.ReactNode;
 };
@@ -31,9 +43,11 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
   const tokens = useThemeTokens();
   const { user, isLoading, logout, setUser } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
+  const [showOnboardingReplay, setShowOnboardingReplay] = useState(false);
   const [showScanInvite, setShowScanInvite] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const canScanInvite = context === "group" || context === "business";
+  const pendingInviteHandled = useRef(false);
 
   useEffect(() => {
     if (showSettings) {
@@ -41,6 +55,43 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       void MomentraAnalytics.logCustomEvent("settings_open");
     }
   }, [showSettings]);
+
+  // After login (or cold open of /app with a stashed invite), accept once and open the moment.
+  // Also replay an accept result stashed by /invite/[token] once the shell is mounted.
+  useEffect(() => {
+    if (!user || pendingInviteHandled.current) return;
+
+    const stashed = consumeInviteJoinedResult();
+    if (stashed) {
+      pendingInviteHandled.current = true;
+      const biz = isBusinessMomentType(stashed.moment_type);
+      setContext(biz ? "business" : "group");
+      // Defer so GroupHomePlaceholder can subscribe first.
+      window.setTimeout(() => dispatchInviteJoined(stashed), 0);
+      return;
+    }
+
+    const token = consumePendingInvite();
+    if (!token) return;
+    pendingInviteHandled.current = true;
+    void (async () => {
+      try {
+        void MomentraAnalytics.logCustomEvent("invite_deep_link_open", {
+          source: "pending_after_login",
+        });
+        const result = await acceptInvite(token);
+        void MomentraAnalytics.logCustomEvent("invite_accept_success", {
+          already_member: Boolean(result.already_member),
+        });
+        const biz = isBusinessMomentType(result.moment_type);
+        setContext(biz ? "business" : "group");
+        window.setTimeout(() => dispatchInviteJoined(result), 0);
+      } catch {
+        void MomentraAnalytics.logCustomEvent("invite_accept_failed");
+        pendingInviteHandled.current = false;
+      }
+    })();
+  }, [user, setContext]);
 
   useEffect(() => {
     return subscribeContextStore(() => {
@@ -143,13 +194,8 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         onJoined={(result) => {
           const biz = isBusinessMomentType(result.moment_type);
           setContext(biz ? "business" : "group");
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(
-              new CustomEvent("momentra:invite-joined", {
-                detail: result,
-              }),
-            );
-          }
+          // Defer so GroupHome can mount after context switch.
+          window.setTimeout(() => dispatchInviteJoined(result), 50);
         }}
       />
 
@@ -163,6 +209,18 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
             logout();
           }}
           onUserUpdated={setUser}
+          onViewIntro={() => {
+            void MomentraAnalytics.logCustomEvent("onboarding_replay_open");
+            setShowSettings(false);
+            setShowOnboardingReplay(true);
+          }}
+        />
+      ) : null}
+
+      {showOnboardingReplay ? (
+        <OnboardingScreen
+          mode="replay"
+          onFinished={() => setShowOnboardingReplay(false)}
         />
       ) : null}
     </div>

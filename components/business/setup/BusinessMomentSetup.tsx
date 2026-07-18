@@ -18,6 +18,10 @@ type Props = {
   initialSetup?: BusinessSetupState | null;
 };
 
+/**
+ * @deprecated Placeholder path for unknown Business types.
+ * Team Ops / Runway / Ops use dedicated guided templates via GuidedSetupShell.
+ */
 function PlaceholderFields({
   momentId,
   title,

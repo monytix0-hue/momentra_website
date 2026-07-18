@@ -7,22 +7,32 @@ import {
   type GuidedSetupStep,
   type GuidedSetupSummaryRow,
 } from "@/components/setup/GuidedSetupShell";
+import type { GuidedSetupSummary } from "@/components/setup/guidedSetupSummary";
+import type { GuidedSetupAnalyticsHandler } from "@/components/setup/guidedSetupAnalytics";
 import { SETUP_ESTIMATED_MINUTES } from "@/lib/business/setupCatalog";
 
 type BusinessSetupShellProps = {
+  contextType?: "business";
+  templateId?: string;
+  momentTypeCode?: string;
+  momentId?: string;
   title: string;
   /** @deprecated Prefer step description from GuidedSetupShell steps. */
   subtitle?: string;
+  /** @deprecated Prefer catalog steps. */
   stepTitle?: string;
+  /** @deprecated Prefer catalog steps. */
   stepIntro?: string;
+  /** @deprecated Prefer GuidedSetupShell step nav. */
   stepLabel?: string;
   currentStep?: number;
   totalSteps?: number;
   steps?: GuidedSetupStep[];
   estimatedMinutes?: number;
   saveStatus?: GuidedSetupSaveState | "idle" | "saving" | "saved" | "error";
-  liveSummary?: GuidedSetupSummaryRow[];
+  liveSummary?: GuidedSetupSummary | GuidedSetupSummaryRow[];
   contextHelp?: string | null;
+  tip?: string | null;
   onRetrySave?: () => void;
   error?: string | null;
   submitting?: boolean;
@@ -38,6 +48,7 @@ type BusinessSetupShellProps = {
   onNext?: () => void;
   onPreview?: () => void;
   onActivate?: () => void;
+  onAnalytics?: GuidedSetupAnalyticsHandler;
   children: ReactNode;
 };
 
@@ -55,9 +66,14 @@ function fallbackSteps(total: number, currentTitle?: string, currentIntro?: stri
 }
 
 /**
- * Business adapter over GuidedSetupShell — prefer GuidedSetupShell directly for new work.
+ * Business adapter over GuidedSetupShell.
+ * Loads flow/answers/save state in parent templates; this shell only maps props.
  */
 export function BusinessSetupShell({
+  contextType = "business",
+  templateId,
+  momentTypeCode,
+  momentId,
   title,
   subtitle,
   stepTitle,
@@ -69,6 +85,7 @@ export function BusinessSetupShell({
   saveStatus = "idle",
   liveSummary = [],
   contextHelp,
+  tip,
   onRetrySave,
   error,
   submitting = false,
@@ -84,6 +101,7 @@ export function BusinessSetupShell({
   onNext,
   onPreview,
   onActivate,
+  onAnalytics,
   children,
 }: BusinessSetupShellProps) {
   const guidedSteps =
@@ -112,6 +130,10 @@ export function BusinessSetupShell({
 
   return (
     <GuidedSetupShell
+      contextType={contextType}
+      templateId={templateId}
+      momentTypeCode={momentTypeCode}
+      momentId={momentId}
       title={title}
       estimatedDuration={estimatedMinutes}
       currentStep={currentStep}
@@ -122,6 +144,7 @@ export function BusinessSetupShell({
       canPreview={Boolean(onPreview) && isReview}
       liveSummary={liveSummary}
       contextHelp={contextHelp ?? stepIntro ?? subtitle}
+      tip={tip}
       footerPrimaryLabel={isReview ? activateLabel : continueLabel}
       error={error}
       submitting={submitting}
@@ -136,6 +159,7 @@ export function BusinessSetupShell({
       onRetrySave={onRetrySave}
       onPreview={onPreview}
       onActivate={isReview ? onActivate : undefined}
+      onAnalytics={onAnalytics}
     >
       {children}
     </GuidedSetupShell>

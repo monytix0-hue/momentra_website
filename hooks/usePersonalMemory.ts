@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { dedupeFetch } from "@/lib/cache/cacheStore";
 import { PersonalRepository } from "@/repositories/PersonalRepository";
 import type { PersonalMemoryResponse } from "@/lib/api/personal";
 import { usePersonalMomentSession } from "@/hooks/usePersonalMomentSession";
 import type { PersonalMomentTypeCode } from "@/lib/personal/personalMomentSession";
 import { FRESH_TTL_MS, STALE_TTL_MS } from "@/lib/cache/personalCacheTtl";
+import {
+  delay,
+  isSnapshotRebuilding,
+  SNAPSHOT_REBUILDING_DELAY_MS,
+  SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
+} from "@/lib/cache/snapshotRebuilding";
 import {
   persistMemory,
 } from "@/stores/personalSessionStore";
@@ -44,10 +50,13 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
   const [memory, setMemory] = useState<PersonalMemoryResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(
     async (force = false) => {
+      const gen = ++loadGeneration.current;
       const entry = cache.get(momentTypeCode);
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
@@ -56,6 +65,7 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
         setMemory(entry.data);
         setLoading(false);
         setRefreshing(false);
+        setRebuilding(false);
         return;
       }
       if (staleUsable && entry) {
@@ -71,22 +81,46 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
         setRefreshing(false);
       }
       setError(null);
-      try {
-        const data = await dedupeFetch(`personal:memory:${momentTypeCode}`, () =>
-          PersonalRepository.getMemory({
-            momentTypeCode,
-            forceRefresh: force,
-          }),
-        );
-        cache.set(momentTypeCode, { data, at: Date.now() });
-        persistMemory(momentTypeCode, data);
-        setMemory(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load memory");
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
+
+      let attempt = 0;
+      while (true) {
+        try {
+          const data = await dedupeFetch(
+            `personal:memory:${momentTypeCode}${force ? `:force:${attempt}` : ""}`,
+            () =>
+              PersonalRepository.getMemory({
+                momentTypeCode,
+                forceRefresh: force,
+              }),
+          );
+          if (gen !== loadGeneration.current) return;
+          cache.set(momentTypeCode, { data, at: Date.now() });
+          persistMemory(momentTypeCode, data);
+          setMemory(data);
+          setRebuilding(false);
+          break;
+        } catch (err) {
+          if (gen !== loadGeneration.current) return;
+          if (force && isSnapshotRebuilding(err) && attempt < SNAPSHOT_REBUILDING_MAX_ATTEMPTS) {
+            attempt += 1;
+            setRebuilding(true);
+            setRefreshing(true);
+            setLoading(false);
+            setError(null);
+            await delay(SNAPSHOT_REBUILDING_DELAY_MS);
+            if (gen !== loadGeneration.current) return;
+            continue;
+          }
+          setRebuilding(false);
+          setError(err instanceof Error ? err.message : "Failed to load memory");
+          break;
+        }
       }
+
+      if (gen !== loadGeneration.current) return;
+      setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
     },
     [momentTypeCode],
   );
@@ -95,11 +129,14 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
     if (!enabled) {
       setLoading(false);
       setRefreshing(false);
+      setRebuilding(false);
       return;
     }
     const entry = cache.get(momentTypeCode);
     setMemory(entry?.data ?? null);
     setLoading(!entry);
+    setRefreshing(false);
+    setRebuilding(false);
     void load(false);
   }, [momentTypeCode, load, enabled]);
 
@@ -112,6 +149,7 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
     memory,
     loading,
     refreshing,
+    rebuilding,
     error,
     momentTypeCode,
     reload: () => load(true),

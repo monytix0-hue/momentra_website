@@ -319,6 +319,8 @@ function ContextHomePlaceholderLegacy({
   const {
     moments: personalMoments,
     loading: momentsLoading,
+    refreshing: momentsRefreshing,
+    rebuilding: momentsRebuilding,
     error: momentsError,
     reload: reloadMoments,
     refreshAfterSetup: refreshMomentsAfterSetup,
@@ -328,6 +330,8 @@ function ContextHomePlaceholderLegacy({
   const {
     memory: personalMemory,
     loading: memoryLoading,
+    refreshing: memoryRefreshing,
+    rebuilding: memoryRebuilding,
     error: memoryError,
     reload: reloadMemory,
     refreshAfterSetup: refreshMemoryAfterSetup,
@@ -335,6 +339,8 @@ function ContextHomePlaceholderLegacy({
   const {
     life: personalLife,
     loading: lifeLoading,
+    refreshing: lifeRefreshing,
+    rebuilding: lifeRebuilding,
     error: lifeError,
     reload: reloadLife,
     refreshAfterSetup: refreshLifeAfterSetup,
@@ -346,6 +352,8 @@ function ContextHomePlaceholderLegacy({
   const {
     data: templateMoments,
     loading: templateMomentsLoading,
+    refreshing: templateMomentsRefreshing,
+    rebuilding: templateMomentsRebuilding,
     error: templateMomentsError,
     reload: reloadTemplateMoments,
     refreshAfterSetup: refreshTemplateMomentsAfterSetup,
@@ -359,6 +367,8 @@ function ContextHomePlaceholderLegacy({
   const {
     data: templateMemory,
     loading: templateMemoryLoading,
+    refreshing: templateMemoryRefreshing,
+    rebuilding: templateMemoryRebuilding,
     error: templateMemoryError,
     reload: reloadTemplateMemory,
     refreshAfterSetup: refreshTemplateMemoryAfterSetup,
@@ -1352,6 +1362,35 @@ function ContextHomePlaceholderLegacy({
   function renderPersonalMoments() {
     const hasDraft = isDraftMoment(activeCard);
     const hasActive = isActiveMoment(activeCard);
+    const momentsBusy =
+      momentsLoading ||
+      momentsRefreshing ||
+      momentsRebuilding ||
+      templateMomentsLoading ||
+      templateMomentsRefreshing ||
+      templateMomentsRebuilding;
+
+    const momentsPreparingRetry = (
+      <div
+        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6"
+        style={{ paddingBottom: bottomPadding }}
+      >
+        <p className="text-center text-sm" style={{ color: tokens.colors.textSecondary }}>
+          Your moment is active. Moments is still preparing — tap Retry if this takes too long.
+        </p>
+        <button
+          type="button"
+          onClick={() => void (loTemplateEnabled ? reloadTemplateMoments() : reloadMoments())}
+          className="rounded-xl px-6 py-2 text-sm font-semibold"
+          style={{
+            background: tokens.colors.primaryContainer,
+            color: tokens.colors.brandOnPrimary,
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
 
     if (loTemplateEnabled && (hasActive || templateMoments)) {
       if (templateMoments?.status === "ACTIVE") {
@@ -1368,7 +1407,10 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (detail?.metrics && !templateMomentsLoading) {
+          if (detail && !momentsBusy) {
+            return momentsPreparingRetry;
+          }
+          if (detail?.metrics) {
             return <FutureBuildingMomentsSkeleton bottomPadding={bottomPadding} />;
           }
         }
@@ -1385,7 +1427,10 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (detail?.metrics && !templateMomentsLoading) {
+          if (detail && !momentsBusy) {
+            return momentsPreparingRetry;
+          }
+          if (detail?.metrics) {
             return <LifestyleMomentsSkeleton bottomPadding={bottomPadding} />;
           }
         }
@@ -1402,7 +1447,10 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (detail?.metrics && !templateMomentsLoading) {
+          if (detail && !momentsBusy) {
+            return momentsPreparingRetry;
+          }
+          if (detail?.metrics) {
             return <RelationshipsMomentsSkeleton bottomPadding={bottomPadding} />;
           }
         }
@@ -1430,7 +1478,7 @@ function ContextHomePlaceholderLegacy({
               );
             }
           }
-          if (momentsProjectionRetried.current && !templateMomentsLoading) {
+          if (momentsProjectionRetried.current && !momentsBusy) {
             return (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6" style={{ paddingBottom: bottomPadding }}>
                 <p className="text-sm opacity-70">Couldn&apos;t load your moments journey.</p>
@@ -1439,6 +1487,9 @@ function ContextHomePlaceholderLegacy({
                 </button>
               </div>
             );
+          }
+          if (!momentsBusy && hasActive) {
+            return momentsPreparingRetry;
           }
           return momentsSkeletonForType(selectedMomentTypeCode, { bottomPadding });
         }
@@ -1464,7 +1515,7 @@ function ContextHomePlaceholderLegacy({
           />
         );
       }
-      if (templateMomentsLoading && !templateMoments) {
+      if ((templateMomentsLoading || templateMomentsRebuilding) && !templateMoments) {
         return momentsSkeletonForType(selectedMomentTypeCode, { bottomPadding });
       }
       if (templateMomentsError && !templateMoments) {
@@ -1491,8 +1542,11 @@ function ContextHomePlaceholderLegacy({
           />
         );
       }
-      if (hasActive) {
+      if (hasActive && momentsBusy) {
         return momentsSkeletonForType(selectedMomentTypeCode, { bottomPadding });
+      }
+      if (hasActive) {
+        return momentsPreparingRetry;
       }
     }
 
@@ -1502,7 +1556,11 @@ function ContextHomePlaceholderLegacy({
           return personalMoments.future_building_detail?.metrics ? (
             <FutureBuildingMoments detail={personalMoments.future_building_detail} bottomPadding={bottomPadding} hideScreenHeader={hideScreenHeader} />
           ) : personalMoments.future_building_detail ? (
-            <FutureBuildingMomentsSkeleton bottomPadding={bottomPadding} />
+            momentsBusy ? (
+              <FutureBuildingMomentsSkeleton bottomPadding={bottomPadding} />
+            ) : (
+              momentsPreparingRetry
+            )
           ) : null;
         case "LIFESTYLE":
           return personalMoments.lifestyle_detail?.metrics?.journey_hero &&
@@ -1512,7 +1570,11 @@ function ContextHomePlaceholderLegacy({
               bottomPadding={bottomPadding} hideScreenHeader={hideScreenHeader}
             />
           ) : personalMoments.lifestyle_detail ? (
-            <LifestyleMomentsSkeleton bottomPadding={bottomPadding} />
+            momentsBusy ? (
+              <LifestyleMomentsSkeleton bottomPadding={bottomPadding} />
+            ) : (
+              momentsPreparingRetry
+            )
           ) : null;
         case "RELATIONSHIPS":
           return personalMoments.emotional_security_detail?.metrics ? (
@@ -1521,7 +1583,11 @@ function ContextHomePlaceholderLegacy({
               bottomPadding={bottomPadding} hideScreenHeader={hideScreenHeader}
             />
           ) : personalMoments.emotional_security_detail ? (
-            <RelationshipsMomentsSkeleton bottomPadding={bottomPadding} />
+            momentsBusy ? (
+              <RelationshipsMomentsSkeleton bottomPadding={bottomPadding} />
+            ) : (
+              momentsPreparingRetry
+            )
           ) : null;
         default:
           if (personalMoments.life_operations_detail?.metrics) {
@@ -1543,11 +1609,19 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          return <LifeOperationsMomentsSkeleton bottomPadding={bottomPadding} />;
+          return momentsBusy ? (
+            <LifeOperationsMomentsSkeleton bottomPadding={bottomPadding} />
+          ) : (
+            momentsPreparingRetry
+          );
       }
     }
 
     if (momentsLoading && !personalMoments) {
+      return momentsSkeletonForType(selectedMomentTypeCode, { bottomPadding });
+    }
+
+    if (hasActive && momentsBusy) {
       return momentsSkeletonForType(selectedMomentTypeCode, { bottomPadding });
     }
 
@@ -1586,17 +1660,14 @@ function ContextHomePlaceholderLegacy({
       );
     }
 
-    if (hasActive) {
-      switch (selectedMomentTypeCode) {
-        case "FUTURE_BUILDING":
-          return <FutureBuildingMomentsSkeleton bottomPadding={bottomPadding} />;
-        case "LIFESTYLE":
-          return <LifestyleMomentsSkeleton bottomPadding={bottomPadding} />;
-        case "RELATIONSHIPS":
-          return <RelationshipsMomentsSkeleton bottomPadding={bottomPadding} />;
-        default:
-          return <LifeOperationsMomentsSkeleton bottomPadding={bottomPadding} />;
-      }
+    if (
+      hasActive &&
+      !momentsBusy &&
+      (!personalMoments ||
+        personalMoments.is_empty ||
+        !momentsHasTypePayload(personalMoments, selectedMomentTypeCode))
+    ) {
+      return momentsPreparingRetry;
     }
 
     if (createOptionsHydrating) {
@@ -1628,6 +1699,7 @@ function ContextHomePlaceholderLegacy({
       typeof metrics === "object" &&
       "life_health" in metrics &&
       metrics.life_health != null;
+    const lifeBusy = lifeLoading || lifeRefreshing || lifeRebuilding;
     if (hasUsableMetrics) {
       return (
         <PersonalLife
@@ -1639,7 +1711,7 @@ function ContextHomePlaceholderLegacy({
         />
       );
     }
-    if (lifeLoading && !personalLife) {
+    if (lifeBusy && !hasUsableMetrics) {
       return <PersonalLifeSkeleton bottomPadding={bottomPadding} />;
     }
     if (lifeError && !personalLife) {
@@ -1678,6 +1750,36 @@ function ContextHomePlaceholderLegacy({
   }
 
   function renderPersonalMemory() {
+    const memoryBusy =
+      memoryLoading ||
+      memoryRefreshing ||
+      memoryRebuilding ||
+      templateMemoryLoading ||
+      templateMemoryRefreshing ||
+      templateMemoryRebuilding;
+
+    const memoryPreparingRetry = (
+      <div
+        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6"
+        style={{ paddingBottom: bottomPadding }}
+      >
+        <p className="text-center text-sm" style={{ color: tokens.colors.textSecondary }}>
+          Your moment is active. Memory is still preparing — tap Retry if this takes too long.
+        </p>
+        <button
+          type="button"
+          onClick={() => void (isMyMoneyTemplate ? reloadTemplateMemory() : reloadMemory())}
+          className="rounded-xl px-6 py-2 text-sm font-semibold"
+          style={{
+            background: tokens.colors.primaryContainer,
+            color: tokens.colors.brandOnPrimary,
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+
     if (isMyMoneyTemplate) {
       if (templateMemory?.status === "ACTIVE") {
         if (selectedMomentTypeCode === "FUTURE_BUILDING") {
@@ -1703,7 +1805,7 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (memoryProjectionRetried.current && !templateMemoryLoading) {
+          if (memoryProjectionRetried.current && !memoryBusy) {
             return (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6" style={{ paddingBottom: bottomPadding }}>
                 <p className="text-sm opacity-70">Couldn&apos;t load your memory.</p>
@@ -1712,6 +1814,9 @@ function ContextHomePlaceholderLegacy({
                 </button>
               </div>
             );
+          }
+          if (!memoryBusy) {
+            return memoryPreparingRetry;
           }
           return <FutureBuildingMemorySkeleton bottomPadding={bottomPadding} />;
         }
@@ -1735,7 +1840,7 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (memoryProjectionRetried.current && !templateMemoryLoading) {
+          if (memoryProjectionRetried.current && !memoryBusy) {
             return (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6" style={{ paddingBottom: bottomPadding }}>
                 <p className="text-sm opacity-70">Couldn&apos;t load your memory.</p>
@@ -1744,6 +1849,9 @@ function ContextHomePlaceholderLegacy({
                 </button>
               </div>
             );
+          }
+          if (!memoryBusy) {
+            return memoryPreparingRetry;
           }
           return <LifeOperationsMemorySkeleton bottomPadding={bottomPadding} />;
         }
@@ -1769,7 +1877,7 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (memoryProjectionRetried.current && !templateMemoryLoading) {
+          if (memoryProjectionRetried.current && !memoryBusy) {
             return (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6" style={{ paddingBottom: bottomPadding }}>
                 <p className="text-sm opacity-70">Couldn&apos;t load your memory.</p>
@@ -1778,6 +1886,9 @@ function ContextHomePlaceholderLegacy({
                 </button>
               </div>
             );
+          }
+          if (!memoryBusy) {
+            return memoryPreparingRetry;
           }
           return <LifestyleMemorySkeleton bottomPadding={bottomPadding} />;
         }
@@ -1805,7 +1916,7 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          if (memoryProjectionRetried.current && !templateMemoryLoading) {
+          if (memoryProjectionRetried.current && !memoryBusy) {
             return (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6" style={{ paddingBottom: bottomPadding }}>
                 <p className="text-sm opacity-70">Couldn&apos;t load your memory.</p>
@@ -1815,12 +1926,15 @@ function ContextHomePlaceholderLegacy({
               </div>
             );
           }
+          if (!memoryBusy) {
+            return memoryPreparingRetry;
+          }
           return <RelationshipsMemorySkeleton bottomPadding={bottomPadding} />;
         }
 
         return <TemplateMemoryEmpty bottomPadding={bottomPadding} />;
       }
-      if (templateMemoryLoading && !templateMemory) {
+      if ((templateMemoryLoading || templateMemoryRebuilding) && !templateMemory) {
         return memorySkeletonForType(selectedMomentTypeCode, { bottomPadding });
       }
       if (templateMemoryError && !templateMemory) {
@@ -1833,8 +1947,11 @@ function ContextHomePlaceholderLegacy({
           </div>
         );
       }
-      if (isTemplateMomentActive("memory")) {
+      if (isTemplateMomentActive("memory") && memoryBusy) {
         return memorySkeletonForType(selectedMomentTypeCode, { bottomPadding });
+      }
+      if (isTemplateMomentActive("memory")) {
+        return memoryPreparingRetry;
       }
       if (selectedMomentTypeCode === "LIFESTYLE" && personalMemory?.lifestyle?.metrics) {
         return (
@@ -1856,7 +1973,11 @@ function ContextHomePlaceholderLegacy({
           return personalMemory.future_building?.metrics ? (
             <FutureBuildingMemory memory={personalMemory.future_building} bottomPadding={bottomPadding} hideScreenHeader={hideScreenHeader} />
           ) : personalMemory.future_building ? (
-            <FutureBuildingMemorySkeleton bottomPadding={bottomPadding} />
+            memoryBusy ? (
+              <FutureBuildingMemorySkeleton bottomPadding={bottomPadding} />
+            ) : (
+              memoryPreparingRetry
+            )
           ) : null;
         case "LIFESTYLE":
           return personalMemory.lifestyle?.metrics ? (
@@ -1866,7 +1987,11 @@ function ContextHomePlaceholderLegacy({
           return personalMemory.emotional_security?.metrics ? (
             <RelationshipsMemory memory={personalMemory.emotional_security} bottomPadding={bottomPadding} hideScreenHeader={hideScreenHeader} />
           ) : personalMemory.emotional_security ? (
-            <RelationshipsMemorySkeleton bottomPadding={bottomPadding} />
+            memoryBusy ? (
+              <RelationshipsMemorySkeleton bottomPadding={bottomPadding} />
+            ) : (
+              memoryPreparingRetry
+            )
           ) : null;
         default:
           if (personalMemory.life_operations?.metrics) {
@@ -1881,7 +2006,11 @@ function ContextHomePlaceholderLegacy({
               />
             );
           }
-          return <LifeOperationsMemorySkeleton bottomPadding={bottomPadding} />;
+          return memoryBusy ? (
+            <LifeOperationsMemorySkeleton bottomPadding={bottomPadding} />
+          ) : (
+            memoryPreparingRetry
+          );
       }
     }
 
@@ -1891,6 +2020,10 @@ function ContextHomePlaceholderLegacy({
           <p className="text-sm opacity-70">Loading memory…</p>
         </div>
       );
+    }
+
+    if (hasActive && memoryBusy) {
+      return memorySkeletonForType(selectedMomentTypeCode, { bottomPadding });
     }
 
     if (memoryError && !personalMemory) {
@@ -1917,17 +2050,15 @@ function ContextHomePlaceholderLegacy({
       );
     }
 
-    if (!isMyMoneyTemplate && hasActive) {
-      switch (selectedMomentTypeCode) {
-        case "FUTURE_BUILDING":
-          return <FutureBuildingMemorySkeleton bottomPadding={bottomPadding} />;
-        case "LIFESTYLE":
-          return <LifestyleMemorySkeleton bottomPadding={bottomPadding} />;
-        case "RELATIONSHIPS":
-          return <RelationshipsMemorySkeleton bottomPadding={bottomPadding} />;
-        default:
-          return <LifeOperationsMemorySkeleton bottomPadding={bottomPadding} />;
-      }
+    if (
+      !isMyMoneyTemplate &&
+      hasActive &&
+      !memoryBusy &&
+      (!personalMemory ||
+        personalMemory.is_empty ||
+        !memoryHasTypePayload(personalMemory, selectedMomentTypeCode))
+    ) {
+      return memoryPreparingRetry;
     }
 
     if (createOptionsHydrating && isMyMoneyTemplate) {

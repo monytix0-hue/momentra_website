@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { dedupeFetch } from "@/lib/cache/cacheStore";
 import { getPersonalLife } from "@/lib/api/client";
 import type { PersonalLifeResponse } from "@/lib/api/personal";
 import { FRESH_TTL_MS, STALE_TTL_MS } from "@/lib/cache/personalCacheTtl";
+import {
+  delay,
+  isSnapshotRebuilding,
+  SNAPSHOT_REBUILDING_DELAY_MS,
+  SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
+} from "@/lib/cache/snapshotRebuilding";
 import { persistLife } from "@/stores/personalSessionStore";
 
 let cachedLife: PersonalLifeResponse | null = null;
@@ -32,62 +38,104 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const [life, setLife] = useState<PersonalLifeResponse | null>(cachedLife);
   const [loading, setLoading] = useState(!cachedLife);
+  const [refreshing, setRefreshing] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(async (force = false) => {
+    const gen = ++loadGeneration.current;
     const age = cachedLife ? Date.now() - cachedAt : Infinity;
     const fresh = !force && cachedLife && age < TTL_MS;
     const staleUsable = !force && cachedLife && age < STALE_TTL_MS;
     if (fresh && cachedLife) {
       setLife(cachedLife);
       setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
       return;
     }
     if (staleUsable && cachedLife) {
       setLife(cachedLife);
+      setRefreshing(true);
+      setLoading(false);
     } else if (cachedLife && !force) {
       setLife(cachedLife);
+      setLoading(false);
+      setRefreshing(false);
     } else {
       setLoading(true);
+      setRefreshing(false);
     }
     setError(null);
-    try {
-      const data = await dedupeFetch("personal:life", () =>
-        getPersonalLife({ forceRefresh: force }),
-      );
-      const nextVersion = data.projection_version;
-      if (
-        !force &&
-        cachedLife &&
-        nextVersion !== undefined &&
-        cachedProjectionVersion === nextVersion
-      ) {
+
+    let attempt = 0;
+    while (true) {
+      try {
+        const data = await dedupeFetch(
+          `personal:life${force ? `:force:${attempt}` : ""}`,
+          () => getPersonalLife({ forceRefresh: force }),
+        );
+        if (gen !== loadGeneration.current) return;
+        const nextVersion = data.projection_version;
+        if (
+          !force &&
+          cachedLife &&
+          nextVersion !== undefined &&
+          cachedProjectionVersion === nextVersion
+        ) {
+          cachedAt = Date.now();
+          setLife(cachedLife);
+          setRebuilding(false);
+          break;
+        }
+        cachedLife = data;
         cachedAt = Date.now();
-        setLife(cachedLife);
-        return;
+        cachedProjectionVersion = nextVersion;
+        persistLife(data);
+        setLife(data);
+        setRebuilding(false);
+        break;
+      } catch (err) {
+        if (gen !== loadGeneration.current) return;
+        if (force && isSnapshotRebuilding(err) && attempt < SNAPSHOT_REBUILDING_MAX_ATTEMPTS) {
+          attempt += 1;
+          setRebuilding(true);
+          setRefreshing(true);
+          setLoading(false);
+          setError(null);
+          await delay(SNAPSHOT_REBUILDING_DELAY_MS);
+          if (gen !== loadGeneration.current) return;
+          continue;
+        }
+        setRebuilding(false);
+        const message = err instanceof Error ? err.message : "Failed to load life";
+        setError(
+          message.includes("timed out") || message.includes("CORS") || message.includes("Failed to fetch")
+            ? `${message} — check that the API (ngrok) is up and restarted after recent backend changes.`
+            : message,
+        );
+        break;
       }
-      cachedLife = data;
-      cachedAt = Date.now();
-      cachedProjectionVersion = nextVersion;
-      persistLife(data);
-      setLife(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load life";
-      setError(
-        message.includes("timed out") || message.includes("CORS") || message.includes("Failed to fetch")
-          ? `${message} — check that the API (ngrok) is up and restarted after recent backend changes.`
-          : message,
-      );
-    } finally {
-      setLoading(false);
     }
+
+    if (gen !== loadGeneration.current) return;
+    setLoading(false);
+    setRefreshing(false);
+    setRebuilding(false);
   }, []);
 
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
       return;
     }
+    setLife(cachedLife);
+    setLoading(!cachedLife);
+    setRefreshing(false);
+    setRebuilding(false);
     void load(false);
   }, [load, enabled]);
 
@@ -96,5 +144,13 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
     return load(true);
   }, [load]);
 
-  return { life, loading, error, reload: () => load(false), refreshAfterSetup };
+  return {
+    life,
+    loading,
+    refreshing,
+    rebuilding,
+    error,
+    reload: () => load(true),
+    refreshAfterSetup,
+  };
 }

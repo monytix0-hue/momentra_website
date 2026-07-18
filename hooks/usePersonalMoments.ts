@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { dedupeFetch, isInflight } from "@/lib/cache/cacheStore";
 import { PersonalRepository } from "@/repositories/PersonalRepository";
 import type { PersonalMomentsHomeResponse } from "@/lib/api/personal";
 import { usePersonalMomentSession } from "@/hooks/usePersonalMomentSession";
 import type { PersonalMomentTypeCode } from "@/lib/personal/personalMomentSession";
 import { FRESH_TTL_MS, STALE_TTL_MS } from "@/lib/cache/personalCacheTtl";
+import {
+  delay,
+  isSnapshotRebuilding,
+  SNAPSHOT_REBUILDING_DELAY_MS,
+  SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
+} from "@/lib/cache/snapshotRebuilding";
 import {
   persistMoments,
   ensurePersonalSessionBootstrap,
@@ -45,10 +51,13 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
   const [moments, setMoments] = useState<PersonalMomentsHomeResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(
     async (force = false) => {
+      const gen = ++loadGeneration.current;
       const entry = cache.get(momentTypeCode);
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
@@ -57,6 +66,7 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
         setMoments(entry.data);
         setLoading(false);
         setRefreshing(false);
+        setRebuilding(false);
         return;
       }
       if (staleUsable && entry) {
@@ -72,33 +82,58 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
         setRefreshing(false);
       }
       setError(null);
-      try {
-        const bootstrapKey = `personal:session_bootstrap:${momentTypeCode}`;
-        const shouldTryBootstrap =
-          !force &&
-          !entry &&
-          (isInflight(bootstrapKey) || !isInflight(`personal:moments:${momentTypeCode}`));
-        let data: PersonalMomentsHomeResponse;
-        if (shouldTryBootstrap) {
-          const bootstrap = await ensurePersonalSessionBootstrap(momentTypeCode, force);
-          data = bootstrap.moments_home;
-        } else {
-          data = await dedupeFetch(`personal:moments:${momentTypeCode}`, () =>
-            PersonalRepository.getMomentsHome({
-              momentTypeCode,
-              forceRefresh: force,
-            }),
-          );
+
+      let attempt = 0;
+      while (true) {
+        try {
+          const bootstrapKey = `personal:session_bootstrap:${momentTypeCode}`;
+          const shouldTryBootstrap =
+            !force &&
+            !entry &&
+            attempt === 0 &&
+            (isInflight(bootstrapKey) || !isInflight(`personal:moments:${momentTypeCode}`));
+          let data: PersonalMomentsHomeResponse;
+          if (shouldTryBootstrap) {
+            const bootstrap = await ensurePersonalSessionBootstrap(momentTypeCode, force);
+            data = bootstrap.moments_home;
+          } else {
+            data = await dedupeFetch(
+              `personal:moments:${momentTypeCode}${force ? `:force:${attempt}` : ""}`,
+              () =>
+                PersonalRepository.getMomentsHome({
+                  momentTypeCode,
+                  forceRefresh: force,
+                }),
+            );
+          }
+          if (gen !== loadGeneration.current) return;
+          cache.set(momentTypeCode, { data, at: Date.now() });
+          persistMoments(momentTypeCode, data);
+          setMoments(data);
+          setRebuilding(false);
+          break;
+        } catch (err) {
+          if (gen !== loadGeneration.current) return;
+          if (force && isSnapshotRebuilding(err) && attempt < SNAPSHOT_REBUILDING_MAX_ATTEMPTS) {
+            attempt += 1;
+            setRebuilding(true);
+            setRefreshing(true);
+            setLoading(false);
+            setError(null);
+            await delay(SNAPSHOT_REBUILDING_DELAY_MS);
+            if (gen !== loadGeneration.current) return;
+            continue;
+          }
+          setRebuilding(false);
+          setError(err instanceof Error ? err.message : "Failed to load moments");
+          break;
         }
-        cache.set(momentTypeCode, { data, at: Date.now() });
-        persistMoments(momentTypeCode, data);
-        setMoments(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load moments");
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
       }
+
+      if (gen !== loadGeneration.current) return;
+      setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
     },
     [momentTypeCode],
   );
@@ -107,11 +142,14 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
     if (!enabled) {
       setLoading(false);
       setRefreshing(false);
+      setRebuilding(false);
       return;
     }
     const entry = cache.get(momentTypeCode);
     setMoments(entry?.data ?? null);
     setLoading(!entry);
+    setRefreshing(false);
+    setRebuilding(false);
     void load(false);
   }, [momentTypeCode, load, enabled]);
 
@@ -124,6 +162,7 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
     moments,
     loading,
     refreshing,
+    rebuilding,
     error,
     momentTypeCode,
     reload: () => load(true),

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError } from "@/lib/api/client";
 import { PersonalRepository } from "@/repositories/PersonalRepository";
 import type { PersonalPulseResponse } from "@/lib/api/personal";
 import { usePersonalMomentSession } from "@/hooks/usePersonalMomentSession";
@@ -16,12 +15,16 @@ import { endLoginToPulseSpan } from "@/lib/telemetry/performanceTelemetry";
 
 import { dedupeFetch, isInflight } from "@/lib/cache/cacheStore";
 import { FRESH_TTL_MS, STALE_TTL_MS } from "@/lib/cache/personalCacheTtl";
+import {
+  delay,
+  isSnapshotRebuilding,
+  SNAPSHOT_REBUILDING_DELAY_MS,
+  SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
+} from "@/lib/cache/snapshotRebuilding";
 import { persistPulse } from "@/stores/personalSessionStore";
 import { ensurePersonalSessionBootstrap } from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
-const SNAPSHOT_REBUILDING_MAX_ATTEMPTS = 6;
-const SNAPSHOT_REBUILDING_DELAY_MS = 1500;
 
 type CacheEntry = { data: PersonalPulseResponse; at: number };
 const cache = new Map<PersonalMomentTypeCode, CacheEntry>();
@@ -45,19 +48,6 @@ export function getPersonalPulseCache(
   typeCode: PersonalMomentTypeCode,
 ): PersonalPulseResponse | null {
   return cache.get(typeCode)?.data ?? null;
-}
-
-function isSnapshotRebuilding(err: unknown): boolean {
-  if (!(err instanceof ApiError)) return false;
-  if (err.code === "snapshot_rebuilding") return true;
-  return (
-    err.status === 503 &&
-    /rebuild|snapshot/i.test(err.message || "")
-  );
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function usePersonalPulse(options?: { enabled?: boolean }) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { dedupeFetch } from "@/lib/cache/cacheStore";
 import { PersonalRepository } from "@/repositories/PersonalRepository";
 import {
@@ -13,6 +13,12 @@ import type {
 } from "@/lib/api/personal";
 import type { PersonalMomentTypeCode } from "@/lib/personal/personalMomentSession";
 import { FRESH_TTL_MS, STALE_TTL_MS } from "@/lib/cache/personalCacheTtl";
+import {
+  delay,
+  isSnapshotRebuilding,
+  SNAPSHOT_REBUILDING_DELAY_MS,
+  SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
+} from "@/lib/cache/snapshotRebuilding";
 import {
   persistTemplateMemory,
   persistTemplateMoments,
@@ -106,8 +112,13 @@ export function getTemplatePulseCache(
   return pulseCache.get(typeCode)?.data ?? null;
 }
 
-function dedupeKey(resource: string, momentTypeCode: PersonalMomentTypeCode): string {
-  return `personal:template_${resource}:${momentTypeCode}`;
+function dedupeKey(
+  resource: string,
+  momentTypeCode: PersonalMomentTypeCode,
+  forceAttempt?: number,
+): string {
+  const base = `personal:template_${resource}:${momentTypeCode}`;
+  return forceAttempt === undefined ? base : `${base}:force:${forceAttempt}`;
 }
 
 function useTemplateCache<T extends { projection_version?: number }>(
@@ -121,10 +132,14 @@ function useTemplateCache<T extends { projection_version?: number }>(
   const cached = cache.get(momentTypeCode);
   const [data, setData] = useState<T | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
+  const [refreshing, setRefreshing] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(
     async (force = false) => {
+      const gen = ++loadGeneration.current;
       const entry = cache.get(momentTypeCode);
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
@@ -132,48 +147,80 @@ function useTemplateCache<T extends { projection_version?: number }>(
       if (fresh && entry) {
         setData(entry.data);
         setLoading(false);
+        setRefreshing(false);
+        setRebuilding(false);
         return;
       }
       if (staleUsable && entry) {
         setData(entry.data);
+        setRefreshing(true);
+        setLoading(false);
       } else if (entry && !force) {
         setData(entry.data);
+        setLoading(false);
+        setRefreshing(false);
       } else {
         setLoading(true);
+        setRefreshing(false);
       }
       setError(null);
-      try {
-        const result = await dedupeFetch(dedupeKey(resource, momentTypeCode), () =>
-          fetcher(momentTypeCode),
-        );
-        const prev = cache.get(momentTypeCode);
-        const nextVersion = result.projection_version;
-        if (
-          !force &&
-          prev &&
-          nextVersion !== undefined &&
-          prev.projectionVersion === nextVersion
-        ) {
+
+      let attempt = 0;
+      while (true) {
+        try {
+          const result = await dedupeFetch(
+            dedupeKey(resource, momentTypeCode, force ? attempt : undefined),
+            () => fetcher(momentTypeCode),
+          );
+          if (gen !== loadGeneration.current) return;
+          const prev = cache.get(momentTypeCode);
+          const nextVersion = result.projection_version;
+          if (
+            !force &&
+            prev &&
+            nextVersion !== undefined &&
+            prev.projectionVersion === nextVersion
+          ) {
+            cache.set(momentTypeCode, {
+              data: prev.data,
+              at: Date.now(),
+              projectionVersion: nextVersion,
+            });
+            setData(prev.data);
+            setRebuilding(false);
+            break;
+          }
           cache.set(momentTypeCode, {
-            data: prev.data,
+            data: result,
             at: Date.now(),
             projectionVersion: nextVersion,
           });
-          setData(prev.data);
-          return;
+          onPersist?.(momentTypeCode, result);
+          setData(result);
+          setRebuilding(false);
+          break;
+        } catch (err) {
+          if (gen !== loadGeneration.current) return;
+          if (force && isSnapshotRebuilding(err) && attempt < SNAPSHOT_REBUILDING_MAX_ATTEMPTS) {
+            attempt += 1;
+            setRebuilding(true);
+            setRefreshing(true);
+            setLoading(false);
+            setError(null);
+            await delay(SNAPSHOT_REBUILDING_DELAY_MS);
+            if (gen !== loadGeneration.current) return;
+            continue;
+          }
+          setRebuilding(false);
+          setError(err instanceof Error ? err.message : "Failed to load");
+          break;
         }
-        cache.set(momentTypeCode, {
-          data: result,
-          at: Date.now(),
-          projectionVersion: nextVersion,
-        });
-        onPersist?.(momentTypeCode, result);
-        setData(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
       }
+
+      if (gen !== loadGeneration.current) return;
+      setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
     },
     [cache, fetcher, momentTypeCode, onPersist, resource],
   );
@@ -181,11 +228,15 @@ function useTemplateCache<T extends { projection_version?: number }>(
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
+      setRefreshing(false);
+      setRebuilding(false);
       return;
     }
     const entry = cache.get(momentTypeCode);
     setData(entry?.data ?? null);
     setLoading(!entry);
+    setRefreshing(false);
+    setRebuilding(false);
     void load(false);
   }, [momentTypeCode, load, enabled]);
 
@@ -194,7 +245,15 @@ function useTemplateCache<T extends { projection_version?: number }>(
     return load(true);
   }, [cache, load, momentTypeCode]);
 
-  return { data, loading, error, reload: () => load(true), refreshAfterSetup };
+  return {
+    data,
+    loading,
+    refreshing,
+    rebuilding,
+    error,
+    reload: () => load(true),
+    refreshAfterSetup,
+  };
 }
 
 export function useTemplatePulse(

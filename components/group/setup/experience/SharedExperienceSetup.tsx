@@ -290,9 +290,9 @@ export function SharedExperienceSetup({ momentId, onClose, onActivated }: Props)
       onActivate={() => void handleActivate()}
       onAnalytics={onAnalytics}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {step === 1 ? (
-          <SetupSectionCard title="Experience basics">
+          <SetupSectionCard>
             <SetupFieldRenderer
               control="cards"
               label="What kind of experience is this?"
@@ -315,8 +315,33 @@ export function SharedExperienceSetup({ momentId, onClose, onActivated }: Props)
         ) : null}
 
         {step === 2 ? (
-          <SetupSectionCard title="Dates, destination, and money">
-            {catalogFields.map((field) => {
+          <SetupSectionCard>
+            {(() => {
+              const dateFields = catalogFields.filter((f) => f.control === "date");
+              const otherFields = catalogFields.filter((f) => f.control !== "date");
+              return (
+                <>
+                  {dateFields.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {dateFields.map((field) => {
+                        const key = resolveFieldKey(field.key, availableKeys) ?? field.key;
+                        const raw = answers[key];
+                        const stringValue = typeof raw === "string" ? raw : "";
+                        return (
+                          <SetupFieldRenderer
+                            key={field.key}
+                            control="date"
+                            label={field.label}
+                            optionalLabel={field.optional ? "Optional" : undefined}
+                            value={stringValue}
+                            error={field.key === "end_date" ? fieldErrors.end_date : null}
+                            onChange={(v) => setAnswer(field.key, v)}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {otherFields.map((field) => {
               const control = (field.control === "chips" && field.key === "experience_type"
                 ? "cards"
                 : field.control) as SetupControlType;
@@ -355,20 +380,6 @@ export function SharedExperienceSetup({ momentId, onClose, onActivated }: Props)
                 );
               }
 
-              if (control === "date") {
-                return (
-                  <SetupFieldRenderer
-                    key={field.key}
-                    control="date"
-                    label={field.label}
-                    optionalLabel={field.optional ? "Optional" : undefined}
-                    value={stringValue}
-                    error={field.key === "end_date" ? fieldErrors.end_date : null}
-                    onChange={(v) => setAnswer(field.key, v)}
-                  />
-                );
-              }
-
               if (control === "chips" || control === "cards") {
                 const choiceKey = (field.choices ?? field.key) as keyof typeof GROUP_SETUP_COPY.choices;
                 const options = groupChoices(choiceKey);
@@ -396,13 +407,16 @@ export function SharedExperienceSetup({ momentId, onClose, onActivated }: Props)
                   onChange={(v) => setAnswer(field.key, v)}
                 />
               );
-            })}
+                  })}
+                </>
+              );
+            })()}
           </SetupSectionCard>
         ) : null}
 
         {step === 3 ? (
           <>
-            <SetupSectionCard title="Participants">
+            <SetupSectionCard>
               <SetupFieldRenderer
                 control="text"
                 label="How many people are joining?"

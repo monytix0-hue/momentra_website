@@ -367,6 +367,24 @@ export type SessionBootstrapResponse = {
   };
 };
 
+export type GroupSessionResponse = {
+  is_empty: boolean;
+  active_moment_count: number;
+  focus_moment_id?: string | null;
+  active_moment_id?: string | null;
+  moment_type?: string | null;
+  draft_moment_id?: string | null;
+  draft_moment_type?: string | null;
+  has_draft?: boolean;
+  linked_moment_status?: string | null;
+};
+
+export type GroupInventoryResponse = {
+  pulse: NonNullable<SessionBootstrapResponse["pulse"]>;
+  moments: GroupSessionMomentItem[];
+  live_overview?: SessionBootstrapResponse["live_overview"];
+};
+
 export type GroupSharedCategory = "experience" | "purchase" | "living";
 
 export type GroupDraftCreateResponse = {
@@ -811,6 +829,14 @@ export async function getLivingMomentsView(momentId: string): Promise<LivingMome
  }
 
  // Session API functions
+ export async function getGroupSession(): Promise<GroupSessionResponse> {
+   return requestWithRetry<GroupSessionResponse>(`/api/v1/group/session`);
+ }
+
+ export async function getGroupInventory(): Promise<GroupInventoryResponse> {
+   return requestWithRetry<GroupInventoryResponse>(`/api/v1/group/inventory`);
+ }
+
  export async function getSessionBootstrap(): Promise<SessionBootstrapResponse> {
    return requestWithRetry<SessionBootstrapResponse>(`/api/v1/group/session/bootstrap`);
  }

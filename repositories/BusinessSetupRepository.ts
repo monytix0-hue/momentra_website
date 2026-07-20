@@ -1,6 +1,7 @@
 import {
   activateBusinessSetup,
   createBusinessMoment,
+  createBusinessSetupInviteDraft,
   getBusinessSetupState,
   previewBusinessSetup,
   saveBusinessSetupDraft,
@@ -8,10 +9,12 @@ import {
 import type {
   BusinessActivateResponse,
   BusinessMomentCreateResponse,
+  BusinessSetupInviteDraft,
   BusinessSetupPreview,
   BusinessSetupState,
 } from "@/lib/api/business";
 import { invalidateBootstrapAfterMutation } from "@/stores/bootstrapStore";
+import { getBusinessSessionSnapshot } from "@/stores/businessSessionStore";
 
 const TEMPLATE_ID_BY_TYPE: Record<string, string> = {
   TEAM_OPERATIONS: "team_ops",
@@ -31,11 +34,15 @@ export const BusinessSetupRepository = {
   }): Promise<BusinessMomentCreateResponse> {
     const templateId =
       input.template_id ?? BusinessSetupRepository.templateIdForType(input.moment_type_code);
+    const session = getBusinessSessionSnapshot();
+    const workspaceId =
+      session.selectedWorkspaceId ?? session.bootstrap?.selected_workspace?.id ?? null;
     const created = await createBusinessMoment({
       moment_type_code: input.moment_type_code,
       title: input.title,
       template_id: templateId,
       template_version: "1",
+      workspace_id: workspaceId,
     });
     // Fire-and-forget — does not return a Promise / does not block create.
     invalidateBootstrapAfterMutation();
@@ -66,5 +73,16 @@ export const BusinessSetupRepository = {
     const result = await activateBusinessSetup(momentId);
     invalidateBootstrapAfterMutation();
     return result;
+  },
+
+  createInviteDraft(
+    momentId: string,
+    localId: string,
+    channel = "EMAIL",
+  ): Promise<BusinessSetupInviteDraft> {
+    return createBusinessSetupInviteDraft(momentId, {
+      local_id: localId,
+      channel,
+    });
   },
 };

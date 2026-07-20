@@ -22,6 +22,7 @@
     "@supabase/supabase-js": "^2.108.1",
     "firebase": "^12.14.0",
     "framer-motion": "^12.42.2",
+    "lightningcss": "^1.33.0",
     "lucide-react": "^1.18.0",
     "next": "16.2.9",
     "react": "19.2.4",
@@ -42,7 +43,6 @@
     "vitest": "^3.2.6"
   },
   "optionalDependencies": {
-    "@rollup/rollup-darwin-x64": "^4.62.2",
-    "lightningcss": "^1.32.0"
+    "@rollup/rollup-darwin-x64": "^4.62.2"
   }
 }

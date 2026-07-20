@@ -319,6 +319,58 @@ export function moduleStateFor(moduleKey: string): string {
   return snapshot.data?.modules[moduleKey]?.state ?? "EMPTY";
 }
 
+/** Patch Group module/context states without refetching full app bootstrap. */
+export function patchGroupModuleStateInBootstrap(
+  states: Partial<{
+    group: string;
+    pulse: string;
+    moments: string;
+  }>,
+): void {
+  const current = getBootstrap();
+  if (!current) return;
+  bootstrapAppliedGen = Math.max(bootstrapAppliedGen, ++bootstrapFetchGen);
+  const contexts = current.contexts.map((c) =>
+    c.key === "GROUP" && states.group
+      ? { ...c, state: states.group }
+      : c,
+  );
+  const modules = { ...current.modules };
+  if (states.pulse) modules.pulse = { state: states.pulse };
+  if (states.moments) modules.moments = { state: states.moments };
+  const next: BootstrapResponse = { ...current, contexts, modules };
+  cacheSet(CACHE_KEY, next);
+  diskCacheSave(DISK_KEY, next);
+  setSnapshot({ data: next, error: null, hasLoadedOnce: true });
+}
+
+/** Patch My Money module/context states without refetching full app bootstrap. */
+export function patchMyMoneyModuleStateInBootstrap(
+  states: Partial<{
+    myMoney: string;
+    pulse: string;
+    moments: string;
+    memory: string;
+  }>,
+): void {
+  const current = getBootstrap();
+  if (!current) return;
+  bootstrapAppliedGen = Math.max(bootstrapAppliedGen, ++bootstrapFetchGen);
+  const contexts = current.contexts.map((c) =>
+    c.key === "MY_MONEY" && states.myMoney
+      ? { ...c, state: states.myMoney }
+      : c,
+  );
+  const modules = { ...current.modules };
+  if (states.pulse) modules.pulse = { state: states.pulse };
+  if (states.moments) modules.moments = { state: states.moments };
+  if (states.memory) modules.memory = { state: states.memory };
+  const next: BootstrapResponse = { ...current, contexts, modules };
+  cacheSet(CACHE_KEY, next);
+  diskCacheSave(DISK_KEY, next);
+  setSnapshot({ data: next, error: null, hasLoadedOnce: true });
+}
+
 export function selectedBackendContext(): string {
   return snapshot.data?.preferences.selected_context ?? "MY_MONEY";
 }

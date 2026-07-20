@@ -66,13 +66,16 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   async headers() {
+    // Do not set Cross-Origin-Opener-Policy here. Firebase Google popup auth
+    // polls window.closed; any COOP value (including same-origin-allow-popups)
+    // causes Chrome to spam "would block the window.closed call" on login.
     return [
       {
-        source: "/:path*",
+        source: "/books/life-happens-in-moments/:path*",
         headers: [
           {
-            key: "Cross-Origin-Opener-Policy",
-            value: "same-origin-allow-popups",
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },

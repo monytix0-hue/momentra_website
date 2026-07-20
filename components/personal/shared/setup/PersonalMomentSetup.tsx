@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, Heart, Loader2, Palette, RefreshCw, Rocket } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { glassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
 import {
@@ -87,7 +87,6 @@ export function PersonalMomentSetup({
     loading,
     submitting,
     error,
-    canSubmit,
     saveStatus,
     updateAnswer,
     toggleMulti,
@@ -100,6 +99,34 @@ export function PersonalMomentSetup({
   const catalog = personalSetupTemplate(templateId);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answersKey = JSON.stringify(answers);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  function validateAllRequired(): Record<string, string> {
+    if (!setup) return {};
+    const errs: Record<string, string> = {};
+    for (const field of setup.fields) {
+      if (!field.required) continue;
+      const value = answers[field.field_key];
+      if (field.field_type === "multi_select") {
+        if (!Array.isArray(value) || value.length === 0) {
+          errs[field.field_key] = "Required";
+        }
+      } else {
+        const str = typeof value === "string" ? value.trim() : "";
+        if (!str) errs[field.field_key] = "Required";
+      }
+    }
+    return errs;
+  }
+
+  function clearFieldError(fieldKey: string) {
+    setFieldErrors((prev) => {
+      if (!prev[fieldKey]) return prev;
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!setup) return;
@@ -118,6 +145,17 @@ export function PersonalMomentSetup({
   async function handleSubmit() {
     const flushed = await flushPendingSave();
     if (!flushed) return;
+    const errs = validateAllRequired();
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      window.requestAnimationFrame(() => {
+        document.querySelector('[role="alert"]')?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+      return;
+    }
     const ok = await submit();
     if (ok) onActivated();
   }
@@ -184,7 +222,7 @@ export function PersonalMomentSetup({
       }
       error={error}
       submitting={submitting}
-      canActivate={canSubmit}
+      canActivate={!submitting}
       onClose={onClose}
       onPreview={() => void requestPreview()}
       onActivate={() => void handleSubmit()}
@@ -202,8 +240,15 @@ export function PersonalMomentSetup({
             field={field}
             answers={answers}
             lifeOpsLayout={isLifeOpsType(typeCode)}
-            onSelectSingle={(value) => updateAnswer(field.field_key, value)}
-            onToggleMulti={(value) => toggleMulti(field.field_key, value)}
+            error={fieldErrors[field.field_key]}
+            onSelectSingle={(value) => {
+              clearFieldError(field.field_key);
+              updateAnswer(field.field_key, value);
+            }}
+            onToggleMulti={(value) => {
+              clearFieldError(field.field_key);
+              toggleMulti(field.field_key, value);
+            }}
           />
         ))}
 
@@ -263,12 +308,14 @@ function FieldSection({
   field,
   answers,
   lifeOpsLayout,
+  error,
   onSelectSingle,
   onToggleMulti,
 }: {
   field: PersonalSetupField;
   answers: Record<string, string | string[]>;
   lifeOpsLayout: boolean;
+  error?: string;
   onSelectSingle: (value: string) => void;
   onToggleMulti: (value: string) => void;
 }) {
@@ -300,6 +347,7 @@ function FieldSection({
                 key={option.value}
                 option={option}
                 selected={selectedSingle === option.value}
+                error={error}
                 onSelect={() => onSelectSingle(option.value)}
               />
             ))}
@@ -311,6 +359,7 @@ function FieldSection({
                 key={option.value}
                 option={option}
                 selected={selectedSingle === option.value}
+                error={error}
                 onSelect={() => onSelectSingle(option.value)}
               />
             ))}
@@ -323,6 +372,7 @@ function FieldSection({
               key={option.value}
               label={option.label}
               selected={selectedMulti.includes(option.value)}
+              error={error}
               onToggle={() => onToggleMulti(option.value)}
             />
           ))}
@@ -334,11 +384,18 @@ function FieldSection({
               key={option.value}
               label={option.label}
               selected={selectedMulti.includes(option.value)}
+              error={error}
               onToggle={() => onToggleMulti(option.value)}
             />
           ))}
         </div>
       )}
+
+      {error ? (
+        <p className="mt-2 text-sm" style={{ color: colors.error }} role="alert">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -346,16 +403,23 @@ function FieldSection({
 function LifeStateCard({
   option,
   selected,
+  error,
   onSelect,
 }: {
   option: PersonalSetupOption;
   selected: boolean;
+  error?: string;
   onSelect: () => void;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const barHeight = `${Math.round((option.bar_level ?? 0.5) * 100)}%`;
   const accent = accentColor(option.accent, colors);
+  const outlineColor = selected
+    ? colors.brandPrimary
+    : error
+      ? colors.error
+      : undefined;
 
   return (
     <button
@@ -364,7 +428,7 @@ function LifeStateCard({
       className="rounded-xl p-3 text-left transition-transform hover:scale-[1.02] active:scale-[0.98]"
       style={{
         ...glassCardStyle(tokens),
-        outline: selected ? `2px solid ${colors.brandPrimary}` : undefined,
+        outline: outlineColor ? `2px solid ${outlineColor}` : undefined,
       }}
     >
       <div className="flex gap-3">
@@ -404,16 +468,23 @@ function LifeStateCard({
 function DomainOptionCard({
   option,
   selected,
+  error,
   onSelect,
 }: {
   option: PersonalSetupOption;
   selected: boolean;
+  error?: string;
   onSelect: () => void;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const barHeight = `${Math.round((option.bar_level ?? 0.5) * 100)}%`;
   const accent = accentColor(option.accent, colors);
+  const outlineColor = selected
+    ? colors.brandPrimary
+    : error
+      ? colors.error
+      : undefined;
 
   return (
     <button
@@ -422,7 +493,7 @@ function DomainOptionCard({
       className="flex w-full gap-3 rounded-xl p-3.5 text-left transition-transform hover:scale-[1.01] active:scale-[0.99]"
       style={{
         ...glassCardStyle(tokens),
-        outline: selected ? `2px solid ${colors.brandPrimary}` : undefined,
+        outline: outlineColor ? `2px solid ${outlineColor}` : undefined,
       }}
     >
       <div
@@ -454,14 +525,21 @@ function DomainOptionCard({
 function WrapChip({
   label,
   selected,
+  error,
   onToggle,
 }: {
   label: string;
   selected: boolean;
+  error?: string;
   onToggle: () => void;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
+  const borderColor = selected
+    ? colors.brandPrimary
+    : error
+      ? colors.error
+      : `color-mix(in srgb, ${colors.border} 40%, transparent)`;
   return (
     <button
       type="button"
@@ -470,7 +548,7 @@ function WrapChip({
       style={{
         color: selected ? colors.brandPrimary : colors.textSecondary,
         background: selected ? `color-mix(in srgb, ${colors.brandPrimary} 12%, transparent)` : "transparent",
-        border: `1px solid ${selected ? colors.brandPrimary : `color-mix(in srgb, ${colors.border} 40%, transparent)`}`,
+        border: `1px solid ${borderColor}`,
       }}
     >
       {label}
@@ -481,14 +559,21 @@ function WrapChip({
 function CompactChip({
   label,
   selected,
+  error,
   onToggle,
 }: {
   label: string;
   selected: boolean;
+  error?: string;
   onToggle: () => void;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
+  const borderColor = selected
+    ? colors.brandPrimary
+    : error
+      ? colors.error
+      : `color-mix(in srgb, ${colors.border} 40%, transparent)`;
   return (
     <button
       type="button"
@@ -497,7 +582,7 @@ function CompactChip({
       style={{
         color: selected ? colors.brandPrimary : colors.textSecondary,
         background: selected ? `color-mix(in srgb, ${colors.brandPrimary} 12%, transparent)` : "transparent",
-        border: `1px solid ${selected ? colors.brandPrimary : `color-mix(in srgb, ${colors.border} 40%, transparent)`}`,
+        border: `1px solid ${borderColor}`,
       }}
     >
       {label}

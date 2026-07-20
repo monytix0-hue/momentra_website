@@ -2,6 +2,7 @@
 @import "../styles/context/personal.css";
 @import "../styles/context/group.css";
 @import "../styles/context/business.css";
+@import "../styles/context/circle.css";
 @import "tailwindcss";
 
 @theme inline {

@@ -10,6 +10,7 @@ import type {
   BusinessCreateOptionsResponse,
   BusinessMomentResponse,
   BusinessSessionBootstrapResponse,
+  BusinessWorkspaceSummary,
 } from "@/lib/api/business";
 import { BusinessRepository } from "@/repositories/BusinessRepository";
 import { logBusinessLoad } from "@/lib/telemetry/businessLoadTelemetry";
@@ -32,6 +33,7 @@ export type BusinessSessionSnapshot = {
   createOptions: BusinessCreateOptionsResponse | null;
   selectedMomentId: string | null;
   selectedMomentType: string;
+  selectedWorkspaceId: string | null;
   loading: boolean;
   createOptionsLoading: boolean;
   error: string | null;
@@ -45,6 +47,7 @@ let snapshot: BusinessSessionSnapshot = {
   createOptions: null,
   selectedMomentId: null,
   selectedMomentType: "",
+  selectedWorkspaceId: null,
   loading: false,
   createOptionsLoading: false,
   error: null,
@@ -204,10 +207,13 @@ function applyInventorySelection(bootstrap: BusinessSessionBootstrapResponse) {
     isBusinessInventoryEmpty(inventory) ? null : snapshot.selectedMomentId,
     snapshot.selectedMomentType,
   );
+  const selectedWorkspaceId =
+    inventory.selected_workspace?.id ?? snapshot.selectedWorkspaceId;
   setSnapshot({
     bootstrap: inventory,
     selectedMomentId: next.selectedMomentId,
     selectedMomentType: next.selectedMomentType,
+    selectedWorkspaceId,
     lastLoadedAt: Date.now(),
     error: null,
   });
@@ -256,28 +262,38 @@ export function getBusinessSwitcherOptions(): BusinessMomentSwitcherOption[] {
 
 export async function ensureBusinessBootstrap(
   force = false,
+  workspaceId?: string | null,
 ): Promise<BusinessSessionBootstrapResponse | null> {
   const gen = snapshot.generation;
+  const targetWs = workspaceId ?? snapshot.selectedWorkspaceId;
   const fresh =
     !force &&
     snapshot.bootstrap != null &&
     snapshot.lastLoadedAt != null &&
     Date.now() - snapshot.lastLoadedAt < BOOTSTRAP_FRESH_MS &&
-    snapshot.error == null;
+    snapshot.error == null &&
+    (targetWs == null ||
+      snapshot.bootstrap.selected_workspace?.id === targetWs ||
+      snapshot.selectedWorkspaceId === targetWs);
   if (fresh) return snapshot.bootstrap;
 
   setSnapshot({ loading: true, error: null });
   const t0 = performance.now();
   try {
-    const bootstrap = await dedupeFetch("business:session_bootstrap", () =>
-      BusinessRepository.getSessionBootstrap(),
+    const cacheKey = targetWs
+      ? `business:session_bootstrap:${targetWs}`
+      : "business:session_bootstrap";
+    const bootstrap = await dedupeFetch(cacheKey, () =>
+      BusinessRepository.getSessionBootstrap(
+        targetWs ? { workspaceId: targetWs } : undefined,
+      ),
     );
     if (gen !== snapshot.generation && !force) {
-      // Selection changed mid-flight — still apply inventory but keep new selection if valid.
       applyInventorySelection(bootstrap);
     } else {
       applyInventorySelection(bootstrap);
     }
+    setSnapshot({ loading: false });
     logBusinessLoad({
       tab: "session",
       requestKey: "session_bootstrap",
@@ -289,11 +305,10 @@ export async function ensureBusinessBootstrap(
       momentId: snapshot.selectedMomentId,
       momentType: snapshot.selectedMomentType,
     });
-    return bootstrap;
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Couldn't load business session";
-    setSnapshot({ error: message });
+    return snapshot.bootstrap;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to load Business";
+    setSnapshot({ loading: false, error: message });
     logBusinessLoad({
       tab: "session",
       requestKey: "session_bootstrap",
@@ -304,10 +319,201 @@ export async function ensureBusinessBootstrap(
       success: false,
       errorCode: "bootstrap_failed",
     });
-    return snapshot.bootstrap;
-  } finally {
-    setSnapshot({ loading: false });
+    return null;
   }
+}
+
+export function getSelectedBusinessWorkspace(): BusinessWorkspaceSummary | null {
+  return snapshot.bootstrap?.selected_workspace ?? null;
+}
+
+export function getBusinessWorkspaces(): BusinessWorkspaceSummary[] {
+  return snapshot.bootstrap?.workspaces ?? [];
+}
+
+export async function switchBusinessWorkspace(
+  workspaceId: string,
+): Promise<BusinessSessionBootstrapResponse | null> {
+  bumpBusinessSessionGeneration();
+  setSnapshot({ selectedWorkspaceId: workspaceId, selectedMomentId: null });
+  try {
+    await BusinessRepository.selectWorkspace(workspaceId);
+  } catch {
+    // Preference persist may fail offline; still reload scoped bootstrap.
+  }
+  return ensureBusinessBootstrap(true, workspaceId);
+}
+
+export async function createAndSelectBusinessWorkspace(name: string): Promise<
+  BusinessSessionBootstrapResponse | null
+> {
+  const created = await BusinessRepository.createWorkspace({ name });
+  bumpBusinessSessionGeneration();
+  const prev = snapshot.bootstrap;
+  const workspaces = [...(prev?.workspaces ?? []).filter((w) => w.id !== created.id), created];
+  setSnapshot({
+    selectedWorkspaceId: created.id,
+    selectedMomentId: null,
+    selectedMomentType: "",
+    bootstrap: {
+      moments_home: prev?.moments_home ?? {
+        is_empty: true,
+        active_moment_count: 0,
+        cards: [],
+      },
+      moments: [],
+      selected_workspace: created,
+      workspaces,
+      module_tiles: prev?.module_tiles ?? [],
+      dashboard: prev?.dashboard ?? {
+        open_moments: 0,
+        pending_approvals: 0,
+        member_count: 1,
+      },
+    },
+    lastLoadedAt: Date.now(),
+    error: null,
+  });
+  // Background soft reconcile — do not block create UX on a forced bootstrap.
+  void softRefreshBusinessSession(created.id);
+  return snapshot.bootstrap;
+}
+
+/**
+ * Soft background refresh: prefers workspace moments/overview endpoints when
+ * a company is selected; falls back to cached bootstrap TTL (never force).
+ */
+export async function softRefreshBusinessSession(
+  workspaceId?: string | null,
+): Promise<void> {
+  const wsId =
+    workspaceId ??
+    snapshot.selectedWorkspaceId ??
+    snapshot.bootstrap?.selected_workspace?.id ??
+    null;
+  if (!wsId) {
+    await ensureBusinessBootstrap(false);
+    return;
+  }
+  const gen = snapshot.generation;
+  try {
+    const [momentsPayload, overview] = await Promise.all([
+      BusinessRepository.getWorkspaceMoments(wsId),
+      BusinessRepository.getWorkspaceOverview(wsId),
+    ]);
+    if (gen !== snapshot.generation) return;
+    const prev = snapshot.bootstrap;
+    const next: BusinessSessionBootstrapResponse = {
+      moments_home:
+        momentsPayload.moments_home ??
+        prev?.moments_home ?? {
+          is_empty: true,
+          active_moment_count: 0,
+          cards: [],
+        },
+      moments: momentsPayload.moments ?? prev?.moments ?? [],
+      selected_workspace: prev?.selected_workspace ?? null,
+      workspaces: prev?.workspaces ?? [],
+      module_tiles: prev?.module_tiles ?? [],
+      dashboard: overview.dashboard ?? prev?.dashboard,
+    };
+    if (prev?.selected_workspace?.id === wsId || !prev?.selected_workspace) {
+      applyInventorySelection(next);
+    } else {
+      setSnapshot({
+        bootstrap: {
+          ...next,
+          selected_workspace: prev.selected_workspace,
+          workspaces: prev.workspaces,
+          module_tiles: prev.module_tiles,
+        },
+        lastLoadedAt: Date.now(),
+      });
+    }
+  } catch {
+    await ensureBusinessBootstrap(false, wsId);
+  }
+}
+
+/** Bootstrap only after manage/setup — soft by default (force reserved for recovery). */
+export async function refreshBusinessSessionInventory(
+  force = false,
+): Promise<void> {
+  if (force) {
+    await ensureBusinessBootstrap(true);
+    return;
+  }
+  await softRefreshBusinessSession();
+}
+
+export function patchBusinessWorkspaceInStore(
+  workspace: BusinessWorkspaceSummary,
+): void {
+  const prev = snapshot.bootstrap;
+  if (!prev) {
+    setSnapshot({
+      selectedWorkspaceId: workspace.id,
+      bootstrap: {
+        moments_home: { is_empty: true, active_moment_count: 0, cards: [] },
+        moments: [],
+        selected_workspace: workspace,
+        workspaces: [workspace],
+        module_tiles: [],
+        dashboard: {
+          open_moments: 0,
+          pending_approvals: 0,
+          member_count: 1,
+        },
+      },
+      lastLoadedAt: Date.now(),
+    });
+    return;
+  }
+  const workspaces = (prev.workspaces ?? []).map((w) =>
+    w.id === workspace.id ? { ...w, ...workspace } : w,
+  );
+  const has = workspaces.some((w) => w.id === workspace.id);
+  setSnapshot({
+    bootstrap: {
+      ...prev,
+      selected_workspace:
+        prev.selected_workspace?.id === workspace.id
+          ? { ...prev.selected_workspace, ...workspace }
+          : prev.selected_workspace,
+      workspaces: has ? workspaces : [...workspaces, workspace],
+    },
+  });
+}
+
+export function patchBusinessMomentInInventory(
+  moment: BusinessMomentResponse,
+): void {
+  const prev = snapshot.bootstrap;
+  if (!prev) return;
+  const moments = [...(prev.moments ?? [])];
+  const idx = moments.findIndex((m) => m.moment_id === moment.moment_id);
+  if (idx >= 0) moments[idx] = { ...moments[idx], ...moment };
+  else moments.unshift(moment);
+  const activeCount = moments.filter((m) =>
+    isActiveBusinessMomentStatus(m.status ?? ""),
+  ).length;
+  setSnapshot({
+    bootstrap: {
+      ...prev,
+      moments,
+      moments_home: prev.moments_home
+        ? {
+            ...prev.moments_home,
+            is_empty: activeCount === 0,
+            active_moment_count: activeCount,
+          }
+        : prev.moments_home,
+      dashboard: prev.dashboard
+        ? { ...prev.dashboard, open_moments: moments.length }
+        : prev.dashboard,
+    },
+    lastLoadedAt: Date.now(),
+  });
 }
 
 export async function ensureBusinessCreateOptions(
@@ -361,19 +567,13 @@ export async function ensureBusinessCreateOptions(
   }
 }
 
-/** Bootstrap only after manage/setup — never reload create-options unless Create is open. */
-export async function refreshBusinessSessionInventory(
-  force = true,
-): Promise<void> {
-  await ensureBusinessBootstrap(force);
-}
-
 export function clearBusinessSessionStore(): void {
   snapshot = {
     bootstrap: null,
     createOptions: null,
     selectedMomentId: null,
     selectedMomentType: "",
+    selectedWorkspaceId: null,
     loading: false,
     createOptionsLoading: false,
     error: null,

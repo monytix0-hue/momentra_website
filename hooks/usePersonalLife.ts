@@ -11,7 +11,7 @@ import {
   SNAPSHOT_REBUILDING_DELAY_MS,
   SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
 } from "@/lib/cache/snapshotRebuilding";
-import { persistLife } from "@/stores/personalSessionStore";
+import { persistLife, usePersonalSessionStore } from "@/stores/personalSessionStore";
 
 let cachedLife: PersonalLifeResponse | null = null;
 let cachedAt = 0;
@@ -36,6 +36,7 @@ export function getPersonalLifeCache(): PersonalLifeResponse | null {
 
 export function usePersonalLife(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
+  const generation = usePersonalSessionStore().generation;
   const [life, setLife] = useState<PersonalLifeResponse | null>(cachedLife);
   const [loading, setLoading] = useState(!cachedLife);
   const [refreshing, setRefreshing] = useState(false);
@@ -137,7 +138,7 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
-  }, [load, enabled]);
+  }, [load, enabled, generation]);
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalLifeCache();

@@ -40,15 +40,12 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 
 import type { BottomNavTabId } from "@/lib/bottomNavTabs";
 
-import { GROUP_CREATE_OPEN_EVENT } from "@/lib/groupShellEvents";
+import {
+  setSelectedGroupMomentTypeCode,
+  type GroupMomentTypeCode,
+} from "@/lib/group/groupMomentSession";
 
-import { MomentraAnalytics } from "@/lib/analytics";
-
-import { resolveScreenName, type ScreenOverlay } from "@/lib/analyticsScreens";
-
-import { useBootstrapStore } from "@/hooks/useBootstrap";
-
-import { useGroupMomentSession } from "@/hooks/useGroupMomentSession";
+import { SetupRepository } from "@/repositories/SetupRepository";
 
 import { ExperiencePulse } from "@/components/group/active/experience/ExperiencePulse";
 
@@ -76,8 +73,6 @@ import { GroupActiveQuickAddOverlay } from "@/components/group/quickadd/GroupAct
 
 import {
 
-  contextStateFromBootstrap,
-
   isActiveScreen,
 
   isEmptyScreen,
@@ -86,21 +81,18 @@ import {
 
   resolveScreen,
 
-  shouldLoadTabData,
-
 } from "@/lib/screenResolver";
 
-import type { SessionBootstrapResponse } from "@/lib/api/group";
+import { GROUP_CREATE_OPEN_EVENT, GROUP_OPEN_MOMENT_EVENT } from "@/lib/groupShellEvents";
+import { LIFE360_SELECT_LIFE_TAB_EVENT } from "@/lib/life360ShellEvents";
 
-import {
+import { MomentraAnalytics } from "@/lib/analytics";
 
-  setSelectedGroupMomentTypeCode,
+import { resolveScreenName, type ScreenOverlay } from "@/lib/analyticsScreens";
 
-  type GroupMomentTypeCode,
+import { useBootstrapStore } from "@/hooks/useBootstrap";
 
-} from "@/lib/group/groupMomentSession";
-
-import { SetupRepository } from "@/repositories/SetupRepository";
+import { useGroupMomentSession } from "@/hooks/useGroupMomentSession";
 
 import { GroupRepository } from "@/repositories/GroupRepository";
 import {
@@ -109,7 +101,18 @@ import {
   type LifecycleInventoryItem,
 } from "@/lib/lifecycle/MomentLifecycleCoordinator";
 
-import { invalidateBootstrapAfterMutation, loadBootstrap } from "@/stores/bootstrapStore";
+import { invalidateGroupTabCaches } from "@/hooks/useGroupTabCache";
+import {
+  applyGroupLifecyclePatch,
+  ensureGroupSession,
+  patchGroupDraftInStore,
+  patchGroupMomentActivated,
+  patchGroupMomentInInventory,
+  refreshGroupSessionInventory,
+  setGroupSelection,
+  softRefreshGroupSession,
+  useGroupSessionStore,
+} from "@/stores/groupSessionStore";
 
 
 
@@ -126,17 +129,11 @@ type GroupCreateType = GroupMomentTypeCode;
 
 
 const TAB_LABELS: Record<BottomNavTabId, string> = {
-
   pulse: "Pulse",
-
   moments: "Moments",
-
   memory: "Memory",
-
   life: "Life",
-
   add: "Add",
-
 };
 
 
@@ -157,17 +154,17 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const [draftMomentId, setDraftMomentId] = useState<string | null>(null);
-
-  const [draftMomentType, setDraftMomentType] = useState<GroupCreateType | null>(null);
-
-  const [sessionLoaded, setSessionLoaded] = useState(false);
-
-  const [sessionBootstrap, setSessionBootstrap] = useState<SessionBootstrapResponse | null>(null);
-
-  const [activeMomentId, setActiveMomentId] = useState<string | null>(null);
-
-  const [activeMomentType, setActiveMomentType] = useState<GroupCreateType | null>(null);
+  const groupSession = useGroupSessionStore();
+  const sessionBootstrap = groupSession.session;
+  const activeMomentId = groupSession.selectedMomentId;
+  const activeMomentType = groupSession.selectedMomentType;
+  const sessionLoaded = groupSession.lastLoadedAt != null || groupSession.error != null;
+  const draftMomentId =
+    sessionBootstrap?.has_draft && sessionBootstrap.draft_moment_id
+      ? sessionBootstrap.draft_moment_id
+      : null;
+  const draftMomentType = (sessionBootstrap?.draft_moment_type ??
+    null) as GroupCreateType | null;
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [tripMomentsReloadKey, setTripMomentsReloadKey] = useState(0);
@@ -199,34 +196,38 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
         .detail;
       const momentId = detail?.moment_id?.trim();
       if (!momentId) return;
-      void (async () => {
-        try {
-          const session = await GroupRepository.getSessionBootstrap();
-          setSessionBootstrap(session);
-          const options = resolveGroupMomentSwitcherOptions(session);
-          const match = options.find((o) => o.momentId === momentId);
-          const typeFromResult = (detail.moment_type || "").toUpperCase();
-          const typeCode = (match?.typeCode ||
-            (typeFromResult.includes("PURCHASE")
-              ? "SHARED_PURCHASE"
-              : typeFromResult.includes("LIVING")
-                ? "SHARED_LIVING"
-                : typeFromResult.includes("EXPERIENCE") || typeFromResult.includes("TRIP")
-                  ? "SHARED_EXPERIENCE"
-                  : null)) as GroupMomentTypeCode | null;
-          if (typeCode) {
-            setSelectedGroupMomentTypeCode(typeCode);
-            setActiveMomentType(typeCode);
-          }
-          setActiveMomentId(momentId);
-          setSelectedTab("pulse");
-        } catch {
-          setActiveMomentId(momentId);
-        }
-      })();
+      const typeFromResult = (detail.moment_type || "").toUpperCase();
+      const typeCode = (typeFromResult.includes("PURCHASE")
+        ? "SHARED_PURCHASE"
+        : typeFromResult.includes("LIVING")
+          ? "SHARED_LIVING"
+          : typeFromResult.includes("EXPERIENCE") || typeFromResult.includes("TRIP")
+            ? "SHARED_EXPERIENCE"
+            : "SHARED_EXPERIENCE") as GroupMomentTypeCode;
+      setGroupSelection(typeCode, momentId);
+      setSelectedTab("pulse");
+      void softRefreshGroupSession();
+    };
+    const onOpenMoment = (event: Event) => {
+      const detail = (event as CustomEvent<{ moment_id?: string; moment_type?: string | null }>)
+        .detail;
+      const momentId = detail?.moment_id?.trim();
+      if (!momentId) return;
+      const typeFromResult = (detail.moment_type || "").toUpperCase();
+      const typeCode = (typeFromResult.includes("PURCHASE")
+        ? "SHARED_PURCHASE"
+        : typeFromResult.includes("LIVING")
+          ? "SHARED_LIVING"
+          : "SHARED_EXPERIENCE") as GroupMomentTypeCode;
+      setGroupSelection(typeCode, momentId);
+      setSelectedTab("pulse");
     };
     window.addEventListener("momentra:invite-joined", onInviteJoined);
-    return () => window.removeEventListener("momentra:invite-joined", onInviteJoined);
+    window.addEventListener(GROUP_OPEN_MOMENT_EVENT, onOpenMoment);
+    return () => {
+      window.removeEventListener("momentra:invite-joined", onInviteJoined);
+      window.removeEventListener(GROUP_OPEN_MOMENT_EVENT, onOpenMoment);
+    };
   }, []);
 
 
@@ -239,8 +240,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
   const visibleTab = selectedTab === "add" ? previousTab : selectedTab;
 
   const tabResolved = resolveScreen("group", visibleTab, bootstrap);
-
-  const shouldLoadSession = shouldLoadTabData(tabResolved) || isSetupScreen(tabResolved);
 
 
 
@@ -274,11 +273,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
     if (option) {
 
-      setActiveMomentId(option.momentId);
-
-      setActiveMomentType(option.typeCode);
-
-      SetupRepository.rememberGroupMoment(option.momentId, option.typeCode);
+      setGroupSelection(option.typeCode, option.momentId);
 
     }
 
@@ -286,120 +281,20 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
 
 
-  const loadSessionDraft = useCallback(async () => {
-
-    try {
-
-      const session = await GroupRepository.getSessionBootstrap();
-
-      setSessionBootstrap(session);
-
-
-
-      if (session.has_draft && session.draft_moment_id) {
-
-        const type = (session.draft_moment_type ?? "SHARED_EXPERIENCE") as GroupCreateType;
-
-        setDraftMomentId(session.draft_moment_id);
-
-        setDraftMomentType(type);
-
-        SetupRepository.rememberGroupMoment(session.draft_moment_id, type);
-
-      } else {
-
-        setDraftMomentId(null);
-
-        setDraftMomentType(null);
-
-      }
-
-
-
-      const options = resolveGroupMomentSwitcherOptions(session);
-
-      const reconciled = reconcileSelectedGroupMomentType(options, selectedMomentTypeCode);
-
-      if (reconciled !== selectedMomentTypeCode) {
-
-        setSelectedGroupMomentTypeCode(reconciled);
-
-      }
-
-
-
-      const selectedOption = switcherOptionForType(options, reconciled);
-
-      if (selectedOption) {
-
-        setActiveMomentId(selectedOption.momentId);
-
-        setActiveMomentType(selectedOption.typeCode);
-
-        SetupRepository.rememberGroupMoment(selectedOption.momentId, selectedOption.typeCode);
-
-      } else {
-
-        setActiveMomentId(null);
-
-        setActiveMomentType(null);
-
-      }
-
-    } catch {
-
-      /* keep prior */
-
-    } finally {
-
-      setSessionLoaded(true);
-
-    }
-
-  }, [selectedMomentTypeCode]);
-
-
-
   useEffect(() => {
-
     const openCreate = () => setShowCreateOverlay(true);
-
+    const selectLife = () => {
+      setSelectedTab("life");
+    };
     window.addEventListener(GROUP_CREATE_OPEN_EVENT, openCreate);
-
-    return () => window.removeEventListener(GROUP_CREATE_OPEN_EVENT, openCreate);
-
+    window.addEventListener(LIFE360_SELECT_LIFE_TAB_EVENT, selectLife);
+    return () => {
+      window.removeEventListener(GROUP_CREATE_OPEN_EVENT, openCreate);
+      window.removeEventListener(LIFE360_SELECT_LIFE_TAB_EVENT, selectLife);
+    };
   }, []);
 
 
-
-  useEffect(() => {
-
-    const groupActive = contextStateFromBootstrap(bootstrap, "group") === "ACTIVE";
-
-    if (
-      !shouldLoadSession &&
-      !isEmptyScreen(tabResolved) &&
-      !isSetupScreen(tabResolved) &&
-      !isActiveScreen(tabResolved) &&
-      !groupActive
-    ) {
-
-      return;
-
-    }
-
-    void loadSessionDraft();
-
-  }, [shouldLoadSession, tabResolved, bootstrap?.server_time, bootstrap, loadSessionDraft]);
-
-
-
-  useEffect(() => {
-    if (momentSwitcherOptions.length > 0) return;
-    if (!activeMomentId && !activeMomentType) return;
-    setActiveMomentId(null);
-    setActiveMomentType(null);
-  }, [momentSwitcherOptions.length, activeMomentId, activeMomentType]);
 
   useEffect(() => {
     if (momentSwitcherOptions.length === 0) return;
@@ -431,11 +326,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
   async function refreshAfterManage() {
 
-    invalidateBootstrapAfterMutation();
-
-    await loadBootstrap({ force: true });
-
-    await loadSessionDraft();
+    await refreshGroupSessionInventory(false);
 
   }
 
@@ -443,15 +334,9 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
   function handleMomentSwitcherSelect(option: { typeCode: GroupMomentTypeCode; momentId: string }) {
 
-    if (option.typeCode === selectedMomentTypeCode) return;
+    if (option.typeCode === selectedMomentTypeCode && option.momentId === activeMomentId) return;
 
-    setSelectedGroupMomentTypeCode(option.typeCode);
-
-    setActiveMomentId(option.momentId);
-
-    setActiveMomentType(option.typeCode);
-
-    SetupRepository.rememberGroupMoment(option.momentId, option.typeCode);
+    setGroupSelection(option.typeCode, option.momentId);
 
   }
 
@@ -561,17 +446,13 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
       SetupRepository.rememberGroupMoment(moment.moment_id, type);
 
-      setDraftMomentId(moment.moment_id);
-
-      setDraftMomentType(type);
-
       setSetupMomentId(moment.moment_id);
 
       setSetupMomentType(type);
 
       setShowCreateOverlay(false);
 
-      await loadBootstrap({ force: true });
+      patchGroupDraftInStore(moment.moment_id, type);
 
     } catch (err) {
 
@@ -607,33 +488,23 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
     const activatedType = setupMomentType;
 
-    if (activatedId && activatedType) {
-
-      setSelectedGroupMomentTypeCode(activatedType);
-
-      setActiveMomentId(activatedId);
-
-      setActiveMomentType(activatedType);
-
-      SetupRepository.rememberGroupMoment(activatedId, activatedType);
-
-    }
-
     setSetupMomentId(null);
 
     setSetupMomentType(null);
 
-    setDraftMomentId(null);
-
-    setDraftMomentType(null);
-
     setShowCreateOverlay(false);
 
-    invalidateBootstrapAfterMutation();
+    if (activatedId && activatedType) {
 
-    await loadBootstrap({ force: true });
+      patchGroupMomentActivated(activatedId, activatedType);
 
-    await loadSessionDraft();
+      setSelectedTab("pulse");
+
+      invalidateGroupTabCaches(activatedId);
+
+    }
+
+    void softRefreshGroupSession();
 
   }
 
@@ -866,7 +737,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
           type="button"
 
-          onClick={() => void loadSessionDraft()}
+          onClick={() => void ensureGroupSession(true)}
 
           className="mt-2 rounded-full px-4 py-2 text-sm font-semibold"
 
@@ -1268,13 +1139,10 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
         }}
 
         onEditName={async (name) => {
-
           if (!manageContext) return;
-
           await GroupRepository.patchMoment(manageContext.momentId, { moment_name: name });
-
+          patchGroupMomentInInventory(manageContext.momentId, { name });
           await refreshAfterManage();
-
         }}
 
         onPause={async () => {
@@ -1285,7 +1153,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
             status: String(m.lifecycle_status || "ACTIVE"),
           })).filter((m) => m.momentId);
           try {
-            await runMomentLifecycle({
+            const result = await runMomentLifecycle({
               contextType: "GROUP",
               momentId: manageContext.momentId,
               momentTypeCode: manageContext.typeCode,
@@ -1293,7 +1161,14 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
               previousStatus: manageContext.status || "ACTIVE",
               inventory,
               selectedMomentId: manageContext.momentId,
+              refreshBootstrap: false,
             });
+            applyGroupLifecyclePatch(
+              manageContext.momentId,
+              "PAUSED",
+              result.replacementMomentId,
+              result.replacementMomentTypeCode,
+            );
             await refreshAfterManage();
           } catch (e) {
             if (e instanceof MomentLifecycleError) throw new Error(e.userMessage);
@@ -1309,7 +1184,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
             status: String(m.lifecycle_status || "PAUSED"),
           })).filter((m) => m.momentId);
           try {
-            await runMomentLifecycle({
+            const result = await runMomentLifecycle({
               contextType: "GROUP",
               momentId: manageContext.momentId,
               momentTypeCode: manageContext.typeCode,
@@ -1317,7 +1192,14 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
               previousStatus: manageContext.status || "PAUSED",
               inventory,
               selectedMomentId: manageContext.momentId,
+              refreshBootstrap: false,
             });
+            applyGroupLifecyclePatch(
+              manageContext.momentId,
+              "ACTIVE",
+              result.replacementMomentId,
+              result.replacementMomentTypeCode,
+            );
             await refreshAfterManage();
           } catch (e) {
             if (e instanceof MomentLifecycleError) throw new Error(e.userMessage);
@@ -1341,19 +1223,14 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
               previousStatus: manageContext.status || "ACTIVE",
               inventory,
               selectedMomentId: manageContext.momentId,
+              refreshBootstrap: false,
             });
-            if (result.replacementMomentId) {
-              if (result.replacementMomentTypeCode) {
-                setSelectedGroupMomentTypeCode(result.replacementMomentTypeCode as GroupMomentTypeCode);
-              }
-              setActiveMomentId(result.replacementMomentId);
-              setActiveMomentType(
-                (result.replacementMomentTypeCode as GroupMomentTypeCode) || manageContext.typeCode,
-              );
-            } else {
-              setActiveMomentId(null);
-              setActiveMomentType(null);
-            }
+            applyGroupLifecyclePatch(
+              manageContext.momentId,
+              "COMPLETED",
+              result.replacementMomentId,
+              result.replacementMomentTypeCode,
+            );
             await refreshAfterManage();
           } catch (e) {
             if (e instanceof MomentLifecycleError) throw new Error(e.userMessage);
@@ -1377,19 +1254,14 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
               previousStatus: manageContext.status || "ACTIVE",
               inventory,
               selectedMomentId: manageContext.momentId,
+              refreshBootstrap: false,
             });
-            if (result.replacementMomentId) {
-              if (result.replacementMomentTypeCode) {
-                setSelectedGroupMomentTypeCode(result.replacementMomentTypeCode as GroupMomentTypeCode);
-              }
-              setActiveMomentId(result.replacementMomentId);
-              setActiveMomentType(
-                (result.replacementMomentTypeCode as GroupMomentTypeCode) || manageContext.typeCode,
-              );
-            } else {
-              setActiveMomentId(null);
-              setActiveMomentType(null);
-            }
+            applyGroupLifecyclePatch(
+              manageContext.momentId,
+              "ARCHIVED",
+              result.replacementMomentId,
+              result.replacementMomentTypeCode,
+            );
             await refreshAfterManage();
           } catch (e) {
             if (e instanceof MomentLifecycleError) throw new Error(e.userMessage);

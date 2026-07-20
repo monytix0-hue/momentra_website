@@ -5,13 +5,14 @@ const BACKEND_TO_APP: Record<BackendContextKey, AppContext | null> = {
   MY_MONEY: "personal",
   GROUP: "group",
   BUSINESS: "business",
-  CIRCLE: null,
+  CIRCLE: "circle",
 };
 
 const APP_TO_BACKEND: Record<AppContext, BackendContextKey> = {
   personal: "MY_MONEY",
   group: "GROUP",
   business: "BUSINESS",
+  circle: "CIRCLE",
 };
 
 export function backendContextToApp(key: string): AppContext {

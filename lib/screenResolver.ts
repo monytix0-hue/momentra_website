@@ -82,6 +82,11 @@ export function resolveScreenPhase(
     if (ctxPhase === "setup") return "setup";
     if (ctxPhase === "active") return "active";
   }
+  // Circle: home is driven by participant snapshots (EMPTY vs FULL), not moment inventory.
+  if (context === "circle") {
+    if (ctxPhase === "setup") return "setup";
+    if (ctxPhase === "active") return "active";
+  }
   const modulePhase = normalizeModulePhase(
     moduleStateFromBootstrap(bootstrap, moduleKeyForTab(tab, context)),
   );

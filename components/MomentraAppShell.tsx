@@ -6,6 +6,10 @@ import { InviteQrScanModal } from "@/components/invite/InviteQrScanModal";
 import { MomentraContextSwitcher } from "@/components/shell/MomentraContextSwitcher";
 import { SettingsSheet } from "@/components/settings/SettingsSheet";
 import { OnboardingScreen } from "@/components/onboarding/OnboardingScreen";
+import { CompanySwitcher } from "@/components/business/workspace/CompanySwitcher";
+import { CompanySettingsSheet } from "@/components/business/workspace/CompanySettingsSheet";
+import { CompanyHomeSheet } from "@/components/business/workspace/CompanyHomeSheet";
+import { Life360Overlay } from "@/components/life360/Life360Overlay";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   useAppContextState,
@@ -13,8 +17,12 @@ import {
 } from "@/components/theme/AppContextProvider";
 import { MomentraAnalytics } from "@/lib/analytics";
 import { acceptInvite } from "@/lib/api/group";
-import { openBusinessCreateOverlay } from "@/lib/businessShellEvents";
-import { openGroupCreateOverlay } from "@/lib/groupShellEvents";
+import { acceptBusinessWorkspaceInvite } from "@/lib/api/client";
+import {
+  openBusinessCreateOverlay,
+  openBusinessMomentAndPulse,
+} from "@/lib/businessShellEvents";
+import { openGroupCreateOverlay, openGroupMomentAndPulse } from "@/lib/groupShellEvents";
 import { openPersonalCreateOverlay } from "@/lib/personalShellEvents";
 import { isBusinessMomentType } from "@/lib/invite/inviteToken";
 import { consumeInviteJoinedResult, consumePendingInvite } from "@/lib/invite/pendingInvite";
@@ -24,6 +32,18 @@ import {
   getContextSnapshot,
   subscribeContextStore,
 } from "@/stores/contextStore";
+import {
+  createAndSelectBusinessWorkspace,
+  ensureBusinessBootstrap,
+  getBusinessWorkspaces,
+  getSelectedBusinessWorkspace,
+  softRefreshBusinessSession,
+  switchBusinessWorkspace,
+  useBusinessSessionStore,
+} from "@/stores/businessSessionStore";
+import { ensureGroupSession } from "@/stores/groupSessionStore";
+import { ensurePersonalSession } from "@/stores/personalSessionStore";
+import { ensureCircleSession } from "@/stores/circleSessionStore";
 
 function dispatchInviteJoined(detail: {
   moment_id: string;
@@ -46,8 +66,19 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
   const [showOnboardingReplay, setShowOnboardingReplay] = useState(false);
   const [showScanInvite, setShowScanInvite] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [showCompanySwitcher, setShowCompanySwitcher] = useState(false);
+  const [showCompanySettings, setShowCompanySettings] = useState(false);
+  const [showCompanyHome, setShowCompanyHome] = useState(false);
+  const [showLife360, setShowLife360] = useState(false);
   const canScanInvite = context === "group" || context === "business";
   const pendingInviteHandled = useRef(false);
+  const businessSession = useBusinessSessionStore();
+  const selectedWorkspace = getSelectedBusinessWorkspace();
+  const workspaces = getBusinessWorkspaces();
+  const isBusiness = context === "business";
+  const isGroup = context === "group";
+  const isPersonal = context === "personal";
+  const isCircle = context === "circle";
 
   useEffect(() => {
     if (showSettings) {
@@ -56,8 +87,47 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
     }
   }, [showSettings]);
 
-  // After login (or cold open of /app with a stashed invite), accept once and open the moment.
-  // Also replay an accept result stashed by /invite/[token] once the shell is mounted.
+  useEffect(() => {
+    if (showLife360) {
+      void MomentraAnalytics.logScreen("life360");
+      void MomentraAnalytics.logCustomEvent("life360_open");
+    }
+  }, [showLife360]);
+
+  useEffect(() => {
+    if (showScanInvite) {
+      void MomentraAnalytics.logScreen("invite_scan");
+      void MomentraAnalytics.logCustomEvent("invite_scan_open");
+    }
+  }, [showScanInvite]);
+
+  useEffect(() => {
+    if (!isBusiness || !user) return;
+    void ensureBusinessBootstrap();
+  }, [isBusiness, user]);
+
+  useEffect(() => {
+    if (!isGroup || !user) return;
+    void ensureGroupSession();
+  }, [isGroup, user]);
+
+  useEffect(() => {
+    if (!isPersonal || !user) return;
+    void ensurePersonalSession();
+  }, [isPersonal, user]);
+
+  useEffect(() => {
+    if (!isCircle || !user) return;
+    void ensureCircleSession();
+  }, [isCircle, user]);
+
+  useEffect(() => {
+    const openSettings = () => setShowCompanySettings(true);
+    window.addEventListener("momentra:business-company-settings", openSettings);
+    return () =>
+      window.removeEventListener("momentra:business-company-settings", openSettings);
+  }, []);
+
   useEffect(() => {
     if (!user || pendingInviteHandled.current) return;
 
@@ -66,8 +136,16 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       pendingInviteHandled.current = true;
       const biz = isBusinessMomentType(stashed.moment_type);
       setContext(biz ? "business" : "group");
-      // Defer so GroupHomePlaceholder can subscribe first.
-      window.setTimeout(() => dispatchInviteJoined(stashed), 0);
+      window.setTimeout(() => {
+        if (biz) {
+          dispatchInviteJoined(stashed);
+        } else {
+          openGroupMomentAndPulse({
+            moment_id: stashed.moment_id,
+            moment_type: stashed.moment_type,
+          });
+        }
+      }, 0);
       return;
     }
 
@@ -85,7 +163,16 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         });
         const biz = isBusinessMomentType(result.moment_type);
         setContext(biz ? "business" : "group");
-        window.setTimeout(() => dispatchInviteJoined(result), 0);
+        window.setTimeout(() => {
+          if (biz) {
+            dispatchInviteJoined(result);
+          } else {
+            openGroupMomentAndPulse({
+              moment_id: result.moment_id,
+              moment_type: result.moment_type,
+            });
+          }
+        }, 0);
       } catch {
         void MomentraAnalytics.logCustomEvent("invite_accept_failed");
         pendingInviteHandled.current = false;
@@ -108,6 +195,18 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
     return () => window.clearTimeout(t);
   }, [switchError]);
 
+  function handleBusinessCreate() {
+    if (!selectedWorkspace) {
+      const name = window.prompt("Company name");
+      if (!name?.trim()) return;
+      void createAndSelectBusinessWorkspace(name.trim()).then(() => {
+        openBusinessCreateOverlay();
+      });
+      return;
+    }
+    openBusinessCreateOverlay();
+  }
+
   return (
     <div
       data-momentra-context={context}
@@ -120,6 +219,22 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       <div className="shrink-0">
         <MomentraTopBar
           user={user}
+          businessMode={isBusiness}
+          companyName={selectedWorkspace?.name ?? null}
+          onCompanySwitcherClick={() => setShowCompanySwitcher(true)}
+          onCompanySettingsClick={() => {
+            if (!selectedWorkspace) {
+              setShowCompanySwitcher(true);
+              return;
+            }
+            setShowCompanySettings(true);
+          }}
+          onCompanySearchClick={() => {
+            alert("Company search — coming soon");
+          }}
+          onCompanyNotificationsClick={() => {
+            alert("Company notifications — coming soon");
+          }}
           showScanInviteButton={canScanInvite}
           onScanInviteClick={() => {
             void MomentraAnalytics.logCustomEvent("invite_scan_open", {
@@ -127,6 +242,13 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
               source: "top_bar",
             });
             setShowScanInvite(true);
+          }}
+          onLife360Click={() => {
+            void MomentraAnalytics.logCustomEvent("life360_open", {
+              app_context: context,
+              source: "top_bar",
+            });
+            setShowLife360(true);
           }}
           onSettingsClick={() => setShowSettings(true)}
           onNewMomentClick={() => {
@@ -147,7 +269,9 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
                 app_context: context,
                 source: "top_bar",
               });
-              openBusinessCreateOverlay();
+              handleBusinessCreate();
+            } else if (context === "circle") {
+              // Circle has no create engine — CTAs live on the Circle home empty/updated screens.
             } else {
               alert("Create moment — coming soon");
             }
@@ -171,7 +295,7 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       </div>
 
       <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        {(["personal", "group", "business"] as AppContext[]).map((ctx) =>
+        {(["personal", "group", "business", "circle"] as AppContext[]).map((ctx) =>
           mountedContexts.has(ctx) ? (
             <div
               key={ctx}
@@ -194,10 +318,72 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         onJoined={(result) => {
           const biz = isBusinessMomentType(result.moment_type);
           setContext(biz ? "business" : "group");
-          // Defer so GroupHome can mount after context switch.
           window.setTimeout(() => dispatchInviteJoined(result), 50);
         }}
       />
+
+      <CompanySwitcher
+        open={isBusiness && showCompanySwitcher}
+        onClose={() => setShowCompanySwitcher(false)}
+        workspaces={workspaces}
+        selectedId={selectedWorkspace?.id ?? businessSession.selectedWorkspaceId}
+        onSelect={(id) => {
+          void switchBusinessWorkspace(id);
+        }}
+        onOpenCompanyHome={() => {
+          if (!selectedWorkspace) {
+            setShowCompanySwitcher(true);
+            return;
+          }
+          setShowCompanyHome(true);
+        }}
+        onCreate={() => {
+          const name = window.prompt("Company name");
+          if (!name?.trim()) return;
+          void createAndSelectBusinessWorkspace(name.trim());
+        }}
+        onJoin={() => {
+          const token = window.prompt("Paste company invite token");
+          if (!token?.trim()) return;
+          void acceptBusinessWorkspaceInvite(token.trim())
+            .then((ws) => switchBusinessWorkspace(ws.id))
+            .catch(() => alert("Could not join company"));
+        }}
+      />
+
+      <CompanyHomeSheet
+        open={isBusiness && showCompanyHome}
+        onClose={() => setShowCompanyHome(false)}
+        workspace={selectedWorkspace}
+        dashboard={businessSession.bootstrap?.dashboard}
+        moduleTiles={businessSession.bootstrap?.module_tiles}
+        recentMoments={businessSession.bootstrap?.moments ?? []}
+        onCreateMoment={() => {
+          setShowCompanyHome(false);
+          handleBusinessCreate();
+        }}
+        onInviteMember={() => {
+          setShowCompanyHome(false);
+          setShowCompanySettings(true);
+        }}
+        onOpenMoment={(momentId, typeCode) => {
+          setShowCompanyHome(false);
+          openBusinessMomentAndPulse(momentId, typeCode);
+        }}
+      />
+
+      <CompanySettingsSheet
+        open={isBusiness && showCompanySettings}
+        onClose={() => setShowCompanySettings(false)}
+        workspace={selectedWorkspace}
+        onUpdated={() => {
+          void softRefreshBusinessSession(
+            selectedWorkspace?.id ?? businessSession.selectedWorkspaceId,
+          );
+        }}
+      />
+
+      <Life360Overlay open={showLife360} onClose={() => setShowLife360(false)} />
 
       {showSettings && user ? (
         <SettingsSheet

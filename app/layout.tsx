@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { AnalyticsRouteTracker } from "@/components/analytics/AnalyticsRouteTracker";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { MotionProvider } from "@/lib/motion/MotionProvider";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-dvh flex-col">
         <AuthProvider>
+          <AnalyticsRouteTracker />
           <MotionProvider>{children}</MotionProvider>
         </AuthProvider>
       </body>

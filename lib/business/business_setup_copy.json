@@ -214,9 +214,9 @@
     "invite_methods": [
       { "value": "EMAIL", "label": "Email" },
       { "value": "WHATSAPP", "label": "WhatsApp" },
-      { "value": "LINK", "label": "Share link" },
+      { "value": "COPY_LINK", "label": "Share link" },
       { "value": "QR", "label": "QR code" },
-      { "value": "MESSAGE", "label": "Message" }
+      { "value": "SMS", "label": "Message" }
     ]
   },
   "templates": {

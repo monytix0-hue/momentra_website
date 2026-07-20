@@ -16,6 +16,7 @@ import {
 import {
   persistMoments,
   ensurePersonalSessionBootstrap,
+  usePersonalSessionStore,
 } from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
@@ -47,6 +48,7 @@ export function getPersonalMomentsCache(
 export function usePersonalMoments(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
+  const generation = usePersonalSessionStore().generation;
   const cached = cache.get(momentTypeCode);
   const [moments, setMoments] = useState<PersonalMomentsHomeResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
@@ -151,7 +153,7 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
-  }, [momentTypeCode, load, enabled]);
+  }, [momentTypeCode, load, enabled, generation]);
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalMomentsCache(momentTypeCode);

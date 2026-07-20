@@ -52,11 +52,13 @@ export function SetupChoiceChips({
               disabled={disabled}
               title={opt.description}
               onClick={() => onChange(opt.value)}
-              className="min-h-11 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors disabled:opacity-50"
+              className="min-h-9 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50"
               style={{
                 borderColor: selected
                   ? colors.primary
-                  : `color-mix(in srgb, ${colors.border} 45%, transparent)`,
+                  : error
+                    ? colors.error
+                    : `color-mix(in srgb, ${colors.border} 45%, transparent)`,
                 background: selected
                   ? `color-mix(in srgb, ${colors.primary} 18%, transparent)`
                   : colors.background,

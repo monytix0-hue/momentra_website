@@ -15,6 +15,7 @@ import {
 } from "@/lib/cache/snapshotRebuilding";
 import {
   persistMemory,
+  usePersonalSessionStore,
 } from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
@@ -46,6 +47,7 @@ export function getPersonalMemoryCache(
 export function usePersonalMemory(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
+  const generation = usePersonalSessionStore().generation;
   const cached = cache.get(momentTypeCode);
   const [memory, setMemory] = useState<PersonalMemoryResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
@@ -138,7 +140,7 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
-  }, [momentTypeCode, load, enabled]);
+  }, [momentTypeCode, load, enabled, generation]);
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalMemoryCache(momentTypeCode);

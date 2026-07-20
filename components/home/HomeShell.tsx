@@ -7,12 +7,14 @@ const TITLES: Record<AppContext, string> = {
   personal: "My Money",
   group: "Group",
   business: "Business",
+  circle: "Circle",
 };
 
-const VARIANTS: Record<AppContext, "personal" | "group" | "business"> = {
+const VARIANTS: Record<AppContext, "personal" | "group" | "business" | "circle"> = {
   personal: "personal",
   group: "group",
   business: "business",
+  circle: "circle",
 };
 
 export function HomeShell({ context }: { context: AppContext }) {

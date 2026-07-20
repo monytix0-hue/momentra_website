@@ -109,6 +109,18 @@ function memberOptionValue(m: OperationsMemberDraft) {
   return m.user_id || m.local_id;
 }
 
+function memberDisplayName(m: OperationsMemberDraft) {
+  const name = (m.name || "").trim();
+  if (!name || name === "Owner" || name === "Team owner") {
+    return m.role === "OWNER" ? "You" : m.email || "Member";
+  }
+  return name;
+}
+
+function memberPickerLabel(m: OperationsMemberDraft) {
+  return `${memberDisplayName(m)} · ${choiceLabel("ops_roles", m.role)}`;
+}
+
 function formatBudgetDisplay(amountMinor: number | null, currencyCode: string): string {
   if (amountMinor == null) return "";
   return formatMinor(
@@ -297,9 +309,38 @@ export function BusinessOperationsSetup({
         errs.operating_currency_code = "Required";
       }
       if (!answers.review_cycle) errs.review_cycle = "Required";
+      if (!String(answers.timezone ?? "").trim()) errs.timezone = "Required";
+    } else if (current === 2) {
+      if (answers.monthly_budget_minor == null || Number(answers.monthly_budget_minor) < 0) {
+        errs.monthly_budget_minor = "Enter a monthly budget (0 or more)";
+      }
+      if (!answers.allocation_mode) errs.allocation_mode = "Required";
+      if (!answers.approval_model) errs.approval_model = "Required";
+    } else if (current === 3) {
+      if (!String(answers.operational_visibility ?? answers.visibility ?? "").trim()) {
+        errs.operational_visibility = "Required";
+      }
+      if (!String(answers.escalation_contact_id ?? "").trim()) {
+        errs.escalation_contact_id = "Required";
+      }
+      for (const m of members) {
+        if (m.role === "OWNER") continue;
+        if (!String(m.name ?? "").trim()) {
+          errs[`member_name_${m.local_id}`] = "Name required";
+        }
+      }
     }
     setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
+    if (Object.keys(errs).length > 0) {
+      window.requestAnimationFrame(() => {
+        document.querySelector('[role="alert"]')?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+      return false;
+    }
+    return true;
   }
 
   const go = async (next: number) => {
@@ -605,6 +646,7 @@ export function BusinessOperationsSetup({
                     "Europe/London",
                     "Asia/Dubai",
                   ]}
+                  error={fieldErrors.timezone}
                   onChange={(v) => updateAnswer("timezone", v)}
                 />
               </SetupAdvancedDisclosure>
@@ -631,12 +673,14 @@ export function BusinessOperationsSetup({
                   }
                   currencyCode={currency}
                   currencies={currencies}
+                  error={fieldErrors.monthly_budget_minor}
                   onChange={(v) => updateAnswer("monthly_budget_minor", v)}
                 />
                 <SetupChoiceChips
                   label="Allocation method"
                   value={allocationMode}
                   options={setupChoices("allocation_mode")}
+                  error={fieldErrors.allocation_mode}
                   onChange={(v) => updateAnswer("allocation_mode", v)}
                 />
                 <SetupToggleReveal
@@ -685,6 +729,7 @@ export function BusinessOperationsSetup({
                   label="Approval model"
                   value={approvalModel}
                   options={setupChoices("approval_model")}
+                  error={fieldErrors.approval_model}
                   onChange={(v) => updateAnswer("approval_model", v)}
                 />
                 {needsThreshold ? (
@@ -747,6 +792,17 @@ export function BusinessOperationsSetup({
                             <SetupInviteButton
                               memberName={m.name}
                               method={m.invite_method}
+                              momentId={momentId}
+                              localId={m.local_id}
+                              memberEmail={m.email}
+                              memberPhone={m.phone}
+                              onBeforeInvite={flushPendingSave}
+                              onEmailRequired={() =>
+                                setFieldErrors((prev) => ({
+                                  ...prev,
+                                  [`member_email_${m.local_id}`]: "Email required to invite",
+                                }))
+                              }
                               onSelect={(method) =>
                                 patchMember(m.local_id, { invite_method: method })
                               }
@@ -769,13 +825,22 @@ export function BusinessOperationsSetup({
                           <SetupTextInput
                             label="Name"
                             value={m.name}
+                            error={fieldErrors[`member_name_${m.local_id}`]}
                             onChange={(v) => patchMember(m.local_id, { name: v })}
                           />
                           <SetupTextInput
                             label="Email"
                             optionalLabel="Optional"
                             value={m.email ?? ""}
-                            onChange={(v) => patchMember(m.local_id, { email: v })}
+                            error={fieldErrors[`member_email_${m.local_id}`]}
+                            onChange={(v) => {
+                              setFieldErrors((prev) => {
+                                const next = { ...prev };
+                                delete next[`member_email_${m.local_id}`];
+                                return next;
+                              });
+                              patchMember(m.local_id, { email: v });
+                            }}
                           />
                           <SetupChoiceChips
                             label="Role"
@@ -797,6 +862,7 @@ export function BusinessOperationsSetup({
                     answers.operational_visibility ?? answers.visibility ?? "TEAM",
                   )}
                   options={setupChoices("visibility_leadership")}
+                  error={fieldErrors.operational_visibility}
                   onChange={(v) =>
                     updateAnswers({
                       operational_visibility: v,
@@ -810,8 +876,10 @@ export function BusinessOperationsSetup({
                     value={String(answers.approval_owner_id ?? "")}
                     options={members.map((m) => ({
                       value: memberOptionValue(m),
-                      label: `${m.name || m.email || "Member"} · ${choiceLabel("ops_roles", m.role)}`,
+                      label: memberPickerLabel(m),
                     }))}
+                    appendValueToLabel={false}
+                    showOptionValue={false}
                     onChange={(v) => updateAnswer("approval_owner_id", v || null)}
                   />
                 ) : null}
@@ -842,10 +910,38 @@ export function BusinessOperationsSetup({
                   value={String(answers.escalation_contact_id ?? "")}
                   options={members.map((m) => ({
                     value: memberOptionValue(m),
-                    label: `${m.name || m.email || "Member"} · ${choiceLabel("ops_roles", m.role)}`,
+                    label: memberPickerLabel(m),
                   }))}
+                  appendValueToLabel={false}
+                  showOptionValue={false}
+                  error={fieldErrors.escalation_contact_id}
                   onChange={(v) => updateAnswer("escalation_contact_id", v || null)}
                 />
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold tracking-wide opacity-70">
+                    Alert recipients
+                  </p>
+                  {members.map((m) => {
+                    const id = memberOptionValue(m);
+                    const selected = asStringList(answers.alert_recipient_ids).includes(id);
+                    return (
+                      <label key={m.local_id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => {
+                            const current = asStringList(answers.alert_recipient_ids);
+                            const next = selected
+                              ? current.filter((x) => x !== id)
+                              : [...current, id];
+                            updateAnswer("alert_recipient_ids", next);
+                          }}
+                        />
+                        {memberDisplayName(m)}
+                      </label>
+                    );
+                  })}
+                </div>
                 <SetupToggleReveal
                   label="Require approval for spending?"
                   checked={Boolean(answers.approval_required_for_spend)}

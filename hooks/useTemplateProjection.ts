@@ -23,6 +23,7 @@ import {
   persistTemplateMemory,
   persistTemplateMoments,
   persistTemplatePulse,
+  usePersonalSessionStore,
 } from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
@@ -129,6 +130,7 @@ function useTemplateCache<T extends { projection_version?: number }>(
   enabled: boolean,
   onPersist?: (code: PersonalMomentTypeCode, data: T) => void,
 ) {
+  const generation = usePersonalSessionStore().generation;
   const cached = cache.get(momentTypeCode);
   const [data, setData] = useState<T | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
@@ -238,7 +240,7 @@ function useTemplateCache<T extends { projection_version?: number }>(
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
-  }, [momentTypeCode, load, enabled]);
+  }, [momentTypeCode, load, enabled, generation]);
 
   const refreshAfterSetup = useCallback(() => {
     cache.delete(momentTypeCode);

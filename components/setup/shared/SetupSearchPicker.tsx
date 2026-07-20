@@ -18,6 +18,10 @@ type Props = {
   recentValues?: string[];
   disabled?: boolean;
   placeholder?: string;
+  /** When true (default), appends option value to the selected label if missing (currency codes). Member pickers pass false. */
+  appendValueToLabel?: boolean;
+  /** When false, hides the raw option value in the open list (member UUIDs). Default true. */
+  showOptionValue?: boolean;
 };
 
 export function SetupSearchPicker({
@@ -32,6 +36,8 @@ export function SetupSearchPicker({
   recentValues = [],
   disabled,
   placeholder = "Search…",
+  appendValueToLabel = true,
+  showOptionValue = true,
 }: Props) {
   const { colors } = useThemeTokens();
   const [open, setOpen] = useState(false);
@@ -39,9 +45,9 @@ export function SetupSearchPicker({
 
   const selected = options.find((o) => o.value === value);
   const display = selected
-    ? selected.label.includes(selected.value)
-      ? selected.label
-      : `${selected.label} — ${selected.value}`
+    ? appendValueToLabel && !selected.label.includes(selected.value)
+      ? `${selected.label} — ${selected.value}`
+      : selected.label
     : value || "Select…";
 
   const filtered = useMemo(() => {
@@ -76,7 +82,9 @@ export function SetupSearchPicker({
         onClick={() => setOpen(true)}
         className="flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm disabled:opacity-50"
         style={{
-          borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)`,
+          borderColor: error
+            ? colors.error
+            : `color-mix(in srgb, ${colors.border} 40%, transparent)`,
           background: colors.background,
         }}
       >
@@ -182,7 +190,9 @@ export function SetupSearchPicker({
                       <span className="mt-0.5 block text-xs opacity-60">{opt.description}</span>
                     ) : null}
                   </span>
-                  <span className="text-xs opacity-50">{opt.value}</span>
+                  {showOptionValue ? (
+                    <span className="text-xs opacity-50">{opt.value}</span>
+                  ) : null}
                 </button>
               ))}
               {filtered.length === 0 ? (

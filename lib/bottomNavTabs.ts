@@ -38,5 +38,7 @@ export function contextDisplayName(context: import("./appContext").AppContext): 
       return "Group";
     case "business":
       return "Business";
+    case "circle":
+      return "Circle";
   }
 }

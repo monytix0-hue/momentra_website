@@ -69,7 +69,7 @@ export function GuidedSetupStepNav({
       className={
         vertical
           ? "hidden shrink-0 lg:block"
-          : "shrink-0 overflow-x-auto border-b px-4 py-2 lg:hidden"
+          : "shrink-0 overflow-x-auto border-b px-4 py-1.5 lg:hidden"
       }
       style={
         vertical
@@ -90,14 +90,20 @@ export function GuidedSetupStepNav({
               <span
                 className={
                   vertical
-                    ? "flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold"
-                    : "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                    ? "flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold"
+                    : "inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
                 }
                 style={style}
                 aria-current={state === "current" ? "step" : undefined}
               >
                 {state === "complete" ? (
-                  <Check className="size-3.5 shrink-0" aria-hidden />
+                  <Check className="size-3 shrink-0" aria-hidden />
+                ) : state === "current" ? (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ background: "currentColor" }}
+                    aria-hidden
+                  />
                 ) : (
                   <span className="tabular-nums opacity-70" aria-hidden>
                     {index + 1}

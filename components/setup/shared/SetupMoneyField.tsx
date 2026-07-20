@@ -88,7 +88,9 @@ export function SetupMoneyField({
       <div
         className="flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2.5"
         style={{
-          borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)`,
+          borderColor: error
+            ? colors.error
+            : `color-mix(in srgb, ${colors.border} 40%, transparent)`,
           background: colors.background,
         }}
       >

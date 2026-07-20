@@ -41,6 +41,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local / build artifacts
-.dev.vars
+# Book source archive (extracted PNGs live under public/books/)
+/public/books/*.zip
+
 .open-next/
+.wrangler/
+.dev.vars
+
+
+._*
+**/._*
+

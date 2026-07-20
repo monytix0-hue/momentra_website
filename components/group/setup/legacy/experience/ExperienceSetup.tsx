@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @deprecated Quarantined legacy Shared Experience wizard (GroupSetupShell).
  * Production uses SharedExperienceSetup → GuidedSetupShell (Phase 2A).
  */

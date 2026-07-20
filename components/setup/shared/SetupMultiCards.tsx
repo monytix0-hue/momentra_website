@@ -51,7 +51,7 @@ export function SetupMultiCards({
         ) : undefined
       }
     >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2">
         {options.map((opt) => {
           const on = selected.has(opt.value);
           return (

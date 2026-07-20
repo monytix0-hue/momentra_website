@@ -290,9 +290,9 @@ export function SharedPurchaseSetup({ momentId, onClose, onActivated }: Props) {
       onActivate={() => void handleActivate()}
       onAnalytics={onAnalytics}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {step === 1 ? (
-          <SetupSectionCard title="Purchase basics">
+          <SetupSectionCard>
             <SetupFieldRenderer
               control="cards"
               label="What kind of purchase is this?"
@@ -331,7 +331,7 @@ export function SharedPurchaseSetup({ momentId, onClose, onActivated }: Props) {
         ) : null}
 
         {step === 2 ? (
-          <SetupSectionCard title="Goal and contributions">
+          <SetupSectionCard>
             <SetupFieldRenderer
               control="money"
               label="How much do you expect to spend?"
@@ -398,7 +398,7 @@ export function SharedPurchaseSetup({ momentId, onClose, onActivated }: Props) {
 
         {step === 3 ? (
           <>
-            <SetupSectionCard title="Members and ownership">
+            <SetupSectionCard>
               <p className="text-sm opacity-70" style={{ color: colors.textSecondary }}>
                 You remain the purchase admin. Invite contributors now or later — the creator
                 stays on the moment after activation.

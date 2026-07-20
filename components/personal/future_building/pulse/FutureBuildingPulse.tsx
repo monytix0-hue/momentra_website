@@ -41,7 +41,9 @@ export function FutureBuildingPulse({ pulse, bottomPadding = 0, hideScreenHeader
   }
 
   const totalMinor =
-    metrics.financial_segments.reduce((s, seg) => s + seg.amount_minor, 0) || metrics.capacity_stats.investments_minor;
+    (metrics.financial_segments ?? []).reduce((s, seg) => s + seg.amount_minor, 0) ||
+    metrics.capacity_stats?.investments_minor ||
+    0;
 
   return (
     <div
@@ -69,9 +71,9 @@ export function FutureBuildingPulse({ pulse, bottomPadding = 0, hideScreenHeader
             <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{fbPulseCopy.trendsTitle}</h3>
           </div>
           <FbTrendLineChart
-            learning={metrics.trends_30d.learning}
-            execution={metrics.trends_30d.execution}
-            progress={metrics.trends_30d.progress}
+            learning={metrics.trends_30d?.learning}
+            execution={metrics.trends_30d?.execution}
+            progress={metrics.trends_30d?.progress}
           />
         </section>
         <FbScoreDriverGrid drivers={metrics.score_drivers} />

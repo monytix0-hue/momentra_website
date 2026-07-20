@@ -32,6 +32,7 @@ import {
   type TripPulseResponse,
 } from "@/lib/api/group";
 import { getGroupLife, type GroupLifeResponse } from "@/lib/api/groupLife";
+import { useGroupSessionStore } from "@/stores/groupSessionStore";
 
 type CacheEntry<T> = { data: T; at: number };
 
@@ -69,6 +70,7 @@ function useGroupTabCache<T>(
   momentId: string | null | undefined,
   fetcher: (id: string) => Promise<T>,
   enabled: boolean,
+  generation = 0,
 ) {
   const id = momentId ?? "";
   const disk = id ? diskCacheLoad<T>(diskKey(tab, id), STALE_TTL_MS) : null;
@@ -139,92 +141,109 @@ function useGroupTabCache<T>(
   useEffect(() => {
     if (!enabled || !id) return;
     void load(false);
-  }, [enabled, id, load]);
+  }, [enabled, id, load, generation]);
 
   return { data, loading, refreshing, error, reload: () => void load(true) };
 }
 
 export function useGroupPulse(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "pulse",
     pulseCache,
     momentId,
     getActivePulse,
     enabled,
+    generation,
   );
 }
 
 export function useGroupTripPulse(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "pulse",
     tripPulseCache,
     momentId,
     getTripPulse,
     enabled,
+    generation,
   );
 }
 
 export function useGroupPurchasePulse(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "pulse",
     purchasePulseCache,
     momentId,
     getPurchasePulse,
     enabled,
+    generation,
   );
 }
 
 export function useGroupMoments(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "moments",
     momentsCache,
     momentId,
     getTripMomentsView,
     enabled,
+    generation,
   );
 }
 
 export function useGroupPurchaseMoments(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "moments",
     purchaseMomentsCache,
     momentId,
     getPurchaseMomentsView,
     enabled,
+    generation,
   );
 }
 
 export function useGroupLivingPulse(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "pulse",
     livingPulseCache,
     momentId,
     getLivingPulse,
     enabled,
+    generation,
   );
 }
 
 export function useGroupLivingMoments(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "moments",
     livingMomentsCache,
     momentId,
     getLivingMomentsView,
     enabled,
+    generation,
   );
 }
 
 export function useGroupMemory(momentId: string | null | undefined, enabled = true) {
+  const generation = useGroupSessionStore().generation;
   return useGroupTabCache(
     "memory",
     memoryCache,
     momentId,
     getActiveMemory,
     enabled,
+    generation,
   );
 }
 
 export function useGroupLife(enabled = true) {
+  const generation = useGroupSessionStore().generation;
   const cacheKey = "life";
   const mem = lifeCache.get(cacheKey);
   const disk = diskCacheLoad<GroupLifeResponse>(diskKey("life", "aggregate"), STALE_TTL_MS);
@@ -271,7 +290,7 @@ export function useGroupLife(enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     void load(false);
-  }, [enabled, load]);
+  }, [enabled, load, generation]);
 
   return { data, loading, refreshing, error, reload: () => void load(true) };
 }

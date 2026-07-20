@@ -81,10 +81,13 @@ export function SuggestedChipsPicker({
               type="button"
               disabled={disabled}
               onClick={() => onChange(opt.value)}
-              className="min-h-11 rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50"
+              className="min-h-9 rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
               style={{
                 background: selected ? colors.primaryContainer : colors.surfaceContainer,
                 color: selected ? colors.brandOnPrimary : colors.textPrimary,
+                ...(error && !selected
+                  ? { outline: `1px solid ${colors.error}`, outlineOffset: 1 }
+                  : {}),
               }}
               aria-pressed={selected}
             >
@@ -96,7 +99,7 @@ export function SuggestedChipsPicker({
           type="button"
           disabled={disabled}
           onClick={() => setShowAll(true)}
-          className="rounded-xl border px-3 py-2 text-sm font-semibold disabled:opacity-50"
+          className="min-h-9 rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
           style={{ borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)` }}
         >
           {viewAllLabel}

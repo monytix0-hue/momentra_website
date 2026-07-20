@@ -284,9 +284,9 @@ export function SharedLivingSetup({ momentId, onClose, onActivated }: Props) {
       onActivate={() => void handleActivate()}
       onAnalytics={onAnalytics}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {step === 1 ? (
-          <SetupSectionCard title="Home basics">
+          <SetupSectionCard>
             <SetupFieldRenderer
               control="cards"
               label="What kind of shared home is this?"
@@ -314,7 +314,7 @@ export function SharedLivingSetup({ momentId, onClose, onActivated }: Props) {
         ) : null}
 
         {step === 2 ? (
-          <SetupSectionCard title="Budget, responsibilities and preferences">
+          <SetupSectionCard>
             <SetupFieldRenderer
               control="money"
               label="About how much is the monthly household budget?"
@@ -388,7 +388,7 @@ export function SharedLivingSetup({ momentId, onClose, onActivated }: Props) {
 
         {step === 3 ? (
           <>
-            <SetupSectionCard title="Residents and roles">
+            <SetupSectionCard>
               <p className="text-sm opacity-70" style={{ color: colors.textSecondary }}>
                 You remain the household admin. Invite housemates now or later — the creator
                 stays on the home after activation.

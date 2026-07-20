@@ -28,6 +28,20 @@ export const API_ENDPOINTS = {
     life360: "api/v1/life360/home",
     memory: "api/v1/memory/home",
   },
+  circle: {
+    home: "api/v1/circle/home",
+    refresh: "api/v1/circle/refresh",
+    read: "api/v1/circle/read",
+    analytics: "api/v1/circle/analytics",
+    summary: "api/v1/circle/summary",
+  },
+  life360: {
+    home: "api/v1/life360/home",
+    refresh: "api/v1/life360/refresh",
+    read: "api/v1/life360/read",
+    analytics: "api/v1/life360/analytics",
+    summary: "api/v1/life360/summary",
+  },
   personal: {
     sessionBootstrap: "api/v1/personal/session/bootstrap",
     pulse: "api/v1/personal/pulse",

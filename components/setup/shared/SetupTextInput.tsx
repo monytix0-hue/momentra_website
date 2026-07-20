@@ -44,7 +44,9 @@ export function SetupTextInput({
   const autoId = useId();
   const fieldId = id ?? autoId;
   const style = {
-    borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)`,
+    borderColor: error
+      ? colors.error
+      : `color-mix(in srgb, ${colors.border} 40%, transparent)`,
     background: colors.background,
   } as const;
 

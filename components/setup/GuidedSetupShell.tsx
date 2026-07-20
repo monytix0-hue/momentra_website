@@ -268,8 +268,8 @@ export function GuidedSetupShell({
           <div
             className={
               singleScroll
-                ? "mx-auto grid w-full max-w-[1200px] gap-6 px-4 pb-32 pt-6 lg:grid-cols-[minmax(0,1fr)_260px]"
-                : "mx-auto grid w-full max-w-[1200px] gap-6 px-4 pb-32 pt-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]"
+                ? "mx-auto grid w-full max-w-[1200px] gap-4 px-4 pb-28 pt-4 lg:grid-cols-[minmax(0,1fr)_260px]"
+                : "mx-auto grid w-full max-w-[1200px] gap-4 px-4 pb-28 pt-4 lg:grid-cols-[180px_minmax(0,1fr)_240px]"
             }
           >
             {singleScroll ? null : (

@@ -46,7 +46,7 @@ export function SetupChoiceCards({
         ) : undefined
       }
     >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2">
         {options.map((opt) => {
           const selected = value === opt.value;
           return (
@@ -56,18 +56,20 @@ export function SetupChoiceCards({
               disabled={disabled}
               title={opt.description}
               onClick={() => onChange(opt.value)}
-              className="min-h-11 rounded-2xl border px-3 py-3 text-left transition-colors disabled:opacity-50"
+              className="min-h-10 rounded-xl border px-2.5 py-2 text-left transition-colors disabled:opacity-50"
               style={{
                 borderColor: selected
                   ? setupTheme.accentColor
-                  : `color-mix(in srgb, ${colors.border} 45%, transparent)`,
+                  : error
+                    ? colors.error
+                    : `color-mix(in srgb, ${colors.border} 45%, transparent)`,
                 background: selected ? setupTheme.selectedCard : colors.background,
               }}
               aria-pressed={selected}
             >
-              <span className="block text-sm font-semibold">{opt.label}</span>
+              <span className="block text-sm font-semibold leading-snug">{opt.label}</span>
               {opt.description ? (
-                <span className="mt-0.5 block text-[11px] leading-snug opacity-65">
+                <span className="mt-0.5 block text-[10px] leading-snug opacity-65 line-clamp-2">
                   {opt.description}
                 </span>
               ) : null}

@@ -96,6 +96,22 @@ function asInt(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function memberOptionValue(m: RunwayMemberDraft) {
+  return m.user_id || m.local_id;
+}
+
+function memberDisplayName(m: RunwayMemberDraft) {
+  const name = (m.name || "").trim();
+  if (!name || name === "Owner" || name === "Team owner") {
+    return m.role === "OWNER" ? "You" : m.email || "Member";
+  }
+  return name;
+}
+
+function memberPickerLabel(m: RunwayMemberDraft) {
+  return `${memberDisplayName(m)} · ${choiceLabel("runway_roles", m.role)}`;
+}
+
 function monthsChipValue(months: unknown, presets: string[]): string {
   if (months == null || months === "") return "";
   const s = String(months);
@@ -181,6 +197,34 @@ export function BusinessRunwaySetup({
     ],
   );
 
+  const anyRunwayApproval =
+    Boolean(answers.approval_required_for_funding_changes) ||
+    Boolean(answers.approval_required_for_cash_adjustments) ||
+    Boolean(answers.approval_required_for_large_expenses) ||
+    Boolean(answers.approval_required_for_threshold_changes);
+
+  const memberValues = useMemo(
+    () => new Set(members.map((m) => memberOptionValue(m)).filter(Boolean)),
+    [members],
+  );
+
+  useEffect(() => {
+    if (!anyRunwayApproval) return;
+    const ownerMember = members.find((m) => m.role === "OWNER");
+    const ownerValue = ownerMember ? memberOptionValue(ownerMember) : null;
+    if (!ownerValue) return;
+    const current = String(answers.approval_owner_id ?? "").trim();
+    if (!current || !memberValues.has(current)) {
+      updateAnswer("approval_owner_id", ownerValue);
+    }
+  }, [
+    anyRunwayApproval,
+    members,
+    memberValues,
+    answers.approval_owner_id,
+    updateAnswer,
+  ]);
+
   useEffect(() => {
     if (paintedRef.current) return;
     paintedRef.current = true;
@@ -232,10 +276,43 @@ export function BusinessRunwaySetup({
       if (!String(answers.runway_name ?? "").trim()) errs.runway_name = "Required";
       if (!answers.business_stage) errs.business_stage = "Required";
       if (!answers.operating_currency_code) errs.operating_currency_code = "Required";
-      if (asInt(answers.runway_goal_months) == null) errs.runway_goal_months = "Required";
+      if (asInt(answers.runway_goal_months) == null || (asInt(answers.runway_goal_months) ?? 0) <= 0) {
+        errs.runway_goal_months = "Required";
+      }
+      if (!String(answers.timezone ?? "").trim()) errs.timezone = "Required";
+    } else if (current === 2) {
+      if (answers.current_cash_minor == null || Number(answers.current_cash_minor) < 0) {
+        errs.current_cash_minor = "Enter available cash (0 or more)";
+      }
+      if (answers.monthly_burn_minor == null || Number(answers.monthly_burn_minor) < 0) {
+        errs.monthly_burn_minor = "Enter monthly spending (0 or more)";
+      }
+      if (!answers.revenue_status) errs.revenue_status = "Required";
+      if (
+        answers.runway_alert_threshold_months == null ||
+        Number(answers.runway_alert_threshold_months) <= 0
+      ) {
+        errs.runway_alert_threshold_months = "Required";
+      }
+    } else if (current === 3) {
+      for (const m of members) {
+        if (m.role === "OWNER") continue;
+        if (!String(m.name ?? "").trim()) {
+          errs[`member_name_${m.local_id}`] = "Name required";
+        }
+      }
     }
     setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
+    if (Object.keys(errs).length > 0) {
+      window.requestAnimationFrame(() => {
+        document.querySelector('[role="alert"]')?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+      return false;
+    }
+    return true;
   }
 
   const go = async (next: number) => {
@@ -534,6 +611,7 @@ export function BusinessRunwaySetup({
                   label="Timezone"
                   value={String(answers.timezone ?? "")}
                   options={SETUP_TIMEZONE_FALLBACK}
+                  error={fieldErrors.timezone}
                   onChange={(v) => updateAnswer("timezone", v)}
                 />
                 <SetupToggleReveal
@@ -565,6 +643,7 @@ export function BusinessRunwaySetup({
                       : Number(answers.current_cash_minor)
                   }
                   currencyCode={currency}
+                  error={fieldErrors.current_cash_minor}
                   onChange={(v) => updateAnswer("current_cash_minor", v)}
                 />
                 <SetupMoneyField
@@ -576,6 +655,7 @@ export function BusinessRunwaySetup({
                       : Number(answers.monthly_burn_minor)
                   }
                   currencyCode={currency}
+                  error={fieldErrors.monthly_burn_minor}
                   onChange={(v) => updateAnswer("monthly_burn_minor", v)}
                 />
               </SetupSectionCard>
@@ -585,6 +665,7 @@ export function BusinessRunwaySetup({
                   label="Current revenue stage"
                   value={revenueStatus}
                   options={setupChoices("revenue_status").filter((c) => c.value !== "CUSTOM")}
+                  error={fieldErrors.revenue_status}
                   onChange={(v) => updateAnswer("revenue_status", v)}
                 />
                 {!hideRevenueAmounts ? (
@@ -624,6 +705,7 @@ export function BusinessRunwaySetup({
                   value={alertChip}
                   options={setupChoices("alert_threshold_presets")}
                   explainer={setupExplainer("runway_alert_threshold_months")}
+                  error={fieldErrors.runway_alert_threshold_months}
                   onChange={(v) => {
                     if (v === "CUSTOM") {
                       if (alertChip !== "CUSTOM") {
@@ -638,6 +720,7 @@ export function BusinessRunwaySetup({
                   <SetupTextInput
                     label="Custom alert threshold (months)"
                     inputMode="numeric"
+                    error={fieldErrors.runway_alert_threshold_months}
                     value={
                       answers.runway_alert_threshold_months == null
                         ? ""
@@ -716,6 +799,17 @@ export function BusinessRunwaySetup({
                           <SetupInviteButton
                             memberName={m.name}
                             method={m.invite_method}
+                            momentId={momentId}
+                            localId={m.local_id}
+                            memberEmail={m.email}
+                            memberPhone={m.phone}
+                            onBeforeInvite={flushPendingSave}
+                            onEmailRequired={() =>
+                              setFieldErrors((prev) => ({
+                                ...prev,
+                                [`member_email_${m.local_id}`]: "Email required to invite",
+                              }))
+                            }
                             onSelect={(method) =>
                               patchMember(m.local_id, { invite_method: method })
                             }
@@ -738,13 +832,22 @@ export function BusinessRunwaySetup({
                         <SetupTextInput
                           label="Name"
                           value={m.name}
+                          error={fieldErrors[`member_name_${m.local_id}`]}
                           onChange={(v) => patchMember(m.local_id, { name: v })}
                         />
                         <SetupTextInput
                           label="Email"
                           optionalLabel="Optional"
                           value={m.email ?? ""}
-                          onChange={(v) => patchMember(m.local_id, { email: v })}
+                          error={fieldErrors[`member_email_${m.local_id}`]}
+                          onChange={(v) => {
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              delete next[`member_email_${m.local_id}`];
+                              return next;
+                            });
+                            patchMember(m.local_id, { email: v });
+                          }}
                         />
                         <SetupChoiceChips
                           label="Role"
@@ -759,6 +862,14 @@ export function BusinessRunwaySetup({
                   </div>
                 );
               })}
+              <SetupSectionCard title="Visibility">
+                <SetupChoiceChips
+                  label="Visibility"
+                  value={String(answers.visibility ?? "TEAM")}
+                  options={setupChoices("visibility_leadership")}
+                  onChange={(v) => updateAnswer("visibility", v)}
+                />
+              </SetupSectionCard>
             </div>
           ) : null}
 
@@ -775,6 +886,52 @@ export function BusinessRunwaySetup({
                 </ul>
               ) : null}
               <SetupReviewSummary blocks={reviewBlocks} warnings={warnings} />
+              <SetupSectionCard title="Governance">
+                <SetupToggleReveal
+                  label="Approval for funding changes"
+                  checked={Boolean(answers.approval_required_for_funding_changes)}
+                  onChange={(v) => updateAnswer("approval_required_for_funding_changes", v)}
+                />
+                <SetupToggleReveal
+                  label="Approval for cash adjustments"
+                  checked={Boolean(answers.approval_required_for_cash_adjustments)}
+                  onChange={(v) => updateAnswer("approval_required_for_cash_adjustments", v)}
+                />
+                <SetupToggleReveal
+                  label="Approval for large expenses"
+                  checked={Boolean(answers.approval_required_for_large_expenses)}
+                  onChange={(v) => updateAnswer("approval_required_for_large_expenses", v)}
+                >
+                  <SetupMoneyField
+                    label="Large expense threshold"
+                    amountMinor={
+                      answers.large_expense_threshold_minor == null
+                        ? null
+                        : Number(answers.large_expense_threshold_minor)
+                    }
+                    currencyCode={currency}
+                    onChange={(v) => updateAnswer("large_expense_threshold_minor", v)}
+                  />
+                </SetupToggleReveal>
+                <SetupToggleReveal
+                  label="Approval for threshold changes"
+                  checked={Boolean(answers.approval_required_for_threshold_changes)}
+                  onChange={(v) => updateAnswer("approval_required_for_threshold_changes", v)}
+                />
+                {anyRunwayApproval ? (
+                  <SetupSearchPicker
+                    label="Approval owner"
+                    value={String(answers.approval_owner_id ?? "")}
+                    options={members.map((m) => ({
+                      value: memberOptionValue(m),
+                      label: memberPickerLabel(m),
+                    }))}
+                    appendValueToLabel={false}
+                    showOptionValue={false}
+                    onChange={(v) => updateAnswer("approval_owner_id", v || null)}
+                  />
+                ) : null}
+              </SetupSectionCard>
               <div className="space-y-3">
                 <label className="flex items-center gap-2 text-sm">
                   <input

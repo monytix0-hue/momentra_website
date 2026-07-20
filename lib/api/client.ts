@@ -449,8 +449,121 @@ export async function archiveBusinessMoment(momentId: string): Promise<Record<st
   );
 }
 
-export async function getBusinessSessionBootstrap(): Promise<import("@/lib/api/business").BusinessSessionBootstrapResponse> {
-  return requestWithRetry("api/v1/business/session/bootstrap", { method: "GET" });
+export async function getBusinessSessionBootstrap(opts?: {
+  workspaceId?: string | null;
+}): Promise<import("@/lib/api/business").BusinessSessionBootstrapResponse> {
+  const qs =
+    opts?.workspaceId != null && opts.workspaceId !== ""
+      ? `?workspace_id=${encodeURIComponent(opts.workspaceId)}`
+      : "";
+  return requestWithRetry(`api/v1/business/session/bootstrap${qs}`, { method: "GET" });
+}
+
+export async function getBusinessSession(opts?: {
+  workspaceId?: string | null;
+}): Promise<{
+  selected_workspace?: import("@/lib/api/business").BusinessWorkspaceSummary | null;
+  workspaces?: import("@/lib/api/business").BusinessWorkspaceSummary[];
+  module_tiles?: import("@/lib/api/business").BusinessModuleTile[];
+}> {
+  const qs =
+    opts?.workspaceId != null && opts.workspaceId !== ""
+      ? `?workspace_id=${encodeURIComponent(opts.workspaceId)}`
+      : "";
+  return requestWithRetry(`api/v1/business/session${qs}`, { method: "GET" });
+}
+
+export async function getBusinessWorkspaceOverview(
+  workspaceId: string,
+): Promise<{
+  workspace_id: string;
+  dashboard?: import("@/lib/api/business").BusinessDashboardSummary;
+  recent_moments?: import("@/lib/api/business").BusinessMomentResponse[];
+}> {
+  return requestWithRetry(
+    `api/v1/business/workspaces/${encodeURIComponent(workspaceId)}/overview`,
+    { method: "GET" },
+  );
+}
+
+export async function getBusinessWorkspaceMoments(
+  workspaceId: string,
+): Promise<{
+  workspace_id: string;
+  moments_home?: import("@/lib/api/business").BusinessMomentsHomeResponse;
+  moments?: import("@/lib/api/business").BusinessMomentResponse[];
+  pulse?: unknown;
+}> {
+  return requestWithRetry(
+    `api/v1/business/workspaces/${encodeURIComponent(workspaceId)}/moments`,
+    { method: "GET" },
+  );
+}
+
+export async function createBusinessWorkspace(body: {
+  name: string;
+  currency_code?: string;
+  timezone?: string;
+  industry?: string | null;
+  logo_url?: string | null;
+}): Promise<import("@/lib/api/business").BusinessWorkspaceSummary> {
+  return requestWithRetry("api/v1/business/workspaces", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateBusinessWorkspace(
+  workspaceId: string,
+  body: {
+    name?: string | null;
+    logo_url?: string | null;
+    industry?: string | null;
+    currency_code?: string | null;
+    timezone?: string | null;
+    status?: string | null;
+  },
+): Promise<import("@/lib/api/business").BusinessWorkspaceSummary> {
+  return requestWithRetry(`api/v1/business/workspaces/${workspaceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function selectBusinessWorkspace(
+  workspaceId: string,
+): Promise<import("@/lib/api/business").BusinessWorkspaceSummary> {
+  return requestWithRetry("api/v1/business/workspaces/select", {
+    method: "POST",
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+}
+
+export async function listBusinessWorkspaceMembers(
+  workspaceId: string,
+): Promise<{ members: Array<{ member_id: string; user_id: string; role: string; status: string }> }> {
+  return requestWithRetry(`api/v1/business/workspaces/${workspaceId}/members`, {
+    method: "GET",
+  });
+}
+
+export async function inviteBusinessWorkspaceMember(
+  workspaceId: string,
+  body: { email: string; role?: string },
+): Promise<Record<string, unknown>> {
+  return requestWithRetry(`api/v1/business/workspaces/${workspaceId}/invites`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function acceptBusinessWorkspaceInvite(
+  token: string,
+): Promise<import("@/lib/api/business").BusinessWorkspaceSummary> {
+  return requestWithRetry("api/v1/business/workspaces/invites/accept", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
 }
 
 export async function getBusinessCreateOptions(): Promise<import("@/lib/api/business").BusinessCreateOptionsResponse> {
@@ -463,6 +576,7 @@ export async function createBusinessMoment(body: {
   title?: string | null;
   template_id?: string | null;
   template_version?: string | number | null;
+  workspace_id?: string | null;
 }): Promise<import("@/lib/api/business").BusinessMomentCreateResponse> {
   return requestWithRetry("api/v1/business/moments", {
     method: "POST",
@@ -507,6 +621,19 @@ export async function activateBusinessSetup(
 ): Promise<import("@/lib/api/business").BusinessActivateResponse> {
   return requestWithRetry(`api/v1/business/moments/${momentId}/setup/activate`, {
     method: "POST",
+  });
+}
+
+export async function createBusinessSetupInviteDraft(
+  momentId: string,
+  body: { local_id: string; channel?: string },
+): Promise<import("@/lib/api/business").BusinessSetupInviteDraft> {
+  return requestWithRetry(`api/v1/business/moments/${momentId}/setup/invites/draft`, {
+    method: "POST",
+    body: JSON.stringify({
+      local_id: body.local_id,
+      channel: body.channel ?? "EMAIL",
+    }),
   });
 }
 
@@ -587,6 +714,38 @@ export type PersonalSessionBootstrapResponse = {
   pulse: PersonalPulseResponse;
   moments_home: PersonalMomentsHomeResponse;
 };
+
+export type PersonalTypeHint = {
+  moment_type_code: string;
+  linked_moment_id?: string | null;
+  linked_moment_status?: string | null;
+  has_draft?: boolean;
+  is_active?: boolean;
+};
+
+export type PersonalSessionResponse = {
+  is_empty: boolean;
+  active_moment_count: number;
+  has_draft?: boolean;
+  type_hints?: PersonalTypeHint[];
+};
+
+export type PersonalInventoryResponse = {
+  pulse: PersonalPulseResponse;
+  moments_home: PersonalMomentsHomeResponse;
+};
+
+export async function getPersonalSession(): Promise<PersonalSessionResponse> {
+  return requestWithRetry<PersonalSessionResponse>(`api/v1/personal/session`, {
+    method: "GET",
+  });
+}
+
+export async function getPersonalInventory(): Promise<PersonalInventoryResponse> {
+  return requestWithRetry<PersonalInventoryResponse>(`api/v1/personal/inventory`, {
+    method: "GET",
+  });
+}
 
 export async function getPersonalSessionBootstrap(
   options?: { momentTypeCode?: string; forceRefresh?: boolean },

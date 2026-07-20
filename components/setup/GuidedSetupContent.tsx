@@ -17,12 +17,12 @@ export function GuidedSetupContent({ activeStep, tip, children }: Props) {
   return (
     <div className="min-w-0" data-guided-setup-content>
       {activeStep ? (
-        <div className="mb-6 space-y-2">
-          <h3 className="text-xl font-semibold" id="guided-setup-step-title">
+        <div className="mb-4 space-y-1.5">
+          <h3 className="text-lg font-semibold" id="guided-setup-step-title">
             {activeStep.title}
           </h3>
           {activeStep.description ? (
-            <p className="text-sm leading-relaxed opacity-75" style={{ color: colors.textSecondary }}>
+            <p className="text-sm leading-snug opacity-75" style={{ color: colors.textSecondary }}>
               {activeStep.description}
             </p>
           ) : null}

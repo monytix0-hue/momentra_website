@@ -7,11 +7,13 @@ import {
   deleteTemplateActivity,
   getMasterExpenseOptions,
   getPersonalCreateOptions,
+  getPersonalInventory,
   getPersonalLife,
   getPersonalMemory,
   getPersonalMomentsHome,
   getPersonalPulse,
   getPersonalQuickAddOptions,
+  getPersonalSession,
   getTemplateActivity,
   getTemplateActivityDetail,
   getTemplateLife,
@@ -120,6 +122,8 @@ export const PersonalRepository = {
     parsePersonalMemoryResponse(await getPersonalMemory(options)),
   getLife: getPersonalLife,
   getCreateOptions: getPersonalCreateOptions,
+  getSession: getPersonalSession,
+  getInventory: getPersonalInventory,
   getQuickAddOptions: getPersonalQuickAddOptions,
 
   getTemplateMoments: async (momentTypeCode: PersonalMomentTypeCode) =>

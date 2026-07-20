@@ -90,13 +90,6 @@ export default function BookBridge() {
               >
                 {book.exploreCta.label}
               </CTAButton>
-              <CTAButton
-                variant="secondary"
-                href={book.experienceCta.href}
-                event={book.experienceCta.event}
-              >
-                {book.experienceCta.label}
-              </CTAButton>
             </motion.div>
           </motion.div>
         </div>

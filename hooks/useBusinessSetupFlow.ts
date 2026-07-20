@@ -272,11 +272,40 @@ export function useBusinessSetupFlow(
       setSubmitting(false);
       return true;
     } catch (err) {
+      // First activate can race past the client timeout after the server already
+      // committed ACTIVE. Retry once — the ACTIVE fast path returns quickly.
+      const timedOut =
+        err instanceof ApiError &&
+        (err.status === 408 || /timed out/i.test(err.message));
+      if (timedOut && momentId) {
+        try {
+          await BusinessSetupRepository.activate(momentId);
+          markLocalActive();
+          setSubmitting(false);
+          return true;
+        } catch (retryErr) {
+          // Fall through: check status via setup GET
+          try {
+            const state = await BusinessSetupRepository.getSetupState(momentId);
+            if (isActiveStatus(state.status)) {
+              applySetup(state);
+              markLocalActive();
+              setSubmitting(false);
+              return true;
+            }
+          } catch {
+            /* ignore */
+          }
+          setError(retryErr instanceof ApiError ? retryErr.message : "Failed to activate");
+          setSubmitting(false);
+          return false;
+        }
+      }
       setError(err instanceof ApiError ? err.message : "Failed to activate");
       setSubmitting(false);
       return false;
     }
-  }, [momentId, answers, markLocalActive]);
+  }, [momentId, answers, markLocalActive, applySetup]);
 
   return {
     setup,

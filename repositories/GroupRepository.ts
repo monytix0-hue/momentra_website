@@ -9,6 +9,8 @@ import {
   getActiveMemory,
   getActiveMoments,
   getActivePulse,
+  getGroupInventory,
+  getGroupSession,
   getInviteDraft,
   refreshInviteDraft,
   getSettlementPreview,
@@ -17,10 +19,13 @@ import {
   markSettlementSettled,
 } from "@/lib/api/group";
 import type { GroupMomentUpdateRequest } from "@/lib/api/client";
+import { dedupeFetch } from "@/lib/cache/cacheStore";
 import { fetchGroupSessionBootstrapDeduped } from "@/hooks/useGroupTabCache";
 
 export const GroupRepository = {
   getSessionBootstrap: fetchGroupSessionBootstrapDeduped,
+  getSession: () => dedupeFetch("group:session", () => getGroupSession()),
+  getInventory: () => dedupeFetch("group:inventory", () => getGroupInventory()),
   getSetupProfiles,
   getActivePulse,
   getActiveMoments,

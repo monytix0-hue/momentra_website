@@ -159,9 +159,35 @@ export function TeamOperationsSetup({
       if (!answers.team_size) errs.team_size = "Required";
       if (!answers.work_style) errs.work_style = "Required";
       if (!answers.operating_currency_code) errs.operating_currency_code = "Required";
+    } else if (current === 2) {
+      if (!String(answers.visibility ?? "").trim()) errs.visibility = "Required";
+      if (!answers.coordination_style) errs.coordination_style = "Required";
+      if (!answers.review_cycle) errs.review_cycle = "Required";
+      if (
+        answers.monthly_team_budget_minor != null &&
+        Number(answers.monthly_team_budget_minor) < 0
+      ) {
+        errs.monthly_team_budget_minor = "Budget cannot be negative";
+      }
+    } else if (current === 3) {
+      for (const m of members) {
+        if (m.role === "OWNER") continue;
+        if (!String(m.name ?? "").trim()) {
+          errs[`member_name_${m.local_id}`] = "Name required";
+        }
+      }
     }
     setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
+    if (Object.keys(errs).length > 0) {
+      window.requestAnimationFrame(() => {
+        document.querySelector('[role="alert"]')?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+      return false;
+    }
+    return true;
   }
 
   const go = async (next: number) => {
@@ -439,6 +465,7 @@ export function TeamOperationsSetup({
                   label="Coordination style"
                   value={String(answers.coordination_style ?? "SHARED_OWNERSHIP")}
                   options={setupChoices("coordination_style")}
+                  error={fieldErrors.coordination_style}
                   onChange={(v) => updateAnswer("coordination_style", v)}
                 />
                 <SetupChoiceChips
@@ -446,6 +473,7 @@ export function TeamOperationsSetup({
                   value={String(answers.review_cycle ?? "MONTHLY")}
                   options={setupChoices("review_cycle").filter((c) => c.value !== "CUSTOM")}
                   explainer={setupExplainer("review_cycle")}
+                  error={fieldErrors.review_cycle}
                   onChange={(v) => updateAnswer("review_cycle", v)}
                 />
                 <SetupChoiceChips
@@ -485,6 +513,7 @@ export function TeamOperationsSetup({
                   label="Visibility"
                   value={String(answers.visibility ?? "TEAM")}
                   options={setupChoices("visibility_team")}
+                  error={fieldErrors.visibility}
                   onChange={(v) => updateAnswer("visibility", v)}
                 />
                 <SetupChoiceChips
@@ -538,6 +567,17 @@ export function TeamOperationsSetup({
                           <SetupInviteButton
                             memberName={m.name}
                             method={m.invite_method}
+                            momentId={momentId}
+                            localId={m.local_id}
+                            memberEmail={m.email}
+                            memberPhone={m.phone}
+                            onBeforeInvite={flushPendingSave}
+                            onEmailRequired={() =>
+                              setFieldErrors((prev) => ({
+                                ...prev,
+                                [`member_email_${m.local_id}`]: "Email required to invite",
+                              }))
+                            }
                             onSelect={(method) =>
                               patchMember(m.local_id, { invite_method: method })
                             }
@@ -560,13 +600,22 @@ export function TeamOperationsSetup({
                         <SetupTextInput
                           label="Name"
                           value={m.name}
+                          error={fieldErrors[`member_name_${m.local_id}`]}
                           onChange={(v) => patchMember(m.local_id, { name: v })}
                         />
                         <SetupTextInput
                           label="Email"
                           optionalLabel="Optional"
                           value={m.email ?? ""}
-                          onChange={(v) => patchMember(m.local_id, { email: v })}
+                          error={fieldErrors[`member_email_${m.local_id}`]}
+                          onChange={(v) => {
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              delete next[`member_email_${m.local_id}`];
+                              return next;
+                            });
+                            patchMember(m.local_id, { email: v });
+                          }}
                         />
                         <SetupChoiceChips
                           label="Role"

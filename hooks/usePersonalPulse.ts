@@ -22,7 +22,7 @@ import {
   SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
 } from "@/lib/cache/snapshotRebuilding";
 import { persistPulse } from "@/stores/personalSessionStore";
-import { ensurePersonalSessionBootstrap } from "@/stores/personalSessionStore";
+import { ensurePersonalSessionBootstrap, usePersonalSessionStore } from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
 
@@ -53,6 +53,7 @@ export function getPersonalPulseCache(
 export function usePersonalPulse(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
+  const generation = usePersonalSessionStore().generation;
   const cached = cache.get(momentTypeCode);
   const [pulse, setPulse] = useState<PersonalPulseResponse | null>(cached?.data ?? null);
   const [loading, setLoading] = useState(!cached);
@@ -170,7 +171,7 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
     // Prefer skipping cold bootstrap when cache was just invalidated (no entry):
     // callers that need force use reload/refreshAfterSetup.
     void load(false);
-  }, [momentTypeCode, load, enabled]);
+  }, [momentTypeCode, load, enabled, generation]);
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalPulseCache(momentTypeCode);

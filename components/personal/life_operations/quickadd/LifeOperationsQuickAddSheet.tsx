@@ -38,6 +38,7 @@ import {
 } from "@/lib/telemetry/lifeOpsOptimisticPatch";
 import { createClientRequestId } from "@/lib/quick_add/draftStore";
 import { endQuickAddSaveSpan, startQuickAddSaveSpan } from "@/lib/telemetry/performanceTelemetry";
+import { resolveExpenseCategoryIcon } from "@/lib/personal/life_operations/expenseCategoryIcons";
 import { LifeOpsAddAccountSheet } from "@/components/personal/life_operations/quickadd/LifeOpsAddAccountSheet";
 import { MoneyInput } from "@/components/shared/MoneyInput";
 import { resolveExpenseCategories, resolveOptionsRef } from "@/lib/quick_add/resolveOptions";
@@ -139,20 +140,25 @@ function ReferenceCategoryChips({
       <div className="flex flex-wrap gap-2">
         {items.map((item) => {
           const selected = value === item.code;
+          const Icon = resolveExpenseCategoryIcon(
+            item.icon,
+            item.parent_code ?? item.code,
+            item.parent_code ? item.code : undefined,
+          );
+          const accent = item.color || colors.brandPrimary;
           return (
             <button
               key={item.code}
               type="button"
               onClick={() => onChange(item.code)}
-              className="rounded-lg px-3 py-2 text-xs font-medium transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-transform duration-200 hover:scale-[1.02] active:scale-95"
               style={{
-                border: `1px solid ${selected ? item.color || colors.brandPrimary : colors.border}`,
-                background: selected
-                  ? `${item.color || colors.brandPrimary}22`
-                  : "transparent",
-                color: selected ? item.color || colors.brandPrimary : colors.textSecondary,
+                border: `1px solid ${selected ? accent : colors.border}`,
+                background: selected ? `${accent}22` : "transparent",
+                color: selected ? accent : colors.textSecondary,
               }}
             >
+              <Icon size={14} aria-hidden />
               {item.label}
             </button>
           );

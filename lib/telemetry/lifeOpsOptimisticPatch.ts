@@ -58,10 +58,19 @@ export function buildLifeOpsOptimisticPatch(
     const metrics = { ...lo.metrics };
     const capacity = { ...metrics.capacity };
     const used = capacity.used_minor + form.amountMinor;
-    const budget = capacity.budget_minor || 1;
     capacity.used_minor = used;
-    capacity.remaining_minor = Math.max(0, budget - used);
-    capacity.utilization_percent = Math.min(100, Math.round((used / budget) * 100));
+    const hasBudget = capacity.has_budget ?? capacity.budget_minor > 0;
+    if (hasBudget && capacity.budget_minor > 0) {
+      capacity.remaining_minor = Math.max(0, capacity.budget_minor - used);
+      capacity.utilization_percent = Math.min(
+        100,
+        Math.round((used / capacity.budget_minor) * 100),
+      );
+    } else {
+      capacity.has_budget = false;
+      capacity.remaining_minor = null;
+      capacity.utilization_percent = null;
+    }
     metrics.capacity = capacity;
 
     const segments = [...(metrics.financial_segments ?? [])];

@@ -28,7 +28,8 @@ import activity from "@/lib/personal/fixtures/dto/activity_list_sparse.json";
 describe("Personal DTO contracts (sparse projections)", () => {
   it("parses LO Pulse sparse without invented signals", () => {
     const d = loPulse as PersonalLifeOpsPulseMetrics;
-    expect(d.ops_index).toBe(0);
+    expect(d.ops_index).toBe(null);
+    expect(d.data_sufficient).toBe(false);
     expect(d.signals).toHaveLength(0);
     expect(d.trends_30d.recovery).toHaveLength(0);
   });

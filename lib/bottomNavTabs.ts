@@ -1,3 +1,7 @@
+import type { LucideIcon } from "lucide-react";
+import { Briefcase, Network, Users, Wallet } from "lucide-react";
+import type { AppContext } from "./appContext";
+
 export type BottomNavTabId = "pulse" | "moments" | "add" | "life" | "memory";
 
 export type BottomNavTabDef = {
@@ -30,7 +34,7 @@ export const BUSINESS_BOTTOM_NAV: BottomNavTabDef[] = [
   { id: "memory", label: "Memory", iconName: "brain" },
 ];
 
-export function contextDisplayName(context: import("./appContext").AppContext): string {
+export function contextDisplayName(context: AppContext): string {
   switch (context) {
     case "personal":
       return "My Money";
@@ -40,5 +44,19 @@ export function contextDisplayName(context: import("./appContext").AppContext): 
       return "Business";
     case "circle":
       return "Circle";
+  }
+}
+
+/** Top context switcher icons — keep in sync with Android / iOS mappings. */
+export function contextIcon(context: AppContext): LucideIcon {
+  switch (context) {
+    case "personal":
+      return Wallet;
+    case "group":
+      return Users;
+    case "business":
+      return Briefcase;
+    case "circle":
+      return Network;
   }
 }

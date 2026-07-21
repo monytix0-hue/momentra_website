@@ -150,11 +150,14 @@ export interface PulseDashboardRecentItem {
   occurred_at: string;
   relative_time: string;
   icon?: string | null;
+  color?: string | null;
   impact_label?: string | null;
   impact_direction?: string | null;
   edit_event_type?: string;
   can_edit?: boolean;
   can_delete?: boolean;
+  category_code?: string | null;
+  subcategory_code?: string | null;
 }
 
 export type TemplateActivityListResponse = {
@@ -183,8 +186,11 @@ export interface PersonalLifeOpsActivityItem {
   amount_label?: string | null;
   account_label?: string | null;
   icon?: string | null;
+  color?: string | null;
   impact_label?: string | null;
   impact_direction?: string | null;
+  category_code?: string | null;
+  subcategory_code?: string | null;
 }
 
 export interface PersonalLifeOpsActivityResponse {
@@ -217,18 +223,27 @@ export interface PulseDashboardCard {
 }
 
 export interface PersonalLifeOpsPulseMetrics {
-  ops_index: number;
+  data_sufficient?: boolean;
+  ops_index: number | null;
   ops_index_delta_month: number | null;
   status_band: string;
   axis_scores: { pressure: number; recovery: number; discipline: number; attention: number };
   capacity: {
     budget_minor: number;
     used_minor: number;
-    remaining_minor: number;
-    utilization_percent: number;
+    remaining_minor: number | null;
+    utilization_percent: number | null;
+    has_budget?: boolean;
   };
   signals: Array<{ signal_id: string; trend: string }>;
-  financial_segments: Array<{ category_id: string; category_name?: string | null; amount_minor: number; share_percent: number }>;
+  financial_segments: Array<{
+    category_id: string;
+    category_name?: string | null;
+    amount_minor: number;
+    share_percent: number;
+    icon?: string | null;
+    color?: string | null;
+  }>;
   trends_30d: {
     recovery: Array<{ date: string; value: number }>;
     pressure: Array<{ date: string; value: number }>;

@@ -10,6 +10,7 @@ import {
   getPersonalQuickAddOptions,
   patchPersonalQuickAddEvent,
 } from "@/lib/api/client";
+import { minorToDisplayInput, parseUserInputToMinor } from "@/lib/reference_data/money";
 
 type LifeOpsEditActivitySheetProps = {
   eventId: string;
@@ -30,6 +31,18 @@ function isMoneyEditType(eventType: string): boolean {
   return MONEY_EDIT_TYPES.has(eventType.toUpperCase());
 }
 
+/** Prefer major `amount`; never treat raw `amount_minor` as the text-field value. */
+function expenseAmountDisplay(expense: Record<string, unknown>): string {
+  if (expense.amount != null && String(expense.amount).trim() !== "") {
+    return String(expense.amount);
+  }
+  const minor = Number(expense.amount_minor);
+  if (Number.isFinite(minor) && minor > 0) {
+    return minorToDisplayInput(minor, 2);
+  }
+  return "";
+}
+
 export function LifeOpsEditActivitySheet({
   eventId,
   eventType,
@@ -44,6 +57,7 @@ export function LifeOpsEditActivitySheet({
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [amount, setAmount] = useState("");
+  const [currencyCode, setCurrencyCode] = useState("INR");
   const [accountId, setAccountId] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [feeling, setFeeling] = useState("BALANCED");
@@ -66,7 +80,8 @@ export function LifeOpsEditActivitySheet({
         options.accounts?.find((a) => a.is_primary)?.account_id ?? options.accounts?.[0]?.account_id ?? "";
       if (data.expense) {
         const expense = data.expense as Record<string, unknown>;
-        setAmount(String(expense.amount ?? expense.amount_minor ?? ""));
+        setAmount(expenseAmountDisplay(expense));
+        setCurrencyCode(String(expense.currency_code ?? "INR"));
         setAccountId(String(expense.account_id ?? primary));
         setCategoryName(String(expense.category_name ?? ""));
       } else {
@@ -110,9 +125,11 @@ export function LifeOpsEditActivitySheet({
       event_summary: note.trim() || null,
     };
     if (type === "EXPENSE" || (isMoneyEditType(type) && detail.expense)) {
+      const amountMinor = parseUserInputToMinor(amount, { minor_unit: 2 });
       body.expense = {
         transaction_type: detail.expense?.transaction_type ?? type,
-        amount,
+        amount_minor: amountMinor,
+        currency_code: currencyCode,
         account_id: accountId,
         category_name: categoryName || undefined,
         description: note.trim() || undefined,

@@ -21,8 +21,9 @@ import {
 import { PieChart } from "react-gifted-charts";
 
 type AxisHealthDonutProps = {
-  opsIndex: number;
+  opsIndex: number | null;
   axisScores: AxisScores;
+  dataSufficient?: boolean;
 };
 
 function sliceOpacity(selectedId: AxisId | null, sliceId: AxisId): number {
@@ -30,7 +31,11 @@ function sliceOpacity(selectedId: AxisId | null, sliceId: AxisId): number {
   return selectedId === sliceId ? 1 : 0.45;
 }
 
-export function AxisHealthDonut({ opsIndex, axisScores }: AxisHealthDonutProps) {
+export function AxisHealthDonut({
+  opsIndex,
+  axisScores,
+  dataSufficient = true,
+}: AxisHealthDonutProps) {
   const { colors } = useThemeTokens();
   const slices = useMemo(() => axisDonutSlices(axisScores), [axisScores]);
   const [selectedId, setSelectedId] = useState<AxisId | null>(null);
@@ -41,7 +46,7 @@ export function AxisHealthDonut({ opsIndex, axisScores }: AxisHealthDonutProps) 
   const pieData = slices.map((slice) => ({
     value: slice.value,
     color: axisColorForId(slice.id, colors),
-    opacity: sliceOpacity(selectedId, slice.id),
+    opacity: dataSufficient ? sliceOpacity(selectedId, slice.id) : 0.45,
     onPress: () => setSelectedId((prev) => (prev === slice.id ? null : slice.id)),
   }));
 
@@ -61,7 +66,7 @@ export function AxisHealthDonut({ opsIndex, axisScores }: AxisHealthDonutProps) 
           {...HERO_PIE_PROPS}
         />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          {selectedSlice ? (
+          {selectedSlice && dataSufficient ? (
             <>
               <span style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.7, letterSpacing: "0.1em", fontSize: 10 }}>
                 {selectedSlice.label}
@@ -79,7 +84,9 @@ export function AxisHealthDonut({ opsIndex, axisScores }: AxisHealthDonutProps) 
             </>
           ) : (
             <>
-              <span style={{ fontSize: 40, fontWeight: 900, color: colors.textPrimary, lineHeight: 1 }}>{opsIndex}</span>
+              <span style={{ fontSize: 40, fontWeight: 900, color: colors.textPrimary, lineHeight: 1 }}>
+                {dataSufficient && opsIndex != null ? opsIndex : lifeOpsPulseCopy.dash}
+              </span>
               <span style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.6, letterSpacing: "0.12em", fontSize: 10 }}>
                 {lifeOpsPulseCopy.opsIndexLabel}
               </span>
@@ -90,6 +97,7 @@ export function AxisHealthDonut({ opsIndex, axisScores }: AxisHealthDonutProps) 
       <AxisLegend
         slices={slices}
         selectedId={selectedId}
+        dataSufficient={dataSufficient}
         onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
         colorForId={(id) => axisColorForId(id, colors)}
       />
@@ -100,11 +108,13 @@ export function AxisHealthDonut({ opsIndex, axisScores }: AxisHealthDonutProps) 
 function AxisLegend({
   slices,
   selectedId,
+  dataSufficient,
   onSelect,
   colorForId,
 }: {
   slices: AxisDonutSlice[];
   selectedId: AxisId | null;
+  dataSufficient: boolean;
   onSelect: (id: AxisId) => void;
   colorForId: (id: AxisId) => string;
 }) {
@@ -126,7 +136,9 @@ function AxisLegend({
           >
             {slice.label}
             <br />
-            <span style={{ color: colorForId(slice.id) }}>{slice.score}</span>
+            <span style={{ color: colorForId(slice.id) }}>
+              {dataSufficient ? slice.score : lifeOpsPulseCopy.dash}
+            </span>
           </button>
         );
       })}

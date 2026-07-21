@@ -5,6 +5,10 @@ import { personalGlassCardStyle, personalTypography } from "@/components/persona
 import type { PulseDashboardRecentItem } from "@/lib/api/personal";
 import { lifeOpsPulseCopy } from "@/lib/personal/life_operations/pulse/lifeOpsPulseCopy";
 import { resolveActivityIcon } from "@/lib/personal/life_operations/pulse/pulseIcons";
+import {
+  resolveExpenseCategoryColor,
+  resolveImpactIcon,
+} from "@/lib/personal/life_operations/expenseCategoryIcons";
 import { Pencil } from "lucide-react";
 
 type RecentActivityListProps = {
@@ -57,8 +61,17 @@ export function RecentActivityList({ items, emptyMessage, onViewAll, onEditActiv
       {visible.length > 0 ? (
         <div className="space-y-0">
           {visible.map((item, index) => {
-            const Icon = resolveActivityIcon(item.activity_type, item.icon);
+            const Icon = resolveActivityIcon(
+              item.activity_type,
+              item.icon,
+              item.category_code,
+              item.subcategory_code,
+            );
+            const ImpactIcon = item.impact_label ? resolveImpactIcon(item.impact_label) : null;
             const accent = impactColor(item.impact_direction, colors);
+            const catColor =
+              resolveExpenseCategoryColor(item.color, item.category_code, item.subcategory_code) ||
+              colors.brandPrimary;
             const isLast = index === visible.length - 1;
             return (
               <div
@@ -72,9 +85,9 @@ export function RecentActivityList({ items, emptyMessage, onViewAll, onEditActiv
               >
                 <div
                   className="flex size-9 shrink-0 items-center justify-center rounded-lg"
-                  style={{ background: `${colors.brandPrimary}1a` }}
+                  style={{ background: `${catColor}33` }}
                 >
-                  <Icon size={18} color={colors.brandPrimary} />
+                  <Icon size={18} color={catColor} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
@@ -93,7 +106,13 @@ export function RecentActivityList({ items, emptyMessage, onViewAll, onEditActiv
                   </div>
                   <div className="mt-0.5 flex items-center justify-between">
                     {item.impact_label ? (
-                      <p style={{ fontSize: 11, fontWeight: 500, color: accent }}>{item.impact_label}</p>
+                      <p
+                        className="inline-flex items-center gap-1"
+                        style={{ fontSize: 11, fontWeight: 500, color: accent }}
+                      >
+                        {ImpactIcon ? <ImpactIcon size={12} aria-hidden /> : null}
+                        {item.impact_label}
+                      </p>
                     ) : (
                       <span />
                     )}

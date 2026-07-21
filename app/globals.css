@@ -54,6 +54,7 @@
   --animate-pulse-glow: pulseGlow 3s ease-in-out infinite;
   --animate-slide-up: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-orb-float: orbFloat 8s ease-in-out infinite;
+  --animate-life360-mark-spin: life360-mark-spin 10s linear infinite;
 
   @keyframes float {
     0%,
@@ -95,6 +96,14 @@
     }
     66% {
       transform: translate(-15px, 15px) scale(0.95);
+    }
+  }
+  @keyframes life360-mark-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
     }
   }
 }

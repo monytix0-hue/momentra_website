@@ -10,7 +10,7 @@ export const lifeOpsPulseCopy = {
   axisDiscipline: "Discipline",
   axisAttention: "Attention",
   capacityMonthly: "Monthly Capacity",
-  capacityUsed: "Used",
+  capacityUsed: "Spent this month",
   capacityRemaining: "Remaining",
   capacityUtilization: "Utilization",
   recentActivityListTitle: "Recent Activity",
@@ -59,7 +59,15 @@ export const lifeOpsPulseCopy = {
     PRESSURE_ELEVATED: "Pressure Elevated",
     RECOVERY_NEEDED: "Recovery Needed",
     MOMENTUM_ACTIVE: "Momentum Active",
+    "Insufficient data": "Insufficient data",
+    "Mostly Stable": "Mostly Stable",
+    "Stable Flow": "Stable Flow",
+    "Pressure Building": "Pressure Building",
+    "Needs Recovery": "Needs Recovery",
+    "High Pressure": "High Pressure",
   } as Record<string, string>,
+  insufficientDataLabel: "Insufficient data",
+  dash: "—",
   signalLabels: {
     pressure: "Pressure",
     recovery: "Recovery",
@@ -111,5 +119,13 @@ export const lifeOpsPulseCopy = {
   formatInrMinor(minor: number): string {
     const rupees = minor / 100;
     return `₹${rupees.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  },
+  formatCapacityMinor(minor: number | null | undefined, hasBudget: boolean): string {
+    if (!hasBudget || minor == null) return "—";
+    return lifeOpsPulseCopy.formatInrMinor(minor);
+  },
+  formatUtilization(percent: number | null | undefined, hasBudget: boolean): string {
+    if (!hasBudget || percent == null) return "—";
+    return `${percent}%`;
   },
 };

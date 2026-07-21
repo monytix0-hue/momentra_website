@@ -5,6 +5,10 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalAtmosphericOrbs } from "@/components/personal/empty/shared/PersonalAtmosphericOrbs";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import { resolveActivityIcon } from "@/lib/personal/life_operations/pulse/pulseIcons";
+import {
+  resolveExpenseCategoryColor,
+  resolveImpactIcon,
+} from "@/lib/personal/life_operations/expenseCategoryIcons";
 import { lifeOpsPulseCopy } from "@/lib/personal/life_operations/pulse/lifeOpsPulseCopy";
 import {
   filterMatchesEventType,
@@ -213,7 +217,16 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
                   </h3>
                   <div className="space-y-3">
                     {group.items.map((item) => {
-                      const Icon = resolveActivityIcon(item.event_type, item.icon);
+                      const Icon = resolveActivityIcon(
+                        item.event_type,
+                        item.icon,
+                        item.category_code,
+                        item.subcategory_code,
+                      );
+                      const ImpactIcon = item.impact_label ? resolveImpactIcon(item.impact_label) : null;
+                      const catColor =
+                        resolveExpenseCategoryColor(item.color, item.category_code, item.subcategory_code) ||
+                        colors.brandPrimary;
                       return (
                         <button
                           key={item.id}
@@ -225,9 +238,9 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
                           <div className="flex min-w-0 items-center gap-4">
                             <div
                               className="flex size-10 shrink-0 items-center justify-center rounded-xl"
-                              style={{ background: `${colors.brandPrimary}1a` }}
+                              style={{ background: `${catColor}33` }}
                             >
-                              <Icon size={18} color={colors.brandPrimary} />
+                              <Icon size={18} color={catColor} />
                             </div>
                             <div className="min-w-0">
                               <p className="truncate font-semibold" style={{ fontSize: 14 }}>
@@ -238,6 +251,15 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
                                 {item.amount_label ? ` · ${item.amount_label}` : ""}
                                 {item.account_label ? ` · ${item.account_label}` : ""}
                               </p>
+                              {item.impact_label ? (
+                                <p
+                                  className="mt-1 inline-flex items-center gap-1"
+                                  style={{ fontSize: 11, color: colors.error }}
+                                >
+                                  {ImpactIcon ? <ImpactIcon size={12} aria-hidden /> : null}
+                                  {item.impact_label}
+                                </p>
+                              ) : null}
                               <p style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>{item.relative_time}</p>
                             </div>
                           </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Info, Lock, Sparkles, Wallet } from "lucide-react";
+import { resolveExpenseCategoryIcon } from "@/lib/personal/life_operations/expenseCategoryIcons";
 import { PersonalAtmosphericOrbs } from "@/components/personal/empty/shared/PersonalAtmosphericOrbs";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import { MasterExpenseSkeleton } from "@/components/personal/master_expense/MasterExpenseSkeleton";
@@ -418,20 +419,26 @@ export function MasterExpenseOrchestrator({ onBack, onSuccess }: MasterExpenseOr
               surfaceStyle={fieldSurface}
               labelColor={colors.textSecondary}
             >
-              <select
-                value={categoryCode}
-                onChange={(e) => {
-                  setCategoryCode(e.target.value);
-                  setSubcategoryCode("");
-                }}
-                className="w-full bg-transparent text-sm font-medium outline-none"
-              >
-                {resolvedOptions?.categories.map((c) => (
-                  <option key={c.category_id} value={c.category_id} className="bg-[#14121b]">
-                    {c.category_name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const CatIcon = resolveExpenseCategoryIcon(null, categoryCode);
+                  return <CatIcon size={16} className="shrink-0 opacity-80" aria-hidden />;
+                })()}
+                <select
+                  value={categoryCode}
+                  onChange={(e) => {
+                    setCategoryCode(e.target.value);
+                    setSubcategoryCode("");
+                  }}
+                  className="w-full bg-transparent text-sm font-medium outline-none"
+                >
+                  {resolvedOptions?.categories.map((c) => (
+                    <option key={c.category_id} value={c.category_id} className="bg-[#14121b]">
+                      {c.category_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </MasterExpenseFieldCard>
             {(resolvedOptions?.categories.find((c) => c.category_id === categoryCode)?.children?.length ?? 0) >
             0 ? (
@@ -441,22 +448,28 @@ export function MasterExpenseOrchestrator({ onBack, onSuccess }: MasterExpenseOr
                 surfaceStyle={fieldSurface}
                 labelColor={colors.textSecondary}
               >
-                <select
-                  value={subcategoryCode}
-                  onChange={(e) => setSubcategoryCode(e.target.value)}
-                  className="w-full bg-transparent text-sm font-medium outline-none"
-                >
-                  <option value="" className="bg-[#14121b]">
-                    Optional
-                  </option>
-                  {resolvedOptions?.categories
-                    .find((c) => c.category_id === categoryCode)
-                    ?.children?.map((c) => (
-                      <option key={c.category_id} value={c.category_id} className="bg-[#14121b]">
-                        {c.category_name}
-                      </option>
-                    ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const SubIcon = resolveExpenseCategoryIcon(null, categoryCode, subcategoryCode || undefined);
+                    return <SubIcon size={16} className="shrink-0 opacity-80" aria-hidden />;
+                  })()}
+                  <select
+                    value={subcategoryCode}
+                    onChange={(e) => setSubcategoryCode(e.target.value)}
+                    className="w-full bg-transparent text-sm font-medium outline-none"
+                  >
+                    <option value="" className="bg-[#14121b]">
+                      Optional
+                    </option>
+                    {resolvedOptions?.categories
+                      .find((c) => c.category_id === categoryCode)
+                      ?.children?.map((c) => (
+                        <option key={c.category_id} value={c.category_id} className="bg-[#14121b]">
+                          {c.category_name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </MasterExpenseFieldCard>
             ) : null}
             <MasterExpenseFieldCard

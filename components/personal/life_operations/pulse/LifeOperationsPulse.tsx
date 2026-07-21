@@ -28,6 +28,11 @@ import { AccountsCard } from "@/components/personal/life_operations/accounts/Acc
 import type { PersonalLifeOperationsPulse, PersonalLifeOpsPulseMetrics } from "@/lib/api/personal";
 import { lifeOpsPulseCopy } from "@/lib/personal/life_operations/pulse/lifeOpsPulseCopy";
 import { quickAddIcon, resolveActivityIcon, SEGMENT_COLORS } from "@/lib/personal/life_operations/pulse/pulseIcons";
+import {
+  resolveExpenseCategoryColor,
+  resolveExpenseCategoryIcon,
+  resolveImpactIcon,
+} from "@/lib/personal/life_operations/expenseCategoryIcons";
 import { Brain, Sparkles } from "lucide-react";
 
 type LifeOperationsPulseProps = {
@@ -147,6 +152,8 @@ export function LifeOperationsPulse({
   };
 
   const statusPills = buildStatusPills(metrics);
+  const dataSufficient = metrics.data_sufficient !== false;
+  const hasBudget = metrics.capacity.has_budget ?? metrics.capacity.budget_minor > 0;
 
   return (
     <div
@@ -180,10 +187,16 @@ export function LifeOperationsPulse({
                   {lifeOpsPulseCopy.opsIndexTitle}
                 </h2>
                 <p style={{ fontSize: 48, fontWeight: 800, lineHeight: 1, color: colors.textPrimary }}>
-                  <AnimatedNumber value={metrics.ops_index} />
-                  <span style={{ fontSize: 20, fontWeight: 500, opacity: 0.4 }}>{lifeOpsPulseCopy.opsIndexSuffix}</span>
+                  {dataSufficient && metrics.ops_index != null ? (
+                    <>
+                      <AnimatedNumber value={metrics.ops_index} />
+                      <span style={{ fontSize: 20, fontWeight: 500, opacity: 0.4 }}>{lifeOpsPulseCopy.opsIndexSuffix}</span>
+                    </>
+                  ) : (
+                    <span>{lifeOpsPulseCopy.dash}</span>
+                  )}
                 </p>
-                {metrics.ops_index_delta_month != null && metrics.ops_index_delta_month !== 0 ? (
+                {dataSufficient && metrics.ops_index_delta_month != null && metrics.ops_index_delta_month !== 0 ? (
                   <span
                     className="mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1"
                     style={{ background: `${colors.primaryContainer}33`, color: colors.brandPrimary, ...personalTypography.labelSm, fontWeight: 700 }}
@@ -192,7 +205,9 @@ export function LifeOperationsPulse({
                   </span>
                 ) : null}
                 <p style={{ ...personalTypography.bodyMd, color: colors.brandPrimary, marginTop: 8 }}>
-                  {lifeOpsPulseCopy.statusBands[metrics.status_band] ?? metrics.status_band}
+                  {dataSufficient
+                    ? (lifeOpsPulseCopy.statusBands[metrics.status_band] ?? metrics.status_band)
+                    : lifeOpsPulseCopy.insufficientDataLabel}
                 </p>
               </div>
               <span
@@ -209,12 +224,18 @@ export function LifeOperationsPulse({
               </span>
             </div>
 
-            <AxisHealthDonut opsIndex={metrics.ops_index} axisScores={metrics.axis_scores} />
+            <AxisHealthDonut
+              opsIndex={metrics.ops_index}
+              axisScores={metrics.axis_scores}
+              dataSufficient={dataSufficient}
+            />
 
             <div className="grid grid-cols-2 gap-3 border-t pt-4 sm:grid-cols-4" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
               <div>
                 <p style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.5 }}>{lifeOpsPulseCopy.capacityMonthly}</p>
-                <p className="text-lg font-semibold sm:text-xl" style={{ color: colors.textPrimary }}>{lifeOpsPulseCopy.formatInrMinor(metrics.capacity.budget_minor)}</p>
+                <p className="text-lg font-semibold sm:text-xl" style={{ color: colors.textPrimary }}>
+                  {lifeOpsPulseCopy.formatCapacityMinor(metrics.capacity.budget_minor, hasBudget)}
+                </p>
               </div>
               <div>
                 <p style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.5 }}>{lifeOpsPulseCopy.capacityUsed}</p>
@@ -222,16 +243,26 @@ export function LifeOperationsPulse({
               </div>
               <div>
                 <p style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.5 }}>{lifeOpsPulseCopy.capacityRemaining}</p>
-                <p className="text-lg font-semibold sm:text-xl" style={{ color: colors.brandTertiary }}>{lifeOpsPulseCopy.formatInrMinor(metrics.capacity.remaining_minor)}</p>
+                <p className="text-lg font-semibold sm:text-xl" style={{ color: colors.brandTertiary }}>
+                  {lifeOpsPulseCopy.formatCapacityMinor(metrics.capacity.remaining_minor, hasBudget)}
+                </p>
               </div>
               <div>
                 <p style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.5 }}>{lifeOpsPulseCopy.capacityUtilization}</p>
                 <p className="text-lg font-semibold sm:text-xl">
-                  <AnimatedNumber value={metrics.capacity.utilization_percent} />%
+                  {hasBudget && metrics.capacity.utilization_percent != null ? (
+                    <>
+                      <AnimatedNumber value={metrics.capacity.utilization_percent} />%
+                    </>
+                  ) : (
+                    lifeOpsPulseCopy.dash
+                  )}
                 </p>
-                <div className="mt-1">
-                  <UtilizationBar percent={metrics.capacity.utilization_percent} />
-                </div>
+                {hasBudget && metrics.capacity.utilization_percent != null ? (
+                  <div className="mt-1">
+                    <UtilizationBar percent={metrics.capacity.utilization_percent} />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -273,22 +304,34 @@ export function LifeOperationsPulse({
           {(pulse.dashboard_card?.recent_items ?? []).length > 0 ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {(pulse.dashboard_card?.recent_items ?? []).slice(0, 4).map((item) => {
-                const Icon = resolveActivityIcon(item.activity_type, item.icon);
+                const Icon = resolveActivityIcon(
+                  item.activity_type,
+                  item.icon,
+                  item.category_code,
+                  item.subcategory_code,
+                );
+                const ImpactIcon = item.impact_label ? resolveImpactIcon(item.impact_label) : null;
                 const accent = impactColor(item.impact_direction, colors);
+                const catColor =
+                  resolveExpenseCategoryColor(item.color, item.category_code, item.subcategory_code) ||
+                  accent;
                 return (
                   <div
                     key={item.id}
                     className="flex items-start gap-3 rounded-xl border p-2"
                     style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.05)" }}
                   >
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${accent}33` }}>
-                      <Icon size={18} color={accent} />
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${catColor}33` }}>
+                      <Icon size={18} color={catColor} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p style={{ ...personalTypography.labelSm, fontSize: 10, opacity: 0.6 }}>{item.relative_time}</p>
                       <p style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, lineHeight: 1.25 }}>{item.subtitle}</p>
                       {item.impact_label ? (
-                        <p style={{ fontSize: 9, color: accent, marginTop: 2 }}>{item.impact_label}</p>
+                        <p className="mt-0.5 inline-flex items-center gap-1" style={{ fontSize: 9, color: accent }}>
+                          {ImpactIcon ? <ImpactIcon size={10} aria-hidden /> : null}
+                          {item.impact_label}
+                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -315,10 +358,15 @@ export function LifeOperationsPulse({
             </div>
             <div className="min-w-0 flex-1">
               {metrics.financial_segments.length > 0 ? (
-                metrics.financial_segments.map((seg, i) => (
+                metrics.financial_segments.map((seg, i) => {
+                  const SegIcon = resolveExpenseCategoryIcon(seg.icon, seg.category_id);
+                  const segColor =
+                    resolveExpenseCategoryColor(seg.color, seg.category_id) ||
+                    SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+                  return (
                   <div key={seg.category_id} className="mb-3">
                     <div className="flex items-center gap-2" style={personalTypography.labelSm}>
-                      <span className="size-2 shrink-0 rounded-full" style={{ background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }} />
+                      <SegIcon size={14} color={segColor} aria-hidden />
                       <span className="min-w-0 flex-1 truncate">{segmentLabel(seg)}</span>
                       <span className="font-bold">
                         {lifeOpsPulseCopy.formatInrMinor(seg.amount_minor)} ({seg.share_percent}%)
@@ -327,11 +375,12 @@ export function LifeOperationsPulse({
                     <div className="mt-1">
                       <SegmentShareBar
                         percent={seg.share_percent}
-                        color={SEGMENT_COLORS[i % SEGMENT_COLORS.length]}
+                        color={segColor}
                       />
                     </div>
                   </div>
-                ))
+                  );
+                })
               ) : (
                 <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary, opacity: 0.7 }}>
                   {lifeOpsPulseCopy.financialEmptyHint}

@@ -1,13 +1,15 @@
 {
-  "ops_index": 0,
+  "data_sufficient": false,
+  "ops_index": null,
   "ops_index_delta_month": null,
-  "status_band": "UNKNOWN",
+  "status_band": "Insufficient data",
   "axis_scores": { "pressure": 0, "recovery": 0, "discipline": 0, "attention": 0 },
   "capacity": {
     "budget_minor": 0,
     "used_minor": 0,
-    "remaining_minor": 0,
-    "utilization_percent": 0
+    "remaining_minor": null,
+    "utilization_percent": null,
+    "has_budget": false
   },
   "signals": [],
   "financial_segments": [],

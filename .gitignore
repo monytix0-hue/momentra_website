@@ -43,12 +43,3 @@ next-env.d.ts
 
 # Book source archive (extracted PNGs live under public/books/)
 /public/books/*.zip
-
-.open-next/
-.wrangler/
-.dev.vars
-
-
-._*
-**/._*
-

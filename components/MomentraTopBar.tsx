@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, ChevronDown, Orbit, Plus, ScanLine, Search, Settings } from "lucide-react";
+import { Bell, ChevronDown, Plus, ScanLine, Search, Settings } from "lucide-react";
+import { Life360Mark } from "@/components/life360/Life360Mark";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { brandTokens } from "@/lib/brandTokens";
 import type { UserResponse } from "@/lib/api/types";
@@ -96,9 +97,9 @@ export function MomentraTopBar({
         type="button"
         onClick={onLife360Click}
         aria-label="Life 360"
-        className="relative z-10 flex h-[34px] w-[34px] items-center justify-center rounded-full text-white/90 hover:bg-white/10"
+        className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full text-white/90 hover:bg-white/10"
       >
-        <Orbit className="h-4 w-4 text-[#f2ca50]" strokeWidth={2.5} />
+        <Life360Mark size={24} />
       </button>
       {showScanInviteButton ? (
         <button

@@ -1,9 +1,9 @@
-/** Momentra marketing copy — philosophy-led, moment-centric positioning */
+/** Momentra marketing copy — experience-first, moment-centric positioning */
 
 export const siteMeta = {
   title: "Momentra — Life Happens in Moments",
   description:
-    "Momentra is a moment-centric platform for organizing personal, group, and business moments—bringing people, plans, money, progress, and memory together.",
+    "Momentra is a living operating system for life—helping you plan, coordinate, and remember personal, group, and business moments.",
   keywords: [
     "Momentra",
     "Life Happens in Moments",
@@ -25,17 +25,24 @@ export const nav = {
     { label: "Group", href: "/group" },
     { label: "Business", href: "/business" },
     { label: "How Moments Work", href: "/how-moments-work" },
-    { label: "The Book", href: "/book" },
+    { label: "Begin the Journey", href: "/book" },
   ],
   primaryCta: { label: "Start a Moment", href: "/app", event: "start_a_moment" },
   secondaryCta: { label: "Open the App", href: "/app", event: "open_app" },
 };
 
 export const hero = {
-  headline: "Life happens in moments.",
-  subheadline: "Until now, technology never understood them.",
+  headline: "Every important part of life is a moment.",
+  momentTypes: [
+    "Trips.",
+    "Birthdays.",
+    "Dreams.",
+    "Responsibilities.",
+    "Families.",
+    "Businesses.",
+  ],
   supporting:
-    "Every goal, trip, celebration, responsibility, project, and new beginning carries more than money. It carries people, plans, expectations, progress, and memories. Momentra brings all of them together.",
+    "Momentra helps you plan, coordinate, and remember every one of them.",
   primaryCta: {
     label: "Start Your First Moment",
     href: "/app",
@@ -47,58 +54,14 @@ export const hero = {
     event: "see_how_moments_work",
   },
   tertiary: {
-    label: "Inspired by the book Life Happens in Moments",
+    label: "Begin the Journey — Life Happens in Moments",
     href: "/book",
     event: "read_the_book",
   },
-  floatingMoments: [
-    {
-      title: "Emergency Fund",
-      status: "Building steadily",
-      detail: "Progress updated",
-      accent: "personal" as const,
-    },
-    {
-      title: "Goa Trip",
-      status: "6 people joining",
-      detail: "Hotel decision pending",
-      accent: "group" as const,
-    },
-    {
-      title: "New Home",
-      status: "Planning",
-      detail: "Timeline moving",
-      accent: "personal" as const,
-    },
-    {
-      title: "Birthday Celebration",
-      status: "Gifts pooling",
-      detail: "A memory captured",
-      accent: "group" as const,
-    },
-    {
-      title: "Community Festival",
-      status: "Coordinating",
-      detail: "Roles assigned",
-      accent: "group" as const,
-    },
-    {
-      title: "Product Launch",
-      status: "Live progress",
-      detail: "Milestone ahead",
-      accent: "business" as const,
-    },
-    {
-      title: "Team Operations",
-      status: "Active",
-      detail: "Update appearing",
-      accent: "business" as const,
-    },
-  ],
 };
 
 export const philosophy = {
-  heading: "We built software around the wrong thing.",
+  heading: "Technology should understand moments, not just transactions.",
   body: "For decades, financial technology organized life around transactions, accounts, categories, and budgets. But life never happened that way.",
   lines: [
     "Life happens in birthdays.",
@@ -123,12 +86,46 @@ export const whatIsAMoment = {
     "Money",
     "Timeline",
     "Progress",
-    "Responsibilities",
-    "Decisions",
     "Memory",
+    "AI Guidance",
   ],
   body: "Instead of scattering these across payment apps, chats, notes, spreadsheets, and memories, Momentra keeps them together from beginning to completion.",
   phrase: "One moment. One shared context. One place to understand what is happening.",
+};
+
+export const oneRealMoment = {
+  eyebrow: "One Real Moment",
+  heading: "See a moment come alive.",
+  supporting:
+    "Everything that matters about a trip—people, money, plans, pulse, memory, and guidance—lives in one place.",
+};
+
+export const lifeJourney = {
+  heading: "Life doesn’t happen in transactions.",
+  subheading: "It happens in moments.",
+  supporting:
+    "Momentra is a lifecycle platform—present from the first intent to the next beginning.",
+};
+
+export const scatteredStory = {
+  heading: "We built software around the wrong thing.",
+  supporting: "Life was scattered across tools that never talked to each other.",
+  destination: "Everything flows into Momentra",
+  result: "One Living Moment",
+};
+
+export const liveActivity = {
+  heading: "Life is happening right now.",
+  supporting: "Moments unfolding across personal goals, shared plans, and teams.",
+  countLabel: "moments active today",
+  // Default placeholder for testing. Override with NEXT_PUBLIC_MARKETING_ACTIVE_MOMENTS.
+  count: "4,286",
+};
+
+export const flywheel = {
+  heading: "The Momentra flywheel",
+  supporting:
+    "Philosophy becomes product. Product becomes memory. Memory makes the next moment better.",
 };
 
 export type WorldId = "personal" | "group" | "business";
@@ -409,9 +406,9 @@ export const lifecycle = {
 };
 
 export const intelligence = {
-  heading: "Intelligence that works while life is happening.",
+  heading: "Moment Intelligence, always present.",
   supporting:
-    "Most financial intelligence explains the past. Momentra helps people understand what is happening now.",
+    "AI is not a hidden feature. It lives inside every moment—watching pulse, timeline, funding, and people.",
   helpsWith: [
     "Missing setup information",
     "Contribution gaps",
@@ -422,6 +419,11 @@ export const intelligence = {
     "Suggested next steps",
     "Moment health",
     "Post-moment learning",
+  ],
+  demoInsights: [
+    "Book flights before Friday.",
+    "Two participants haven’t confirmed.",
+    "Budget still healthy.",
   ],
   closing:
     "Momentra does not replace human decisions. It brings the right context forward before the moment loses direction.",
@@ -461,16 +463,17 @@ export const comparison = {
 };
 
 export const book = {
-  heading: "The idea began with a question.",
+  eyebrow: "Begin the Journey",
+  heading: "The beginning of Momentra.",
   question:
     "Why does technology understand transactions so well, yet understand the moments behind them so poorly?",
   supporting:
-    "Life Happens in Moments explores how memory, money, coordination, attention, and human experience come together inside the moments that shape our lives.",
-  bridge: "Momentra is where that philosophy becomes something you can use.",
-  bridgeLine: "Read the idea. See the system. Start your own moment.",
+    "Life Happens in Moments is not a downloadable brochure. It is where the philosophy starts—and where Momentra begins.",
+  bridge: "Read the philosophy. Then live it.",
+  bridgeLine: "Begin the journey. See the system. Create your first moment.",
   title: "Life Happens in Moments",
   exploreCta: {
-    label: "Explore the Book",
+    label: "Read the Philosophy",
     href: "/book",
     event: "read_the_book",
   },
@@ -595,21 +598,21 @@ export const mosaic = {
 };
 
 export const finalCta = {
-  heading: "Your next moment is already beginning.",
+  heading: "Every life becomes a collection of moments.",
   supporting:
-    "A goal you have been postponing. A trip waiting to be planned. A responsibility that needs structure. A team preparing for what comes next.",
-  close: "Give it a place to live.",
+    "The question isn’t whether life happens in moments.",
+  close: "The question is— Will yours be remembered?",
   primaryCta: {
-    label: "Start Your First Moment",
+    label: "Create Your First Moment",
     href: "/app",
     event: "start_first_moment",
   },
   secondaryCta: {
-    label: "Open Momentra",
-    href: "/app",
-    event: "open_app",
+    label: "Begin the Journey",
+    href: "/book",
+    event: "read_the_book",
   },
-  line: "Personal. Group. Business. One platform built around the way life actually happens.",
+  line: "Personal. Group. Business. One living operating system for life.",
 };
 
 export const footer = {
@@ -628,8 +631,8 @@ export const footer = {
     {
       title: "Philosophy",
       links: [
-        { label: "Life Happens in Moments", href: "/book" },
-        { label: "The Moment-Centric Idea", href: "/how-moments-work" },
+        { label: "Begin the Journey", href: "/book" },
+        { label: "How Moments Work", href: "/how-moments-work" },
         { label: "Stories", href: "/about" },
         { label: "Journal", href: "/about" },
       ],
@@ -674,12 +677,12 @@ export const pageCopy = {
   howMomentsWork: {
     title: "How Moments Work — Momentra",
     description:
-      "From intent to memory: how Momentra stays present through the full lifecycle of a moment.",
+      "From intent to memory: experience the Momentra lifecycle and see a living moment unfold.",
   },
   book: {
-    title: "Life Happens in Moments — The Book",
+    title: "Begin the Journey — Life Happens in Moments",
     description:
-      "The philosophy behind Momentra. Why technology understood transactions—and missed the moments behind them.",
+      "The philosophy behind Momentra. Where the idea begins—and becomes a living operating system for life.",
   },
   about: {
     title: "About Momentra",

@@ -80,10 +80,6 @@ export default function SharedArchitecture() {
                   isLife ? "lg:col-span-2" : "lg:col-span-1"
                 }`}
               >
-                {i < sharedArchitecture.areas.length - 1 ? (
-                  <div className="pointer-events-none absolute top-1/2 -right-2 z-10 hidden h-px w-4 bg-gradient-to-r from-white/30 to-transparent lg:block" />
-                ) : null}
-
                 {isLife ? (
                   <div className="flex flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-2 lg:gap-4">
                     <div>

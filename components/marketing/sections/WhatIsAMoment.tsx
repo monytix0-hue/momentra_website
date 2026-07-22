@@ -12,14 +12,20 @@ import {
 
 function MomentCore() {
   return (
-    <div className="relative z-10 flex h-36 w-36 flex-col items-center justify-center rounded-full border border-white/20 bg-indigo-700/80 text-center shadow-xl backdrop-blur-sm sm:h-44 sm:w-44">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.85 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className="relative z-10 flex h-36 w-36 flex-col items-center justify-center rounded-full border border-white/20 bg-indigo-700/80 text-center shadow-xl backdrop-blur-sm sm:h-44 sm:w-44"
+    >
       <span className="text-xs font-medium uppercase tracking-widest text-indigo-200">
         Moment
       </span>
       <span className="mt-1 text-sm font-semibold text-text-on-dark">
         Living space
       </span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -36,10 +42,10 @@ function FacetChip({
 }) {
   return (
     <motion.span
-      initial={{ opacity: 0, scale: 0.8 }}
-      whileInView={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.7, y: 8 }}
+      whileInView={{ opacity: 1, scale: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: 0.15 + delay, duration: 0.5 }}
+      transition={{ delay: 0.2 + delay, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       className={`rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-text-on-dark backdrop-blur-sm sm:text-sm ${className}`}
       style={style}
     >
@@ -73,7 +79,6 @@ export default function WhatIsAMoment() {
           </motion.p>
         </motion.div>
 
-        {/* Mobile: center card + wrapped chip grid (no absolute orbit clipping) */}
         <motion.div
           variants={scaleIn}
           initial="hidden"
@@ -85,12 +90,11 @@ export default function WhatIsAMoment() {
           <MomentCore />
           <div className="relative z-10 flex w-full max-w-md flex-wrap justify-center gap-2 px-1">
             {whatIsAMoment.facets.map((facet, i) => (
-              <FacetChip key={facet} facet={facet} delay={i * 0.06} />
+              <FacetChip key={facet} facet={facet} delay={i * 0.08} />
             ))}
           </div>
         </motion.div>
 
-        {/* md+: orbital layout */}
         <motion.div
           variants={scaleIn}
           initial="hidden"
@@ -111,7 +115,7 @@ export default function WhatIsAMoment() {
               <FacetChip
                 key={facet}
                 facet={facet}
-                delay={i * 0.06}
+                delay={i * 0.08}
                 className="absolute"
                 style={{
                   left: `${x}%`,

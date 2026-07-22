@@ -25,15 +25,14 @@ export default function BookBridge() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(232,98,26,0.25),transparent_50%)]" />
               <div className="absolute inset-0 flex flex-col justify-between p-8">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-                  A Momentra philosophy
+                  The beginning of Momentra
                 </p>
                 <div>
                   <h3 className="mb-3 text-3xl font-extrabold leading-tight text-text-on-dark">
                     {book.title}
                   </h3>
                   <p className="text-sm text-white/55">
-                    Where the idea became a question—and the question became a
-                    platform.
+                    Where philosophy becomes a living system for life.
                   </p>
                 </div>
               </div>
@@ -50,7 +49,7 @@ export default function BookBridge() {
               variants={fadeUp}
               className="mb-4 text-sm font-medium uppercase tracking-widest text-ember-500"
             >
-              The Book
+              {book.eyebrow}
             </motion.p>
             <motion.h2
               variants={fadeUp}
@@ -89,6 +88,13 @@ export default function BookBridge() {
                 event={book.exploreCta.event}
               >
                 {book.exploreCta.label}
+              </CTAButton>
+              <CTAButton
+                variant="secondary"
+                href={book.experienceCta.href}
+                event={book.experienceCta.event}
+              >
+                {book.experienceCta.label}
               </CTAButton>
             </motion.div>
           </motion.div>

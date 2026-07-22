@@ -1,33 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { intelligence } from "@/lib/marketing/copy";
+import { heroCycleMoments } from "@/lib/marketing/moments";
+import MomentPulse from "@/components/marketing/moments/MomentPulse";
+import AIInsightLine from "@/components/marketing/moments/AIInsightLine";
 import {
   fadeUp,
   staggerContainer,
   viewportConfig,
 } from "@/lib/marketing/animations";
 
-const healthColors: Record<string, string> = {
-  Healthy: "bg-teal-500/20 text-teal-300 border-teal-500/30",
-  "Needs attention": "bg-amber-500/20 text-amber-200 border-amber-500/30",
-  "At risk": "bg-red-500/20 text-red-300 border-red-500/30",
-  "Back on track": "bg-indigo-400/20 text-indigo-200 border-indigo-300/30",
-  Completed: "bg-white/10 text-white/80 border-white/20",
-};
-
 export default function Intelligence() {
-  const [healthIdx, setHealthIdx] = useState(0);
+  const [insightIdx, setInsightIdx] = useState(0);
+  const demo = heroCycleMoments[0];
 
   useEffect(() => {
     const id = setInterval(() => {
-      setHealthIdx((i) => (i + 1) % intelligence.healthStates.length);
+      setInsightIdx((i) => (i + 1) % intelligence.demoInsights.length);
     }, 2800);
     return () => clearInterval(id);
   }, []);
-
-  const state = intelligence.healthStates[healthIdx];
 
   return (
     <section id="intelligence" className="py-24 sm:py-32">
@@ -50,7 +44,40 @@ export default function Intelligence() {
           </motion.p>
         </motion.div>
 
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportConfig}
+            transition={{ duration: 0.7 }}
+            className="space-y-4 rounded-2xl border border-white/10 bg-indigo-700/30 p-6 sm:p-8"
+          >
+            <div className="mb-2 flex flex-wrap gap-3 text-sm">
+              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/80">
+                Funding · {demo.progress}%
+              </span>
+              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/80">
+                Timeline · {demo.timeline}
+              </span>
+            </div>
+            <MomentPulse
+              health={demo.pulse.health}
+              score={demo.pulse.score}
+              line={demo.pulse.line}
+            />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={intelligence.demoInsights[insightIdx]}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+              >
+                <AIInsightLine insight={intelligence.demoInsights[insightIdx]} />
+              </motion.div>
+            </AnimatePresence>
+            <p className="mkt-muted text-sm leading-relaxed">{intelligence.closing}</p>
+          </motion.div>
+
           <motion.ul
             variants={staggerContainer}
             initial="hidden"
@@ -68,29 +95,6 @@ export default function Intelligence() {
               </motion.li>
             ))}
           </motion.ul>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={viewportConfig}
-            transition={{ duration: 0.7 }}
-            className="rounded-2xl border border-white/10 bg-indigo-700/40 p-8 text-center"
-          >
-            <p className="mb-4 text-xs font-medium uppercase tracking-widest text-white/40">
-              Living moment health
-            </p>
-            <motion.div
-              key={state}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={`mx-auto mb-6 inline-flex rounded-full border px-5 py-2 text-sm font-semibold ${healthColors[state]}`}
-            >
-              {state}
-            </motion.div>
-            <p className="mkt-muted mx-auto max-w-sm text-sm leading-relaxed">
-              {intelligence.closing}
-            </p>
-          </motion.div>
         </div>
       </div>
     </section>

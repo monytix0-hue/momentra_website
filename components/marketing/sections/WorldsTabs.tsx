@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Activity, Radio, BookOpen } from "lucide-react";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import CTAButton from "@/components/marketing/CTAButton";
+import LivingMomentCard from "@/components/marketing/moments/LivingMomentCard";
 import { worlds, type WorldId } from "@/lib/marketing/copy";
+import { worldIntroMoments } from "@/lib/marketing/moments";
 
 const tabs: WorldId[] = ["personal", "group", "business"];
 
@@ -26,109 +27,53 @@ const accentTab: Record<WorldId, string> = {
   business: "bg-amber-600 text-white",
 };
 
-function PhoneMockup({ world }: { world: WorldId }) {
-  const data = worlds[world];
-  const [pane, setPane] = useState<"pulse" | "live" | "memory">("pulse");
-  const items =
-    pane === "pulse"
-      ? data.mockup.pulse
-      : pane === "live"
-        ? data.mockup.live
-        : data.mockup.memory;
+function WorldLivingMoment({ world }: { world: WorldId }) {
+  const reduceMotion = useReducedMotion();
+  const moments = worldIntroMoments[world];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [world]);
+
+  useEffect(() => {
+    if (reduceMotion || moments.length < 2) return;
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % moments.length);
+    }, 3200);
+    return () => clearInterval(id);
+  }, [reduceMotion, moments.length, world]);
+
+  const moment = moments[index] ?? moments[0];
 
   return (
-    <div className="mx-auto w-full max-w-[min(280px,100%)]">
-      <div className="rounded-[2rem] border border-white/15 bg-[#0e0e12] p-3 shadow-2xl">
-        <div className="mb-3 flex items-center justify-center">
-          <div className="h-1.5 w-16 rounded-full bg-white/20" />
-        </div>
-        <div className="overflow-hidden rounded-[1.4rem] bg-[#16161c]">
-          <div className="border-b border-white/10 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-white/40">
-              Moment
-            </p>
-            <p className="text-base font-semibold text-text-on-dark">
-              {data.mockup.title}
-            </p>
-            {data.mockup.subtitle ? (
-              <p className="mt-0.5 text-xs text-white/50">{data.mockup.subtitle}</p>
-            ) : null}
-          </div>
-
-          <div className="flex gap-1 border-b border-white/10 px-2 py-2">
-            {(
-              [
-                { id: "pulse" as const, label: "Pulse", Icon: Activity },
-                { id: "live" as const, label: "Live", Icon: Radio },
-                { id: "memory" as const, label: "Memory", Icon: BookOpen },
-              ] as const
-            ).map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setPane(id)}
-                className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-colors ${
-                  pane === id
-                    ? "bg-white/10 text-text-on-dark"
-                    : "text-white/40 hover:text-white/70"
-                }`}
-              >
-                <Icon size={12} />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <ul className="space-y-2 px-4 py-4">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pane}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-2"
-              >
-                {items.map((item) => (
-                  <li
-                    key={item}
-                    className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-xs leading-snug text-white/75"
-                  >
-                    {item}
-                  </li>
-                ))}
-              </motion.div>
-            </AnimatePresence>
-          </ul>
-
-          <div className="border-t border-white/10 px-4 py-3">
-            <div className="flex flex-wrap gap-1.5">
-              {data.mockup.highlight.map((h) => (
-                <span
-                  key={h}
-                  className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-white/60"
-                >
-                  {h}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-around border-t border-white/10 px-2 py-2.5 text-[9px] uppercase tracking-wide text-white/35">
-            {(["Pulse", "Moments", "Create", "Life", "Memory"] as const).map(
-              (n) => (
-                <span
-                  key={n}
-                  className={
-                    n.toLowerCase() === pane ? "font-semibold text-white/70" : ""
-                  }
-                >
-                  {n}
-                </span>
-              ),
-            )}
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-md">
+      <div className="mb-3 flex justify-center gap-1.5">
+        {moments.map((m, i) => (
+          <button
+            key={m.id}
+            type="button"
+            aria-label={m.title}
+            onClick={() => setIndex(i)}
+            className={`h-1.5 rounded-full transition-all ${
+              i === index ? "w-6 bg-ember-500" : "w-1.5 bg-white/25"
+            }`}
+          />
+        ))}
+      </div>
+      <div className="relative min-h-[400px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={moment.id}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-x-0 top-0"
+          >
+            <LivingMomentCard moment={moment} />
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -260,7 +205,7 @@ export default function WorldsTabs() {
             </div>
 
             <div className="flex min-w-0 w-full justify-center lg:justify-end">
-              <PhoneMockup world={active} />
+              <WorldLivingMoment world={active} />
             </div>
           </motion.div>
         </AnimatePresence>

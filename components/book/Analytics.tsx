@@ -18,9 +18,8 @@ async function emit(
   name: string,
   params: Record<string, string | number | undefined> = {},
 ) {
-  const asStrings = strParams(params);
-  trackMarketingCta(name, asStrings);
-  await MomentraAnalytics.logCustomEvent(name, asStrings);
+  // trackMarketingCta also forwards to Firebase Analytics
+  trackMarketingCta(name, { surface: "book", ...strParams(params) });
 }
 
 export const BookAnalytics = {

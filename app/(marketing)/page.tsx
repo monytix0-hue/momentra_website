@@ -1,30 +1,30 @@
 import Hero from "@/components/marketing/sections/Hero";
-import Philosophy from "@/components/marketing/sections/Philosophy";
+import OneRealMoment from "@/components/marketing/sections/OneRealMoment";
+import LifeJourney from "@/components/marketing/sections/LifeJourney";
 import WhatIsAMoment from "@/components/marketing/sections/WhatIsAMoment";
+import ScatteredToMomentra from "@/components/marketing/sections/ScatteredToMomentra";
 import WorldsTabs from "@/components/marketing/sections/WorldsTabs";
-import SharedArchitecture from "@/components/marketing/sections/SharedArchitecture";
-import MomentLifecycle from "@/components/marketing/sections/MomentLifecycle";
 import Intelligence from "@/components/marketing/sections/Intelligence";
-import Comparison from "@/components/marketing/sections/Comparison";
+import SharedArchitecture from "@/components/marketing/sections/SharedArchitecture";
+import Philosophy from "@/components/marketing/sections/Philosophy";
+import Flywheel from "@/components/marketing/sections/Flywheel";
 import BookBridge from "@/components/marketing/sections/BookBridge";
-import EmotionalStatement from "@/components/marketing/sections/EmotionalStatement";
-import UseCaseMosaic from "@/components/marketing/sections/UseCaseMosaic";
 import FinalCTA from "@/components/marketing/sections/FinalCTA";
 
 export default function MarketingHome() {
   return (
     <main className="relative">
       <Hero />
-      <Philosophy />
+      <OneRealMoment />
+      <LifeJourney />
       <WhatIsAMoment />
+      <ScatteredToMomentra />
       <WorldsTabs />
-      <SharedArchitecture />
-      <MomentLifecycle />
       <Intelligence />
-      <Comparison />
+      <SharedArchitecture />
+      <Philosophy />
+      <Flywheel />
       <BookBridge />
-      <EmotionalStatement />
-      <UseCaseMosaic />
       <FinalCTA />
     </main>
   );

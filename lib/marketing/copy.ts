@@ -651,8 +651,8 @@ export const footer = {
       links: [
         { label: "Privacy", href: "/privacy" },
         { label: "Terms", href: "/terms" },
-        { label: "Data Policy", href: "/privacy" },
-        { label: "Cookies", href: "/privacy" },
+        { label: "Data Policy", href: "/data-policy" },
+        { label: "Cookies", href: "/cookies" },
       ],
     },
   ],
@@ -694,11 +694,22 @@ export const pageCopy = {
     description: "Get in touch with the Momentra team.",
   },
   privacy: {
-    title: "Privacy — Momentra",
-    description: "How Momentra handles your data.",
+    title: "Privacy Policy — Momentra",
+    description:
+      "How Momentra collects, uses, shares, and protects your personal information.",
   },
   terms: {
-    title: "Terms — Momentra",
-    description: "Terms of use for Momentra.",
+    title: "Terms of Use — Momentra",
+    description: "The terms governing your use of Momentra’s websites and services.",
+  },
+  dataPolicy: {
+    title: "Data Policy — Momentra",
+    description:
+      "How Momentra processes, stores, retains, and governs product and operational data.",
+  },
+  cookies: {
+    title: "Cookies Policy — Momentra",
+    description:
+      "How Momentra uses cookies, local storage, and similar technologies.",
   },
 };

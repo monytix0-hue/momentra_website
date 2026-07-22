@@ -50,6 +50,8 @@ export function resolveWebRouteScreen(pathname: string | null): string | null {
   if (path === "/how-moments-work") return "marketing_how_moments_work";
   if (path === "/privacy") return "marketing_privacy";
   if (path === "/terms") return "marketing_terms";
+  if (path === "/data-policy") return "marketing_data_policy";
+  if (path === "/cookies") return "marketing_cookies";
   if (path === "/book") return "book";
   if (path.startsWith("/invite")) return "invite";
   if (path === "/app" || path.startsWith("/app/")) return "app";

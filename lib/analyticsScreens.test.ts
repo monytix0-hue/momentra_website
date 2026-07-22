@@ -17,6 +17,8 @@ describe("resolveWebRouteScreen", () => {
     );
     expect(resolveWebRouteScreen("/privacy")).toBe("marketing_privacy");
     expect(resolveWebRouteScreen("/terms")).toBe("marketing_terms");
+    expect(resolveWebRouteScreen("/data-policy")).toBe("marketing_data_policy");
+    expect(resolveWebRouteScreen("/cookies")).toBe("marketing_cookies");
     expect(resolveWebRouteScreen("/book")).toBe("book");
   });
 

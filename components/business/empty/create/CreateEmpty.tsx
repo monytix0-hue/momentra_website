@@ -1,6 +1,18 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  Calendar,
+  FolderKanban,
+  Handshake,
+  Loader2,
+  Lightbulb,
+  Settings,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { businessCardStyle } from "@/components/business/empty/shared/emptyStyles";
 import type { BusinessCreateOptionCard, BusinessCreateOptionsResponse } from "@/lib/api/business";
@@ -9,8 +21,19 @@ type CreateEmptyProps = {
   options?: BusinessCreateOptionsResponse | null;
   onCreateMoment: (typeCode?: string) => void;
   onClose: () => void;
-  /** Set while createDraft is in flight — shows Loading setup… and disables interaction. */
   creatingType?: string | null;
+};
+
+type CardMeta = {
+  moment_type_code: string;
+  title: string;
+  description: string;
+  badge: string;
+  tags: string[];
+  accent: string;
+  available: boolean;
+  image: string;
+  Icon: typeof Users;
 };
 
 const CREATE_IMAGE_BY_TYPE: Record<string, string> = {
@@ -21,103 +44,105 @@ const CREATE_IMAGE_BY_TYPE: Record<string, string> = {
   PROJECT_OPERATIONS: "/business/create-project.jpg",
   EVENT_OPERATIONS: "/business/create-event.jpg",
   VENDOR_OPERATIONS: "/business/create-vendor.jpg",
-  CUSTOM_OPERATIONAL_MOMENT: "/business/create-custom.jpg",
 };
 
-/** Fallback when API cards not yet loaded — v1 + gated unsupported only. */
-const FALLBACK_CARDS: BusinessCreateOptionCard[] = [
+const CREATE_HERO = "/business/create-hero.jpg";
+
+const FALLBACK_CARDS: CardMeta[] = [
   {
-    moment_type_id: "fallback-team",
     moment_type_code: "TEAM_OPERATIONS",
-    moment_type_name: "Team Operations",
-    badge_label: "START HERE",
-    create_tagline: "Align teams, track activities and execute together.",
-    accent_main: "#5B5CEB",
-    accent_soft_tint: "#E8EDFF",
-    display_order: 1,
-    is_available: true,
-    implementation_status: "active",
+    title: "Team Operations",
+    description:
+      "Coordinate your people, meetings, responsibilities and day-to-day execution from one shared place.",
+    badge: "Recommended First",
+    tags: ["Meetings", "Tasks", "Attendance", "Decisions", "Team Health"],
+    accent: "#5B5CEB",
+    available: true,
+    image: CREATE_IMAGE_BY_TYPE.TEAM_OPERATIONS,
+    Icon: Users,
   },
   {
-    moment_type_id: "fallback-runway",
     moment_type_code: "BUSINESS_RUNWAY",
-    moment_type_name: "Business Runway",
-    badge_label: "MOST POPULAR",
-    create_tagline: "Track cash, burn and runway to stay ahead.",
-    accent_main: "#10B981",
-    accent_soft_tint: "#D1FAE5",
-    display_order: 2,
-    is_available: true,
-    implementation_status: "active",
+    title: "Business Runway",
+    description:
+      "Monitor cash flow, spending and runway so your business can make confident financial decisions.",
+    badge: "Most Popular",
+    tags: ["Cash Flow", "Revenue", "Expenses", "Burn Rate", "Runway"],
+    accent: "#10B981",
+    available: true,
+    image: CREATE_IMAGE_BY_TYPE.BUSINESS_RUNWAY,
+    Icon: Wallet,
   },
   {
-    moment_type_id: "fallback-ops",
     moment_type_code: "BUSINESS_OPERATIONS",
-    moment_type_name: "Business Operations",
-    badge_label: "START HERE",
-    create_tagline: "Run daily operations smoothly and improve efficiency.",
-    accent_main: "#F97316",
-    accent_soft_tint: "#FFEDD5",
-    display_order: 3,
-    is_available: true,
-    implementation_status: "active",
+    title: "Business Operations",
+    description:
+      "Keep everyday business operations organized across departments, processes and workflows.",
+    badge: "Run Efficiently",
+    tags: ["Operations", "Inventory", "Compliance", "Processes", "Administration"],
+    accent: "#F97316",
+    available: true,
+    image: CREATE_IMAGE_BY_TYPE.BUSINESS_OPERATIONS,
+    Icon: Settings,
   },
   {
-    moment_type_id: "fallback-project",
     moment_type_code: "PROJECT_OPERATIONS",
-    moment_type_name: "Project Operations",
-    badge_label: "COMING SOON",
-    accent_main: "#00CED1",
-    accent_soft_tint: "#CFFAFE",
-    display_order: 10,
-    is_available: false,
-    implementation_status: "coming_soon",
+    title: "Project Operations",
+    description:
+      "Plan, coordinate and deliver projects while keeping teams, timelines and milestones aligned.",
+    badge: "Deliver Projects",
+    tags: ["Planning", "Timeline", "Resources", "Deliverables", "Risks"],
+    accent: "#3B82F6",
+    available: false,
+    image: CREATE_IMAGE_BY_TYPE.PROJECT_OPERATIONS,
+    Icon: FolderKanban,
   },
   {
-    moment_type_id: "fallback-event",
     moment_type_code: "EVENT_OPERATIONS",
-    moment_type_name: "Event Operations",
-    badge_label: "COMING SOON",
-    accent_main: "#F59E0B",
-    accent_soft_tint: "#FEF3C7",
-    display_order: 11,
-    is_available: false,
-    implementation_status: "coming_soon",
+    title: "Event Operations",
+    description:
+      "Organize business events from planning through execution with complete team coordination.",
+    badge: "Coordinate Events",
+    tags: ["Conferences", "Launches", "Workshops", "Client Events", "Internal Events"],
+    accent: "#F59E0B",
+    available: false,
+    image: CREATE_IMAGE_BY_TYPE.EVENT_OPERATIONS,
+    Icon: Calendar,
   },
   {
-    moment_type_id: "fallback-vendor",
     moment_type_code: "VENDOR_OPERATIONS",
-    moment_type_name: "Vendor Operations",
-    badge_label: "COMING SOON",
-    accent_main: "#8B5CF6",
-    accent_soft_tint: "#EDE9FE",
-    display_order: 12,
-    is_available: false,
-    implementation_status: "coming_soon",
-  },
-  {
-    moment_type_id: "fallback-custom",
-    moment_type_code: "CUSTOM_OPERATIONAL_MOMENT",
-    moment_type_name: "Custom Operational Moment",
-    badge_label: "COMING SOON",
-    accent_main: "#5B5CEB",
-    accent_soft_tint: "#E8EDFF",
-    display_order: 13,
-    is_available: false,
-    implementation_status: "coming_soon",
+    title: "Vendor Operations",
+    description:
+      "Manage vendors, procurement, contracts and supplier relationships from one organized workspace.",
+    badge: "Partner Management",
+    tags: ["Procurement", "Contracts", "Suppliers", "Purchase Orders", "Deliveries"],
+    accent: "#8B5A2B",
+    available: false,
+    image: CREATE_IMAGE_BY_TYPE.VENDOR_OPERATIONS,
+    Icon: Handshake,
   },
 ];
 
-const journeySteps = [
-  { step: "1", title: "Select Moment", description: "Choose Team Operations, Runway, or Business Operations" },
-  { step: "2", title: "Configure Setup", description: "Define scope and parameters" },
-  { step: "3", title: "Go Live", description: "Start recording activity" },
-  { step: "4", title: "Track Progress", description: "Monitor pulse and moments" },
-  { step: "5", title: "Build Memory", description: "Intelligence compounds over time" },
+const BENEFITS = [
+  { label: "Keep teams aligned", Icon: Users, tint: "#5B5CEB" },
+  { label: "Track business progress", Icon: BarChart3, tint: "#3B82F6" },
+  { label: "Stay financially aware", Icon: Wallet, tint: "#10B981" },
+  { label: "Build organizational memory", Icon: Lightbulb, tint: "#F59E0B" },
 ] as const;
 
-function createImageFor(typeCode: string): string {
-  return CREATE_IMAGE_BY_TYPE[typeCode] ?? "/business/create-custom.jpg";
+function mergeCards(apiCards: BusinessCreateOptionCard[] | undefined): CardMeta[] {
+  return FALLBACK_CARDS.map((fallback) => {
+    const api = apiCards?.find((c) => c.moment_type_code === fallback.moment_type_code);
+    return {
+      ...fallback,
+      title: api?.moment_type_name ?? fallback.title,
+      description: api?.create_tagline?.trim() || fallback.description,
+      badge: api?.badge_label?.trim() || fallback.badge,
+      accent: api?.accent_main?.trim() || fallback.accent,
+      available: api ? api.is_available !== false : fallback.available,
+      image: CREATE_IMAGE_BY_TYPE[fallback.moment_type_code] ?? fallback.image,
+    };
+  });
 }
 
 export function CreateEmpty({
@@ -129,10 +154,7 @@ export function CreateEmpty({
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const creating = Boolean(creatingType);
-  const cards =
-    options?.cards && options.cards.length > 0
-      ? [...options.cards].sort((a, b) => a.display_order - b.display_order)
-      : FALLBACK_CARDS;
+  const cards = mergeCards(options?.cards);
 
   return (
     <div
@@ -152,113 +174,185 @@ export function CreateEmpty({
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={creating}
-        aria-label="Close"
-        className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full disabled:opacity-50"
-        style={{ background: colors.surfaceContainer }}
-      >
-        <X className="size-5" />
-      </button>
+      <div className="mx-auto flex w-full max-w-lg flex-col px-5 pb-12 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={creating}
+          aria-label="Close"
+          className="mb-6 flex size-10 items-center justify-center rounded-full self-start disabled:opacity-50"
+          style={{ background: colors.surfaceContainer }}
+        >
+          <X className="size-5" />
+        </button>
 
-      <div className="mx-auto w-full max-w-[1080px] px-5 pb-12 pt-16 md:px-20">
-        <section className="mb-8 text-center">
-          <h2 className="text-[32px] font-bold leading-9">Create Business Moment</h2>
-          <p className="mx-auto mt-3 max-w-md text-sm opacity-80" style={{ color: colors.textSecondary }}>
-            Choose what you want to run and Momentra will help you track, coordinate and improve it.
-          </p>
-          <p className="mt-2 text-xs opacity-60">You can create multiple operational moments later.</p>
+        <section className="mb-8 flex flex-col gap-6 md:flex-row md:items-center">
+          <div className="flex-1">
+            <p
+              className="mb-3 text-sm font-medium uppercase tracking-wide"
+              style={{ color: colors.textSecondary }}
+            >
+              Choose Your Business Moment
+            </p>
+            <h1 className="mb-4 text-[28px] font-bold leading-9 tracking-tight">
+              Run every part of your business with{" "}
+              <span style={{ color: colors.brandPrimary }}>clarity.</span>
+            </h1>
+            <p className="text-sm leading-relaxed" style={{ color: colors.textSecondary }}>
+              Create a business moment to organize teams, operations, projects, events, vendors and
+              financial runway in one place.
+            </p>
+          </div>
+          <div
+            className="hidden aspect-[4/3] w-[42%] overflow-hidden rounded-2xl border md:block"
+            style={{ borderColor: `color-mix(in srgb, ${colors.border} 40%, transparent)` }}
+          >
+            <img src={CREATE_HERO} alt="" className="size-full object-cover" />
+          </div>
         </section>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <section
+          className="mb-8 grid grid-cols-4 gap-2 rounded-2xl p-4 text-center"
+          style={businessCardStyle(tokens)}
+        >
+          {BENEFITS.map(({ label, Icon, tint }) => (
+            <div key={label} className="flex flex-col items-center gap-2">
+              <div
+                className="flex size-11 items-center justify-center rounded-xl"
+                style={{ background: `color-mix(in srgb, ${tint} 20%, transparent)` }}
+              >
+                <Icon className="size-5" style={{ color: tint }} />
+              </div>
+              <p className="text-[10px] leading-tight" style={{ color: colors.textSecondary }}>
+                {label}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <section className="mb-4">
+          <h2 className="text-lg font-semibold">Choose the part of your business</h2>
+          <p className="text-sm" style={{ color: colors.textSecondary }}>
+            you want to manage.
+          </p>
+        </section>
+
+        <section className="space-y-4">
           {cards.map((card) => {
-            const available = card.is_available !== false && !creating;
-            const wide = card.moment_type_code === "CUSTOM_OPERATIONAL_MOMENT";
-            const image = createImageFor(card.moment_type_code);
+            const enabled = card.available && !creating;
+            const { Icon } = card;
             return (
               <button
                 key={card.moment_type_code}
                 type="button"
-                disabled={!available}
+                disabled={!enabled}
                 onClick={() => {
-                  if (available) onCreateMoment(card.moment_type_code);
+                  if (enabled) onCreateMoment(card.moment_type_code);
                 }}
-                className={`group relative overflow-hidden rounded-2xl text-left ${wide ? "md:col-span-2" : "h-40"} ${
-                  available ? "hover:-translate-y-0.5" : "cursor-not-allowed"
+                className={`relative flex w-full gap-4 overflow-hidden rounded-3xl p-4 text-left transition-transform ${
+                  enabled ? "enabled:hover:scale-[1.01] enabled:active:scale-[0.99]" : "cursor-not-allowed opacity-70"
                 }`}
-                style={{ minHeight: wide ? 120 : undefined }}
+                style={{
+                  ...businessCardStyle(tokens),
+                  border: `1px solid color-mix(in srgb, ${card.accent} 25%, transparent)`,
+                }}
               >
-                <img
-                  src={image}
-                  alt=""
-                  className={`absolute inset-0 size-full object-cover transition-transform duration-500 ${
-                    available ? "group-hover:scale-105" : "opacity-60"
-                  }`}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: available
-                      ? `linear-gradient(to top, color-mix(in srgb, ${colors.background} 92%, transparent), color-mix(in srgb, ${colors.background} 20%, transparent))`
-                      : "rgba(0,0,0,0.55)",
-                  }}
-                />
-                <div className="relative flex h-full min-h-[10rem] flex-col justify-between p-4">
-                  <span className="text-[9px] font-bold tracking-widest opacity-80">
-                    {card.badge_label ?? (card.is_available !== false ? "AVAILABLE" : "COMING SOON")}
-                  </span>
-                  <div>
-                    <h3 className="font-semibold">{card.moment_type_name}</h3>
-                    {card.create_tagline ? (
-                      <p className="mt-1 text-xs opacity-80">{card.create_tagline}</p>
-                    ) : null}
+                <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-2xl">
+                  <img src={card.image} alt="" className="size-full object-cover" />
+                  <div
+                    className="absolute left-2 top-2 flex size-7 items-center justify-center rounded-lg"
+                    style={{ background: card.accent, color: "#fff" }}
+                  >
+                    <Icon className="size-3.5" />
                   </div>
                 </div>
+                <div className="min-w-0 flex-1 space-y-2 pr-10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-bold">{card.title}</h3>
+                    <span
+                      className="rounded-full border px-2 py-0.5 text-[9px] font-medium"
+                      style={{
+                        background: `color-mix(in srgb, ${card.accent} 20%, transparent)`,
+                        color: card.accent,
+                        borderColor: `color-mix(in srgb, ${card.accent} 30%, transparent)`,
+                      }}
+                    >
+                      {card.available ? card.badge : `${card.badge} · Soon`}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: colors.textSecondary }}>
+                    {card.description}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {card.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-md px-2 py-1 text-[9px]"
+                        style={{
+                          background: `color-mix(in srgb, ${colors.textPrimary} 5%, transparent)`,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <span
+                  className="absolute bottom-4 right-4 flex size-9 items-center justify-center rounded-full"
+                  style={{
+                    background: card.available ? card.accent : colors.surfaceContainerHigh,
+                    color: "#fff",
+                  }}
+                  aria-hidden
+                >
+                  {creatingType === card.moment_type_code ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="size-4" />
+                  )}
+                </span>
               </button>
             );
           })}
-        </div>
+        </section>
 
-        <section className="mt-8 rounded-2xl p-5" style={businessCardStyle(tokens)}>
-          <h3 className="font-semibold">What Happens After Activation?</h3>
-          <div className="mt-4 space-y-3">
-            {journeySteps.map((step) => (
-              <div key={step.title} className="flex gap-3">
-                <span
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{ background: "#5B5CEB", color: "#fff" }}
-                >
-                  {step.step}
-                </span>
-                <div>
-                  <p className="text-sm font-medium">{step.title}</p>
-                  <p className="text-xs opacity-70">{step.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              disabled={creating}
-              onClick={() => onCreateMoment("TEAM_OPERATIONS")}
-              className="flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
-              style={{ background: colors.primaryContainer, color: colors.brandOnPrimary }}
+        <section
+          className="mt-8 flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            ...businessCardStyle(tokens),
+            border: `1px solid color-mix(in srgb, ${colors.brandPrimary} 25%, transparent)`,
+            background: `color-mix(in srgb, ${colors.brandPrimary} 10%, ${colors.surfaceContainer})`,
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <div
+              className="flex size-12 shrink-0 items-center justify-center rounded-2xl"
+              style={{ background: `color-mix(in srgb, ${colors.brandPrimary} 20%, transparent)` }}
             >
-              Continue Setup
-            </button>
-            <button
-              type="button"
-              disabled={creating}
-              onClick={onClose}
-              className="flex-1 rounded-xl border py-3 text-sm font-semibold disabled:opacity-50"
-              style={{ borderColor: `color-mix(in srgb, ${colors.border} 30%, transparent)` }}
-            >
-              Explore Later
-            </button>
+              <Lightbulb className="size-6" style={{ color: colors.brandPrimary }} />
+            </div>
+            <div>
+              <h3 className="mb-1 text-base font-bold">Not sure where to start?</h3>
+              <p className="max-w-sm text-xs leading-relaxed" style={{ color: colors.textSecondary }}>
+                Start with Team Operations and build your business operating system one moment at a
+                time.
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            disabled={creating}
+            onClick={() => onCreateMoment("TEAM_OPERATIONS")}
+            className="rounded-full border-2 px-6 py-3 text-center text-sm font-semibold disabled:opacity-50"
+            style={{ borderColor: colors.brandPrimary, color: colors.textPrimary }}
+          >
+            {creatingType === "TEAM_OPERATIONS" ? (
+              <Loader2 className="mx-auto size-5 animate-spin" />
+            ) : (
+              "Start with Team Operations"
+            )}
+          </button>
         </section>
       </div>
     </div>

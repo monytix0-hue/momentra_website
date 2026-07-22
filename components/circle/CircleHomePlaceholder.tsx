@@ -18,7 +18,7 @@ type CircleHomePlaceholderProps = {
   title?: string;
 };
 
-export function CircleHomePlaceholder({ title = "Circle" }: CircleHomePlaceholderProps) {
+export function CircleHomePlaceholder(_props: CircleHomePlaceholderProps = {}) {
   const tokens = useThemeTokens();
   const { setContext } = useAppContextState();
   const session = useCircleSessionStore();
@@ -44,26 +44,7 @@ export function CircleHomePlaceholder({ title = "Circle" }: CircleHomePlaceholde
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
       style={{ background: tokens.colors.background, color: tokens.colors.textPrimary }}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto pb-8">
-        <header className="flex items-end justify-between px-5 pb-2 pt-4">
-          <div>
-            <h1
-              className="text-xl font-bold tracking-tight"
-              style={{ color: tokens.colors.brandPrimary }}
-            >
-              {title}
-            </h1>
-            <p
-              className="text-[11px] font-medium"
-              style={{ color: tokens.colors.textSubtle }}
-            >
-              {isEmpty || session.loading
-                ? "Your people across shared and business moments."
-                : "Active State"}
-            </p>
-          </div>
-        </header>
-
+      <div className="min-h-0 flex-1 overflow-y-auto pb-8 pt-4">
         {session.loading && session.participants.length === 0 ? (
           <div
             className="flex flex-1 items-center justify-center px-6 py-20 text-sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Home, Plus, Users } from "lucide-react";
+import { Bell, Check, Home, Plus, Search, Settings, Users } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import type { BusinessWorkspaceSummary } from "@/lib/api/business";
 
@@ -10,6 +10,9 @@ type CompanySwitcherProps = {
   workspaces: BusinessWorkspaceSummary[];
   selectedId: string | null;
   onSelect: (workspaceId: string) => void;
+  onSearch: () => void;
+  onNotifications: () => void;
+  onCompanySettings: () => void;
   onOpenCompanyHome: () => void;
   onCreate: () => void;
   onJoin: () => void;
@@ -21,6 +24,9 @@ export function CompanySwitcher({
   workspaces,
   selectedId,
   onSelect,
+  onSearch,
+  onNotifications,
+  onCompanySettings,
   onOpenCompanyHome,
   onCreate,
   onJoin,
@@ -132,6 +138,52 @@ export function CompanySwitcher({
             </li>
           ) : null}
         </ul>
+
+        <div className="py-1" style={divider}>
+          <p
+            className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: colors.textSecondary }}
+          >
+            Quick actions
+          </p>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-semibold"
+            style={{ color: colors.textPrimary }}
+            onClick={() => {
+              onClose();
+              onSearch();
+            }}
+          >
+            <Search className="h-4 w-4" strokeWidth={2.5} style={{ color: colors.brandPrimary }} />
+            Search
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-semibold"
+            style={{ color: colors.textPrimary }}
+            onClick={() => {
+              onClose();
+              onNotifications();
+            }}
+          >
+            <Bell className="h-4 w-4" strokeWidth={2.5} style={{ color: colors.brandPrimary }} />
+            Notifications
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-semibold disabled:opacity-50"
+            style={{ color: colors.textPrimary }}
+            disabled={!selectedId}
+            onClick={() => {
+              onClose();
+              onCompanySettings();
+            }}
+          >
+            <Settings className="h-4 w-4" strokeWidth={2.5} style={{ color: colors.brandPrimary }} />
+            Company Settings
+          </button>
+        </div>
 
         <div className="py-1" style={divider}>
           <button

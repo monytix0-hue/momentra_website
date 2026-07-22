@@ -222,19 +222,6 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
           businessMode={isBusiness}
           companyName={selectedWorkspace?.name ?? null}
           onCompanySwitcherClick={() => setShowCompanySwitcher(true)}
-          onCompanySettingsClick={() => {
-            if (!selectedWorkspace) {
-              setShowCompanySwitcher(true);
-              return;
-            }
-            setShowCompanySettings(true);
-          }}
-          onCompanySearchClick={() => {
-            alert("Company search — coming soon");
-          }}
-          onCompanyNotificationsClick={() => {
-            alert("Company notifications — coming soon");
-          }}
           showScanInviteButton={canScanInvite}
           onScanInviteClick={() => {
             void MomentraAnalytics.logCustomEvent("invite_scan_open", {
@@ -329,6 +316,19 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         selectedId={selectedWorkspace?.id ?? businessSession.selectedWorkspaceId}
         onSelect={(id) => {
           void switchBusinessWorkspace(id);
+        }}
+        onSearch={() => {
+          alert("Company search — coming soon");
+        }}
+        onNotifications={() => {
+          alert("Company notifications — coming soon");
+        }}
+        onCompanySettings={() => {
+          if (!selectedWorkspace) {
+            setShowCompanySwitcher(true);
+            return;
+          }
+          setShowCompanySettings(true);
         }}
         onOpenCompanyHome={() => {
           if (!selectedWorkspace) {

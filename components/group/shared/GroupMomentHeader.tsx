@@ -10,6 +10,8 @@ type GroupMomentHeaderProps = {
   selectedTypeCode: GroupMomentTypeCode;
   onSelect: (option: GroupMomentSwitcherOption) => void;
   onManageClick?: () => void;
+  onInviteMoment?: (option: GroupMomentSwitcherOption) => void;
+  onDeleteMoment?: (option: GroupMomentSwitcherOption) => void;
 };
 
 export function GroupMomentHeader(props: GroupMomentHeaderProps) {
@@ -21,6 +23,16 @@ export function GroupMomentHeader(props: GroupMomentHeaderProps) {
       selectedTypeCode={props.selectedTypeCode}
       onSelect={(option) => props.onSelect(option as GroupMomentSwitcherOption)}
       onManageClick={props.onManageClick}
+      onInviteMoment={
+        props.onInviteMoment
+          ? (option) => props.onInviteMoment!(option as GroupMomentSwitcherOption)
+          : undefined
+      }
+      onDeleteMoment={
+        props.onDeleteMoment
+          ? (option) => props.onDeleteMoment!(option as GroupMomentSwitcherOption)
+          : undefined
+      }
       accentVariant="group"
     />
   );

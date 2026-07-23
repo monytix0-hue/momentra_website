@@ -1,5 +1,6 @@
 /** sessionStorage keys for invite tokens / accept results awaiting the app shell. */
 export const PENDING_INVITE_KEY = "momentra:pending-invite";
+export const PENDING_COMPANY_INVITE_KEY = "momentra:pending-company-invite";
 export const PENDING_INVITE_RESULT_KEY = "momentra:invite-joined-result";
 
 export type StashedInviteResult = {
@@ -21,6 +22,20 @@ export function consumePendingInvite(): string | null {
   if (typeof window === "undefined") return null;
   const t = sessionStorage.getItem(PENDING_INVITE_KEY);
   sessionStorage.removeItem(PENDING_INVITE_KEY);
+  return t?.trim() || null;
+}
+
+export function stashPendingCompanyInvite(token: string): void {
+  if (typeof window === "undefined") return;
+  const t = token.trim();
+  if (!t) return;
+  sessionStorage.setItem(PENDING_COMPANY_INVITE_KEY, t);
+}
+
+export function consumePendingCompanyInvite(): string | null {
+  if (typeof window === "undefined") return null;
+  const t = sessionStorage.getItem(PENDING_COMPANY_INVITE_KEY);
+  sessionStorage.removeItem(PENDING_COMPANY_INVITE_KEY);
   return t?.trim() || null;
 }
 

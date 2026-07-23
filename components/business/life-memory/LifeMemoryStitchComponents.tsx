@@ -739,3 +739,796 @@ export function LmTimelineFeed({
     </LmGlassCard>
   );
 }
+
+function trendLabel(band?: string): { text: string; tone: string } {
+  switch ((band || "empty").toLowerCase()) {
+    case "healthy":
+      return { text: "↑ Imp.", tone: TEAM_OPS.secondary };
+    case "needs_attention":
+      return { text: "→ Watch", tone: TEAM_OPS.tertiary };
+    case "at_risk":
+    case "critical":
+      return { text: "↓ Decl.", tone: TEAM_OPS.error };
+    default:
+      return { text: "— Empty", tone: TEAM_OPS.onVariant };
+  }
+}
+
+/** Empty-capable glass section used for stitch-layout slots without inventing data. */
+export function LmEmptySection({
+  index,
+  title,
+  emptyLabel,
+  borderAccent,
+}: {
+  index: number;
+  title: string;
+  emptyLabel: string;
+  borderAccent?: string;
+}) {
+  return (
+    <LmGlassCard
+      style={
+        borderAccent
+          ? { borderLeft: `4px solid ${borderAccent}` }
+          : undefined
+      }
+    >
+      <LmNumberedHeader index={index} title={title} />
+      <TeamOpsEmptyLine label={emptyLabel} />
+    </LmGlassCard>
+  );
+}
+
+export function LmConnectionsSection({ sectionIndex }: { sectionIndex: number }) {
+  return (
+    <LmEmptySection
+      index={sectionIndex}
+      title="Connections & Influence"
+      emptyLabel="No connection signals yet."
+    />
+  );
+}
+
+/** Drift alerts — bind real life signals; empty when none. */
+export function LmDriftAlertSection({
+  signals,
+  sectionIndex,
+}: {
+  signals: BusinessLifeSignal[];
+  sectionIndex: number;
+}) {
+  return (
+    <LmGlassCard style={{ borderLeft: `4px solid ${TEAM_OPS.tertiary}` }}>
+      <LmNumberedHeader index={sectionIndex} title="Business Drift Alert" />
+      {signals.length === 0 ? (
+        <TeamOpsEmptyLine label="No drift signals yet." />
+      ) : (
+        <div className="space-y-2">
+          {signals.map((s, i) => {
+            const tone =
+              s.severity === "high"
+                ? TEAM_OPS.error
+                : s.severity === "medium"
+                  ? TEAM_OPS.tertiary
+                  : TEAM_OPS.primary;
+            return (
+              <div
+                key={`${s.signal_type ?? "d"}-${i}`}
+                className="flex items-start gap-3"
+              >
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
+                  style={{ background: `${tone}22`, color: tone }}
+                >
+                  !
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm" style={{ color: TEAM_OPS.onSurface }}>
+                    {s.label}
+                  </p>
+                  {s.count > 0 ? (
+                    <p className="mt-0.5 text-[11px]" style={{ color: TEAM_OPS.onVariant }}>
+                      Observed {s.count}
+                      {s.dimension ? ` · ${s.dimension.replace(/_/g, " ")}` : ""}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </LmGlassCard>
+  );
+}
+
+/** Highest leverage — pick best non-empty dimension by band priority; else empty. */
+export function LmLeverageSection({
+  dimensions,
+  sectionIndex,
+}: {
+  dimensions: BusinessLifeDimension[];
+  sectionIndex: number;
+}) {
+  const order: Record<string, number> = {
+    healthy: 4,
+    needs_attention: 3,
+    at_risk: 2,
+    critical: 1,
+    empty: 0,
+  };
+  const active = dimensions.filter((d) => d.band && d.band !== "empty");
+  const best =
+    active.length === 0
+      ? null
+      : [...active].sort(
+          (a, b) => (order[b.band] ?? 0) - (order[a.band] ?? 0) || b.count - a.count,
+        )[0];
+
+  if (!best) {
+    return (
+      <LmEmptySection
+        index={sectionIndex}
+        title="Highest Business Leverage"
+        emptyLabel="No leverage signal yet."
+      />
+    );
+  }
+  const tone = healthBandColor(best.band);
+  return (
+    <LmGlassCard
+      style={{
+        background: "linear-gradient(135deg, rgba(67,56,202,0.28), rgba(19,19,27,0.6))",
+        borderColor: "rgba(99, 102, 241, 0.3)",
+      }}
+    >
+      <LmNumberedHeader index={sectionIndex} title="Highest Business Leverage" />
+      <div className="mb-3">
+        <h3 className="text-lg font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+          {best.label}
+        </h3>
+        <p className="mt-1 text-xs uppercase tracking-wider" style={{ color: TEAM_OPS.onVariant }}>
+          Band · <span style={{ color: tone }}>{best.band.replace(/_/g, " ")}</span>
+          {best.count > 0 ? ` · Count ${best.count}` : ""}
+        </p>
+      </div>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full"
+        style={{ background: "rgba(255,255,255,0.1)" }}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${Math.round(bandProgress(best.band) * 100)}%`,
+            background: tone,
+          }}
+        />
+      </div>
+    </LmGlassCard>
+  );
+}
+
+export function LmTrendsSection({
+  dimensions,
+  sectionIndex,
+}: {
+  dimensions: BusinessLifeDimension[];
+  sectionIndex: number;
+}) {
+  const rows = dimensions.filter((d) => d.band && d.band !== "empty").slice(0, 6);
+  return (
+    <LmGlassCard>
+      <LmNumberedHeader index={sectionIndex} title="Trends" />
+      {rows.length === 0 ? (
+        <TeamOpsEmptyLine label="No trend signals yet." />
+      ) : (
+        <div className="space-y-3">
+          {rows.map((d) => {
+            const t = trendLabel(d.band);
+            return (
+              <div key={d.key} className="flex items-center justify-between gap-2">
+                <span className="text-xs" style={{ color: TEAM_OPS.onVariant }}>
+                  {d.label}
+                </span>
+                <span className="text-xs font-bold" style={{ color: t.tone }}>
+                  {t.text}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </LmGlassCard>
+  );
+}
+
+export function LmDrivesGrowthSection({ sectionIndex }: { sectionIndex: number }) {
+  return (
+    <LmEmptySection
+      index={sectionIndex}
+      title="Drives Growth"
+      emptyLabel="No growth correlations yet."
+    />
+  );
+}
+
+export function LmMonthlyChangesSection({ sectionIndex }: { sectionIndex: number }) {
+  return (
+    <LmEmptySection
+      index={sectionIndex}
+      title="What Changed This Month?"
+      emptyLabel="No monthly changes yet."
+    />
+  );
+}
+
+/** Journey that always reserves the stitch slot (empty-capable). Horizontal when items exist. */
+export function LmJourneySection({
+  items,
+  sectionIndex,
+  title = "Business Journey",
+}: {
+  items: Array<BusinessMemoryJourneyItem | { kind?: string; title: string; occurred_at?: string | null }>;
+  sectionIndex: number;
+  title?: string;
+}) {
+  return (
+    <LmGlassCard>
+      <LmNumberedHeader index={sectionIndex} title={title} />
+      {items.length === 0 ? (
+        <TeamOpsEmptyLine label="No journey milestones yet." />
+      ) : (
+        <div className="relative overflow-x-auto pb-1">
+          <div className="relative flex min-w-full items-start justify-between gap-4 px-2 py-4">
+            <div
+              className="absolute left-4 right-4 top-[22px] h-px"
+              style={{ background: `${TEAM_OPS.outline}44` }}
+              aria-hidden
+            />
+            {items.slice(0, 6).map((item, i) => (
+              <div
+                key={`${item.kind}-${item.occurred_at}-${i}`}
+                className="relative z-10 flex min-w-[88px] flex-1 flex-col items-center gap-2 text-center"
+              >
+                <span
+                  className="h-3 w-3 rounded-full border-4"
+                  style={{
+                    background: TEAM_OPS.primaryContainer,
+                    borderColor: TEAM_OPS.surfaceLow,
+                  }}
+                />
+                {item.occurred_at ? (
+                  <p className="text-[10px]" style={{ color: TEAM_OPS.onVariant }}>
+                    {formatOccurredAt(item.occurred_at)}
+                  </p>
+                ) : null}
+                <p className="text-xs font-semibold leading-tight" style={{ color: TEAM_OPS.onSurface }}>
+                  {item.title}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </LmGlassCard>
+  );
+}
+
+export function LmContributionDetails({
+  children,
+  defaultOpen = false,
+}: {
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details
+      className="rounded-2xl border px-4 py-3"
+      open={defaultOpen}
+      style={{
+        background: "rgba(27, 27, 35, 0.5)",
+        borderColor: `${TEAM_OPS.outline}33`,
+        fontFamily: JAKARTA,
+      }}
+    >
+      <summary
+        className="cursor-pointer list-none text-sm font-bold"
+        style={{ color: TEAM_OPS.onSurface }}
+      >
+        Contribution details
+      </summary>
+      <div className="mt-4 space-y-4">{children}</div>
+    </details>
+  );
+}
+
+/** Memory Strength hero — factual metrics + radar chrome (no /100 score). */
+export function LmMemoryStrengthHero({
+  summary,
+  activeMomentCount,
+  eventCount,
+  satellites = [],
+}: {
+  summary?: BusinessMemorySummary | null;
+  activeMomentCount: number;
+  eventCount: number;
+  /** Short moment-type labels for radar nodes (max 4). */
+  satellites?: string[];
+}) {
+  const signals = summary?.event_count ?? eventCount;
+  const months = summary?.months_active ?? 0;
+  const moments = summary?.active_moment_count ?? activeMomentCount;
+  const hasActivity = signals > 0 || moments > 0;
+  const growing = signals > 0;
+  const tone = hasActivity ? TEAM_OPS.secondary : TEAM_OPS.onVariant;
+  const nodes = satellites.slice(0, 4);
+
+  return (
+    <LmGlassCard glow>
+      <LmNumberedHeader index={1} title="Business Memory Strength" />
+      <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-2">
+        <div className="space-y-4">
+          <div className="flex items-baseline gap-2">
+            <span
+              className="text-5xl font-extrabold leading-none"
+              style={{ color: tone, fontFamily: JAKARTA }}
+            >
+              {hasActivity ? "Active" : "Empty"}
+            </span>
+          </div>
+          {growing ? (
+            <div
+              className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest"
+              style={{ color: TEAM_OPS.secondary }}
+            >
+              <span aria-hidden>↑</span>
+              <span>Memory growing</span>
+            </div>
+          ) : null}
+          <div className="space-y-2 text-sm" style={{ color: TEAM_OPS.onVariant }}>
+            <p className="flex items-center gap-2">
+              <span aria-hidden style={{ color: TEAM_OPS.primary }}>◈</span>
+              {signals.toLocaleString()} Learning Signals
+            </p>
+            <p className="flex items-center gap-2">
+              <span aria-hidden style={{ color: TEAM_OPS.primary }}>▣</span>
+              {months} Months Active
+            </p>
+            <p className="flex items-center gap-2">
+              <span aria-hidden style={{ color: TEAM_OPS.primary }}>◉</span>
+              {moments} Moments
+            </p>
+          </div>
+          <p className="text-sm leading-relaxed" style={{ color: TEAM_OPS.onVariant }}>
+            {summary?.description ??
+              "Your business has accumulated operational knowledge through recorded moments and events."}
+          </p>
+        </div>
+        <LmMemoryRadar nodes={nodes} active={hasActivity} />
+      </div>
+    </LmGlassCard>
+  );
+}
+
+function LmMemoryRadar({ nodes, active }: { nodes: string[]; active: boolean }) {
+  const tone = active ? TEAM_OPS.primary : TEAM_OPS.outline;
+  const positions = [
+    { x: 200, y: 40 },
+    { x: 360, y: 200 },
+    { x: 200, y: 360 },
+    { x: 40, y: 200 },
+  ];
+  return (
+    <div className="relative mx-auto flex min-h-[220px] w-full max-w-[280px] items-center justify-center">
+      <div
+        className="pointer-events-none absolute inset-0 rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${tone}26 0%, transparent 70%)`,
+        }}
+        aria-hidden
+      />
+      <svg className="relative z-10 h-auto w-full" viewBox="0 0 400 400" aria-hidden>
+        <circle cx="200" cy="200" r="160" fill="none" stroke="currentColor" strokeWidth="1" style={{ color: `${TEAM_OPS.outline}55` }} />
+        <circle cx="200" cy="200" r="100" fill="none" stroke="currentColor" strokeWidth="1" style={{ color: `${TEAM_OPS.outline}33` }} />
+        {positions.map((p, i) => (
+          <line
+            key={`l-${i}`}
+            x1="200"
+            y1="200"
+            x2={p.x}
+            y2={p.y}
+            stroke={tone}
+            strokeOpacity="0.35"
+            strokeWidth="1"
+            strokeDasharray="4 4"
+          />
+        ))}
+        <circle cx="200" cy="200" r="44" fill={TEAM_OPS.surfaceLow} stroke={tone} strokeWidth="2" />
+        <text
+          x="200"
+          y="195"
+          textAnchor="middle"
+          fill={tone}
+          fontSize="10"
+          fontWeight="700"
+          style={{ textTransform: "uppercase" }}
+        >
+          Business
+        </text>
+        <text
+          x="200"
+          y="210"
+          textAnchor="middle"
+          fill={tone}
+          fontSize="10"
+          fontWeight="700"
+          style={{ textTransform: "uppercase" }}
+        >
+          Memory
+        </text>
+        {positions.map((p, i) => {
+          const label = nodes[i];
+          return (
+            <g key={`n-${i}`} transform={`translate(${p.x}, ${p.y})`}>
+              <circle
+                r="22"
+                fill={TEAM_OPS.surfaceLow}
+                stroke={label ? tone : `${TEAM_OPS.outline}66`}
+                strokeWidth="1.5"
+              />
+              {label ? (
+                <text
+                  y="4"
+                  textAnchor="middle"
+                  fill={TEAM_OPS.onVariant}
+                  fontSize="7"
+                  fontWeight="600"
+                >
+                  {label.length > 10 ? `${label.slice(0, 9)}…` : label}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+export function LmBiggestLearningSection({
+  item,
+  sectionIndex,
+}: {
+  item?: BusinessMemoryMemoryItem | null;
+  sectionIndex: number;
+}) {
+  if (!item) {
+    return (
+      <LmEmptySection
+        index={sectionIndex}
+        title="Biggest Learning"
+        emptyLabel="No learning derived yet."
+      />
+    );
+  }
+  return (
+    <LmGlassCard style={{ borderColor: `${TEAM_OPS.primary}44` }} className="relative">
+      <div
+        className="pointer-events-none absolute right-4 top-2 text-6xl opacity-10"
+        style={{ color: TEAM_OPS.primary }}
+        aria-hidden
+      >
+        ✦
+      </div>
+      <LmNumberedHeader index={sectionIndex} title="Biggest Learning" />
+      <p className="relative z-10 max-w-[85%] text-base font-semibold leading-snug" style={{ color: TEAM_OPS.onSurface }}>
+        {item.title}
+      </p>
+      {item.detail ? (
+        <p className="relative z-10 mt-2 text-sm" style={{ color: TEAM_OPS.onVariant }}>
+          {item.detail}
+        </p>
+      ) : null}
+      {item.observed_count != null && item.observed_count > 0 ? (
+        <div
+          className="relative z-10 mt-4 flex gap-6 border-t pt-3"
+          style={{ borderColor: `${TEAM_OPS.outline}22` }}
+        >
+          <div>
+            <p className="text-[10px] uppercase tracking-wide" style={{ color: TEAM_OPS.onVariant }}>
+              Derived from
+            </p>
+            <p className="font-bold" style={{ color: TEAM_OPS.onSurface }}>
+              {item.observed_count} Activities
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </LmGlassCard>
+  );
+}
+
+const FLOW_PATTERN_TYPES = new Set([
+  "meeting_cadence",
+  "vendor_activity",
+  "recognition_culture",
+  "runway_risk_memory",
+]);
+
+/** Pattern network — short event-derived flows only (not dimension_active slogans). */
+export function LmPatternNetworkSection({
+  patterns,
+  sectionIndex,
+}: {
+  patterns: Array<{ pattern_type?: string; dimension?: string; label?: string; count?: number } | string>;
+  sectionIndex: number;
+}) {
+  const flow = patterns.filter((p) => {
+    if (typeof p === "string") return true;
+    const t = (p.pattern_type || "").toLowerCase();
+    if (t === "dimension_active") return false;
+    if (FLOW_PATTERN_TYPES.has(t)) return true;
+    // Legacy / unknown: keep if label is short (not a tracked slogan).
+    const label = typeof p.label === "string" ? p.label : "";
+    return label.length > 0 && label.length <= 48 && !/actively being tracked/i.test(label);
+  });
+
+  if (!flow.length) {
+    return (
+      <LmEmptySection
+        index={sectionIndex}
+        title="Pattern Network"
+        emptyLabel="No patterns detected yet."
+      />
+    );
+  }
+
+  const labels = flow.map((p) =>
+    typeof p === "string" ? p : typeof p.label === "string" ? p.label : "Pattern",
+  );
+
+  return (
+    <LmGlassCard>
+      <LmNumberedHeader index={sectionIndex} title="Pattern Network" />
+      <div className="flex flex-wrap items-center justify-center gap-2 py-2">
+        {labels.map((label, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span
+              className="rounded-lg border px-3 py-2 text-xs font-medium"
+              style={{
+                background: "rgba(128, 131, 255, 0.12)",
+                borderColor: "rgba(128, 131, 255, 0.35)",
+                color: TEAM_OPS.primary,
+              }}
+            >
+              {label}
+            </span>
+            {i < labels.length - 1 ? (
+              <span className="text-xs" style={{ color: TEAM_OPS.primary }} aria-hidden>
+                →
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </LmGlassCard>
+  );
+}
+
+export function LmPlaybookSection({
+  playbooks,
+  sectionIndex,
+}: {
+  playbooks?: unknown[];
+  sectionIndex: number;
+}) {
+  const list = Array.isArray(playbooks) ? playbooks : [];
+  if (!list.length) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-sm text-[10px] font-bold"
+            style={{ background: `${TEAM_OPS.primary}33`, color: TEAM_OPS.primary }}
+          >
+            {sectionIndex}
+          </span>
+          <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+            Business Playbook
+          </h3>
+        </div>
+        <div
+          className="rounded-2xl border-l-4 p-4"
+          style={{
+            background: TEAM_OPS.surfaceLow,
+            borderLeftColor: TEAM_OPS.primary,
+            borderColor: `${TEAM_OPS.outline}22`,
+            borderWidth: 1,
+            borderLeftWidth: 4,
+            minHeight: 88,
+          }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: TEAM_OPS.primary }}>
+            Playbook
+          </p>
+          <p className="mt-2 text-sm" style={{ color: TEAM_OPS.onVariant }}>
+            No playbooks yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <LmGlassCard style={{ borderLeft: `4px solid ${TEAM_OPS.primary}` }}>
+      <LmNumberedHeader index={sectionIndex} title="Business Playbook" />
+      <div className="space-y-3">
+        {list.map((raw, i) => {
+          const p = raw as {
+            playbook_title?: string;
+            title?: string;
+            playbook_summary?: string;
+          };
+          const title = p.playbook_title || p.title || `Playbook #${i + 1}`;
+          return (
+            <div
+              key={i}
+              className="rounded-xl border p-4"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                borderColor: `${TEAM_OPS.outline}33`,
+              }}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: TEAM_OPS.primary }}>
+                Playbook #{i + 1}
+              </p>
+              <p className="mt-1 font-bold" style={{ color: TEAM_OPS.onSurface }}>
+                {title}
+              </p>
+              {p.playbook_summary ? (
+                <p className="mt-1 text-xs" style={{ color: TEAM_OPS.onVariant }}>
+                  {p.playbook_summary}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </LmGlassCard>
+  );
+}
+
+export function LmSuccessMemorySection({
+  items,
+  sectionIndex,
+}: {
+  items: BusinessMemoryMemoryItem[];
+  sectionIndex: number;
+}) {
+  if (!items.length) {
+    return (
+      <LmEmptySection
+        index={sectionIndex}
+        title="Success Memory"
+        emptyLabel="No success memory yet."
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span
+          className="flex h-5 w-5 items-center justify-center rounded-sm text-[10px] font-bold"
+          style={{ background: `${TEAM_OPS.primary}33`, color: TEAM_OPS.primary }}
+        >
+          {sectionIndex}
+        </span>
+        <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+          Success Memory
+        </h3>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div
+            key={`s-${i}`}
+            className="rounded-2xl border p-4"
+            style={{
+              borderColor: `${TEAM_OPS.secondary}55`,
+              background: `${TEAM_OPS.secondary}12`,
+            }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-bold" style={{ color: TEAM_OPS.secondary }}>
+                {item.title}
+              </p>
+              <span aria-hidden style={{ color: TEAM_OPS.secondary }}>
+                ★
+              </span>
+            </div>
+            {item.detail ? (
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: TEAM_OPS.onVariant }}>
+                {item.detail}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function LmRiskMemorySection({
+  items,
+  sectionIndex,
+}: {
+  items: BusinessMemoryMemoryItem[];
+  sectionIndex: number;
+}) {
+  if (!items.length) {
+    return (
+      <LmEmptySection
+        index={sectionIndex}
+        title="Risk Memory"
+        emptyLabel="No risk memory yet."
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span
+          className="flex h-5 w-5 items-center justify-center rounded-sm text-[10px] font-bold"
+          style={{ background: `${TEAM_OPS.primary}33`, color: TEAM_OPS.primary }}
+        >
+          {sectionIndex}
+        </span>
+        <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+          Risk Memory
+        </h3>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div
+            key={`r-${i}`}
+            className="rounded-2xl border p-4"
+            style={{
+              borderColor: `${TEAM_OPS.error}55`,
+              background: `${TEAM_OPS.error}12`,
+            }}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <span aria-hidden style={{ color: TEAM_OPS.error }}>
+                ⚠
+              </span>
+              <p className="text-sm font-bold uppercase" style={{ color: TEAM_OPS.error }}>
+                {item.title}
+              </p>
+            </div>
+            {(item.detail || item.impact) && (
+              <p className="text-xs" style={{ color: TEAM_OPS.onVariant }}>
+                {[item.impact ? `Impact: ${item.impact}` : null, item.detail]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
+            {item.observed_count != null && item.observed_count > 0 ? (
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-wide" style={{ color: `${TEAM_OPS.error}cc` }}>
+                Observed {item.observed_count} Times
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function LmWisdomSection({ sectionIndex }: { sectionIndex: number }) {
+  return (
+    <LmEmptySection
+      index={sectionIndex}
+      title="Business Wisdom"
+      emptyLabel="No wisdom captured yet."
+    />
+  );
+}

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Image } from "lucide-react";
 import { GroupSkeletonBlocks } from "@/components/group/shared/skeleton/GroupSkeletonBlocks";
-import { useGroupLivingMoments, useGroupMoments, useGroupPurchaseMoments } from "@/hooks/useGroupTabCache";
+import { useGroupLivingMoments, useGroupMoments, useGroupPurchaseMoments, useGroupTripPulse } from "@/hooks/useGroupTabCache";
 import type {
   GroupMomentsStatTile,
   LivingMomentsViewResponse,
   PurchaseMomentsViewResponse,
   TripMomentsViewResponse,
+  TripPulseResponse,
 } from "@/lib/api/group";
 import { ExperienceGlassCard } from "./ui/ExperienceGlassCard";
 import { MaterialIcon } from "./ui/MaterialIcon";
@@ -21,6 +22,28 @@ type ActiveMomentsProps = {
   bottomPadding?: number;
   reloadKey?: number;
   source?: "trip" | "purchase" | "living";
+};
+
+type ItineraryItem = {
+  id: string;
+  title: string;
+  time: string;
+  icon: string;
+  isFirst: boolean;
+};
+
+type GalleryItem = {
+  id: string;
+  label: string;
+  imageUrl?: string | null;
+};
+
+type EventItem = {
+  id: string;
+  title: string;
+  time: string;
+  icon: string;
+  accent: string;
 };
 
 export function ActiveMoments({
@@ -36,6 +59,7 @@ export function ActiveMoments({
   const tripHook = useGroupMoments(isTrip ? momentId : null, isTrip);
   const purchaseHook = useGroupPurchaseMoments(isPurchase ? momentId : null, isPurchase);
   const livingHook = useGroupLivingMoments(isLiving ? momentId : null, isLiving);
+  const pulseHook = useGroupTripPulse(isTrip ? momentId : null, isTrip);
   const moments = (isPurchase ? purchaseHook.data : isLiving ? livingHook.data : tripHook.data) as
     | TripMomentsViewResponse
     | PurchaseMomentsViewResponse
@@ -45,14 +69,18 @@ export function ActiveMoments({
   const loading = isPurchase ? purchaseHook.loading : isLiving ? livingHook.loading : tripHook.loading;
   const error = isPurchase ? purchaseHook.error : isLiving ? livingHook.error : tripHook.error;
   const reload = isPurchase ? purchaseHook.reload : isLiving ? livingHook.reload : tripHook.reload;
+  const pulseReload = pulseHook.reload;
 
   useEffect(() => {
-    if (reloadKey > 0) void reload();
-  }, [reloadKey, reload]);
+    if (reloadKey > 0) {
+      void reload();
+      if (isTrip) void pulseReload();
+    }
+  }, [reloadKey, reload, isTrip, pulseReload]);
 
   if (loading && !moments) {
     return (
-      <ExperienceScrollShell bottomPadding={bottomPadding}>
+      <ExperienceScrollShell bottomPadding={bottomPadding} onRefresh={reload}>
         <GroupSkeletonBlocks variant="moments" />
       </ExperienceScrollShell>
     );
@@ -74,6 +102,301 @@ export function ActiveMoments({
 
   if (!moments) return null;
 
+  if (isTrip) {
+    return (
+      <TripMomentsMockBody
+        moments={moments as TripMomentsViewResponse}
+        pulse={pulseHook.data ?? null}
+        onQuickAdd={onQuickAdd}
+        bottomPadding={bottomPadding}
+        onRefresh={reload}
+      />
+    );
+  }
+
+  return (
+    <OpsHubBody
+      moments={moments}
+      isPurchase={isPurchase}
+      isLiving={isLiving}
+      onQuickAdd={onQuickAdd}
+      bottomPadding={bottomPadding}
+      onRefresh={reload}
+    />
+  );
+}
+
+function TripMomentsMockBody({
+  moments,
+  pulse,
+  onQuickAdd,
+  bottomPadding,
+  onRefresh,
+}: {
+  moments: TripMomentsViewResponse;
+  pulse: TripPulseResponse | null;
+  onQuickAdd?: () => void;
+  bottomPadding: number;
+  onRefresh?: () => void | Promise<void>;
+}) {
+  const hub = moments.operations_hub;
+  const displayName = moments.trip_name || hub.core_summary.moment_name || "Untitled moment";
+  const eyebrow = hub.core_summary.eyebrow || "Shared Experience";
+  const statTiles = useMemo(() => tripHeroStatTiles(moments, pulse), [moments, pulse]);
+  const itinerary = useMemo(() => tripItineraryItems(moments), [moments]);
+  const gallery = useMemo(() => tripGalleryItems(moments), [moments]);
+  const events = useMemo(() => tripUpcomingEvents(moments), [moments]);
+  const overflowCount = Math.max(0, gallery.length - 3);
+
+  return (
+    <ExperienceScrollShell
+      bottomPadding={bottomPadding}
+      className="font-[family-name:var(--font-plus-jakarta)]"
+      style={tripStitchShellStyle}
+      onRefresh={onRefresh}
+    >
+      <ExperienceGlassCard glow accentBorder="left" className="relative overflow-hidden">
+        <div className="pointer-events-none absolute right-4 top-2 opacity-10">
+          <MaterialIcon name="flight_takeoff" className="text-[120px]" style={{ color: tripStitchTheme.primary }} />
+        </div>
+        <div className="relative z-10">
+          <div className="mb-6 flex items-start justify-between gap-3">
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                <MaterialIcon name="palette" className="text-[16px]" style={{ color: tripStitchTheme.primary }} />
+                <span
+                  className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: tripStitchTheme.primary }}
+                >
+                  {eyebrow.toUpperCase()}
+                </span>
+              </div>
+              <h2 className="text-2xl font-semibold" style={{ color: tripStitchTheme.onSurface }}>
+                {displayName}
+              </h2>
+            </div>
+            <span
+              className="shrink-0 rounded-full px-3 py-1 text-[10px] font-medium uppercase"
+              style={{ background: `${tripStitchTheme.primary}33`, color: tripStitchTheme.primary }}
+            >
+              {moments.stage_badge}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {statTiles.map((tile) => (
+              <MetricTile
+                key={`${tile.label}-${tile.value}`}
+                label={tile.label}
+                value={tile.value}
+                valueColor={tile.highlight ? tripStitchTheme.primary : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      </ExperienceGlassCard>
+
+      <SectionLabel icon="calendar_month" action={itinerary.length > 0 ? "View all" : undefined}>
+        Itinerary
+      </SectionLabel>
+      {itinerary.length === 0 ? (
+        <EmptyMomentsCard
+          icon="calendar_month"
+          message="No itinerary yet"
+          actionLabel="Plan your trip"
+          onAction={onQuickAdd}
+        />
+      ) : (
+        <ExperienceGlassCard className="relative">
+          <div
+            className="absolute bottom-8 left-[27px] top-8 w-px"
+            style={{ background: "rgba(255,255,255,0.10)" }}
+          />
+          <div className="relative z-10 space-y-6">
+            {itinerary.map((item) => (
+              <div key={item.id} className="flex gap-4">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                  style={{
+                    background: item.isFirst ? tripStitchTheme.primaryContainer : tripStitchTheme.surfaceContainerHigh,
+                    border: item.isFirst ? undefined : `1px solid ${tripStitchTheme.primary}4D`,
+                  }}
+                >
+                  <MaterialIcon
+                    name={item.icon}
+                    className="text-[16px]"
+                    style={{ color: item.isFirst ? tripStitchTheme.onPrimaryContainer : tripStitchTheme.primary }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>
+                    {item.title}
+                  </p>
+                  {item.time ? (
+                    <p className="text-[12px]" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                      {item.time}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExperienceGlassCard>
+      )}
+
+      <SectionLabel
+        icon="photo_library"
+        action={overflowCount > 0 ? `+${overflowCount} More` : undefined}
+      >
+        Moments Grid
+      </SectionLabel>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {gallery.slice(0, 3).map((item) => (
+          <div
+            key={item.id}
+            className="relative aspect-[4/5] overflow-hidden rounded-2xl"
+            style={{ background: tripStitchTheme.surfaceContainerHigh }}
+          >
+            {item.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.imageUrl} alt={item.label} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <MaterialIcon
+                  name="photo"
+                  className="text-[48px]"
+                  style={{ color: `${tripStitchTheme.onSurfaceVariant}33` }}
+                />
+              </div>
+            )}
+            {item.label ? (
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white">{item.label}</p>
+              </div>
+            ) : null}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={onQuickAdd}
+          className="flex aspect-[4/5] flex-col items-center justify-center rounded-2xl transition-colors hover:bg-white/5"
+          style={{ border: `1px solid ${tripStitchTheme.primary}4D` }}
+        >
+          <MaterialIcon name="add_photo_alternate" className="text-[40px]" style={{ color: tripStitchTheme.primary }} />
+          <p className="mt-2 text-[12px] font-medium uppercase tracking-wider" style={{ color: tripStitchTheme.primary }}>
+            Add
+          </p>
+        </button>
+      </div>
+
+      <SectionLabel icon="event">Upcoming Events</SectionLabel>
+      {events.length === 0 ? (
+        <EmptyMomentsCard icon="event" message="No upcoming events" />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {events.map((event) => {
+            const tone =
+              event.accent === "secondary"
+                ? tripStitchTheme.secondary
+                : event.accent === "tertiary"
+                  ? tripStitchTheme.tertiary
+                  : tripStitchTheme.primary;
+            return (
+              <ExperienceGlassCard key={event.id} className="!p-4">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: `${tone}1A`, color: tone }}
+                  >
+                    <MaterialIcon name={event.icon} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>
+                      {event.title}
+                    </p>
+                    {event.time ? (
+                      <p className="text-[12px]" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                        {event.time}
+                      </p>
+                    ) : null}
+                  </div>
+                  <MaterialIcon name="chevron_right" style={{ color: tripStitchTheme.onSurfaceVariant }} />
+                </div>
+              </ExperienceGlassCard>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onQuickAdd}
+        className="flex w-full items-center justify-between rounded-[24px] p-6 text-left transition-transform hover:-translate-y-0.5"
+        style={{
+          background: `linear-gradient(135deg, ${tripStitchTheme.primaryContainer} 0%, ${tripStitchTheme.primary} 100%)`,
+          boxShadow: "0 10px 40px rgba(255,122,61,0.20)",
+          color: tripStitchTheme.onPrimary,
+        }}
+      >
+        <div>
+          <p className="text-[12px] font-semibold uppercase tracking-wider opacity-80">Create Moment</p>
+          <p className="text-2xl font-bold">Capture this trip</p>
+        </div>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+          <MaterialIcon name="add" className="text-[28px]" />
+        </div>
+      </button>
+    </ExperienceScrollShell>
+  );
+}
+
+function EmptyMomentsCard({
+  icon,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  icon: string;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <ExperienceGlassCard>
+      <div className="flex flex-col items-center gap-3 py-6 text-center">
+        <MaterialIcon name={icon} className="text-[32px]" style={{ color: `${tripStitchTheme.onSurfaceVariant}80` }} />
+        <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+          {message}
+        </p>
+        {actionLabel && onAction ? (
+          <button
+            type="button"
+            onClick={onAction}
+            className="text-[10px] font-bold uppercase tracking-wider"
+            style={{ color: tripStitchTheme.primary }}
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
+    </ExperienceGlassCard>
+  );
+}
+
+function OpsHubBody({
+  moments,
+  isPurchase,
+  isLiving,
+  onQuickAdd,
+  bottomPadding,
+  onRefresh,
+}: {
+  moments: PurchaseMomentsViewResponse | LivingMomentsViewResponse | TripMomentsViewResponse;
+  isPurchase: boolean;
+  isLiving: boolean;
+  onQuickAdd?: () => void;
+  bottomPadding: number;
+  onRefresh?: () => void | Promise<void>;
+}) {
   const hub = moments.operations_hub;
   const displayName =
     "trip_name" in moments && moments.trip_name
@@ -89,6 +412,7 @@ export function ActiveMoments({
       bottomPadding={bottomPadding}
       className="font-[family-name:var(--font-plus-jakarta)]"
       style={tripStitchShellStyle}
+      onRefresh={onRefresh}
     >
       <ExperienceGlassCard glow accentBorder="left" className="relative overflow-hidden">
         <div className="relative z-10">
@@ -302,11 +626,93 @@ export function ActiveMoments({
   );
 }
 
+function tripHeroStatTiles(
+  moments: TripMomentsViewResponse,
+  pulse: TripPulseResponse | null,
+): GroupMomentsStatTile[] {
+  const tiles = moments.operations_hub.core_summary.stat_tiles ?? [];
+  if (tiles.length > 0) return tiles;
+  const stats = pulse?.stats;
+  if (!stats) return defaultStatTiles();
+  const expenseMinor = stats.total_expenses_minor ?? 0;
+  const expenseLabel = expenseMinor > 0 ? `₹${Math.round(expenseMinor / 100)}` : "—";
+  const participants = Math.max(stats.guests_joined ?? 0, stats.participants_joined ?? 0);
+  return [
+    { label: "Participants", value: String(participants) },
+    { label: "Bookings", value: String(stats.confirmed_bookings ?? 0) },
+    { label: "Activities", value: String(stats.active_plan_items ?? 0) },
+    { label: "Expenses", value: expenseLabel, highlight: expenseMinor > 0 },
+  ];
+}
+
+function tripItineraryItems(moments: TripMomentsViewResponse): ItineraryItem[] {
+  return (moments.memory_hub?.timeline ?? []).map((item, index) => ({
+    id: item.event_id || `timeline-${index}`,
+    title: item.title,
+    time: item.date_label ?? "",
+    icon: itineraryIconFor(item.title, index === 0),
+    isFirst: index === 0 || Boolean(item.is_complete && index === 0),
+  }));
+}
+
+function tripGalleryItems(moments: TripMomentsViewResponse): GalleryItem[] {
+  const fromHub = (moments.memory_hub?.gallery ?? []).map((item, index) => ({
+    id: item.memory_id || `gallery-${index}`,
+    label: item.title || "Memory",
+    imageUrl: item.image_url,
+  }));
+  const fromCaptured = (moments.captured_memories ?? [])
+    .filter((m) => Boolean(m.title || m.image_url))
+    .map((m) => ({
+      id: m.id,
+      label: m.title || "Memory",
+      imageUrl: m.image_url,
+    }));
+  return [...fromHub, ...fromCaptured];
+}
+
+function tripUpcomingEvents(moments: TripMomentsViewResponse): EventItem[] {
+  const feed = moments.memory_feed ?? [];
+  if (feed.length > 0) {
+    return feed.map((item, index) => ({
+      id: item.id || `feed-${index}`,
+      title: item.title,
+      time: item.timestamp_label || item.subtitle || "",
+      icon: item.icon || item.activity_type || "event",
+      accent: item.accent || "primary",
+    }));
+  }
+  // Incomplete timeline rows can stand in as upcoming when feed is empty.
+  return (moments.memory_hub?.timeline ?? [])
+    .filter((item) => item.is_complete === false)
+    .map((item, index) => ({
+      id: item.event_id || `upcoming-${index}`,
+      title: item.title,
+      time: item.date_label ?? "",
+      icon: itineraryIconFor(item.title, false),
+      accent: index % 2 === 0 ? "primary" : "secondary",
+    }));
+}
+
+function itineraryIconFor(title: string, isFirst: boolean): string {
+  if (isFirst) return "flag";
+  const lower = title.toLowerCase();
+  if (lower.includes("beach")) return "beach_access";
+  if (lower.includes("dinner") || lower.includes("food") || lower.includes("restaurant")) return "restaurant";
+  if (lower.includes("boat") || lower.includes("cruise")) return "directions_boat";
+  if (lower.includes("book")) return "hotel";
+  return "event";
+}
+
 function heroStatTiles(moments: {
   operations_hub: { core_summary: { stat_tiles?: GroupMomentsStatTile[] } };
 }): GroupMomentsStatTile[] {
   const tiles = moments.operations_hub.core_summary.stat_tiles ?? [];
   if (tiles.length > 0) return tiles;
+  return defaultStatTiles();
+}
+
+function defaultStatTiles(): GroupMomentsStatTile[] {
   return [
     { label: "Participants", value: "0" },
     { label: "Bookings", value: "0" },

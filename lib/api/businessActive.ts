@@ -15,7 +15,7 @@ export type TeamOpsHealth = {
   label: string;
   band: "empty" | "healthy" | "needs_attention" | "at_risk" | string;
   rule?: string;
-  inputs?: Record<string, number>;
+  inputs?: Record<string, number | null>;
   score?: number;
   max_score?: number;
   open_issues_per_member_pct?: number;
@@ -149,7 +149,7 @@ export type BusinessLifeSlice = {
   count: number;
   band?: string;
   items?: TeamOpsEventItem[];
-  inputs?: Record<string, number>;
+  inputs?: Record<string, number | null>;
   source_moment_id?: string;
   source_moment_name?: string;
 };

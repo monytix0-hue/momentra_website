@@ -9,6 +9,7 @@ import { OnboardingScreen } from "@/components/onboarding/OnboardingScreen";
 import { CompanySwitcher } from "@/components/business/workspace/CompanySwitcher";
 import { CompanySettingsSheet } from "@/components/business/workspace/CompanySettingsSheet";
 import { CompanyHomeSheet } from "@/components/business/workspace/CompanyHomeSheet";
+import { JoinCompanySheet } from "@/components/business/workspace/JoinCompanySheet";
 import { Life360Overlay } from "@/components/life360/Life360Overlay";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/components/theme/AppContextProvider";
 import { MomentraAnalytics } from "@/lib/analytics";
 import { acceptInvite } from "@/lib/api/group";
-import { acceptBusinessWorkspaceInvite } from "@/lib/api/client";
+import { acceptBusinessWorkspaceInvite, updateBusinessWorkspace } from "@/lib/api/client";
 import {
   openBusinessCreateOverlay,
   openBusinessMomentAndPulse,
@@ -25,7 +26,11 @@ import {
 import { openGroupCreateOverlay, openGroupMomentAndPulse } from "@/lib/groupShellEvents";
 import { openPersonalCreateOverlay } from "@/lib/personalShellEvents";
 import { isBusinessMomentType } from "@/lib/invite/inviteToken";
-import { consumeInviteJoinedResult, consumePendingInvite } from "@/lib/invite/pendingInvite";
+import {
+  consumeInviteJoinedResult,
+  consumePendingCompanyInvite,
+  consumePendingInvite,
+} from "@/lib/invite/pendingInvite";
 import type { AppContext } from "@/lib/appContext";
 import {
   clearSwitchError,
@@ -44,6 +49,8 @@ import {
 import { ensureGroupSession } from "@/stores/groupSessionStore";
 import { ensurePersonalSession } from "@/stores/personalSessionStore";
 import { ensureCircleSession } from "@/stores/circleSessionStore";
+
+const PENDING_COMPANY_SWITCH_KEY = "momentra:pending-company-switch";
 
 function dispatchInviteJoined(detail: {
   moment_id: string;
@@ -69,9 +76,11 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
   const [showCompanySwitcher, setShowCompanySwitcher] = useState(false);
   const [showCompanySettings, setShowCompanySettings] = useState(false);
   const [showCompanyHome, setShowCompanyHome] = useState(false);
+  const [showJoinCompany, setShowJoinCompany] = useState(false);
   const [showLife360, setShowLife360] = useState(false);
   const canScanInvite = context === "group" || context === "business";
   const pendingInviteHandled = useRef(false);
+  const pendingCompanyInviteHandled = useRef(false);
   const businessSession = useBusinessSessionStore();
   const selectedWorkspace = getSelectedBusinessWorkspace();
   const workspaces = getBusinessWorkspaces();
@@ -129,6 +138,41 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
   }, []);
 
   useEffect(() => {
+    if (!user || pendingCompanyInviteHandled.current) return;
+
+    const switchId =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem(PENDING_COMPANY_SWITCH_KEY)
+        : null;
+    if (switchId) {
+      sessionStorage.removeItem(PENDING_COMPANY_SWITCH_KEY);
+      pendingCompanyInviteHandled.current = true;
+      setContext("business");
+      void switchBusinessWorkspace(switchId).then(() => setShowCompanyHome(true));
+      return;
+    }
+
+    const companyToken = consumePendingCompanyInvite();
+    if (!companyToken) return;
+    pendingCompanyInviteHandled.current = true;
+    void (async () => {
+      try {
+        void MomentraAnalytics.logCustomEvent("company_invite_deep_link_open", {
+          source: "pending_after_login",
+        });
+        const ws = await acceptBusinessWorkspaceInvite(companyToken);
+        void MomentraAnalytics.logCustomEvent("company_invite_accept_success");
+        setContext("business");
+        await switchBusinessWorkspace(ws.id);
+        setShowCompanyHome(true);
+      } catch {
+        void MomentraAnalytics.logCustomEvent("company_invite_accept_failed");
+        pendingCompanyInviteHandled.current = false;
+      }
+    })();
+  }, [user, setContext]);
+
+  useEffect(() => {
     if (!user || pendingInviteHandled.current) return;
 
     const stashed = consumeInviteJoinedResult();
@@ -138,6 +182,10 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       setContext(biz ? "business" : "group");
       window.setTimeout(() => {
         if (biz) {
+          openBusinessMomentAndPulse(
+            stashed.moment_id,
+            stashed.moment_type || "TEAM_OPERATIONS",
+          );
           dispatchInviteJoined(stashed);
         } else {
           openGroupMomentAndPulse({
@@ -165,6 +213,10 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         setContext(biz ? "business" : "group");
         window.setTimeout(() => {
           if (biz) {
+            openBusinessMomentAndPulse(
+              result.moment_id,
+              result.moment_type || "TEAM_OPERATIONS",
+            );
             dispatchInviteJoined(result);
           } else {
             openGroupMomentAndPulse({
@@ -305,7 +357,15 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         onJoined={(result) => {
           const biz = isBusinessMomentType(result.moment_type);
           setContext(biz ? "business" : "group");
-          window.setTimeout(() => dispatchInviteJoined(result), 50);
+          window.setTimeout(() => {
+            if (biz) {
+              openBusinessMomentAndPulse(
+                result.moment_id,
+                result.moment_type || "TEAM_OPERATIONS",
+              );
+            }
+            dispatchInviteJoined(result);
+          }, 50);
         }}
       />
 
@@ -317,9 +377,6 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         onSelect={(id) => {
           void switchBusinessWorkspace(id);
         }}
-        onSearch={() => {
-          alert("Company search — coming soon");
-        }}
         onNotifications={() => {
           alert("Company notifications — coming soon");
         }}
@@ -330,24 +387,62 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
           }
           setShowCompanySettings(true);
         }}
-        onOpenCompanyHome={() => {
-          if (!selectedWorkspace) {
-            setShowCompanySwitcher(true);
+        onOpenHome={(id) => {
+          void (async () => {
+            const current =
+              selectedWorkspace?.id ?? businessSession.selectedWorkspaceId;
+            if (id !== current) {
+              await switchBusinessWorkspace(id);
+            }
+            setShowCompanyHome(true);
+          })();
+        }}
+        onEditCompany={(id) => {
+          void (async () => {
+            const current =
+              selectedWorkspace?.id ?? businessSession.selectedWorkspaceId;
+            if (id !== current) {
+              await switchBusinessWorkspace(id);
+            }
+            setShowCompanySettings(true);
+          })();
+        }}
+        onDeleteCompany={(id) => {
+          const ws = workspaces.find((w) => w.id === id);
+          if (!ws || (ws.role || "").toUpperCase() !== "OWNER") return;
+          if (
+            !confirm(
+              `Archive ${ws.name}? This hides the company for all members.`,
+            )
+          ) {
             return;
           }
-          setShowCompanyHome(true);
+          void (async () => {
+            try {
+              await updateBusinessWorkspace(id, { status: "ARCHIVED" });
+              await softRefreshBusinessSession(
+                selectedWorkspace?.id ?? businessSession.selectedWorkspaceId,
+              );
+            } catch {
+              alert("Could not archive company");
+            }
+          })();
         }}
         onCreate={() => {
           const name = window.prompt("Company name");
           if (!name?.trim()) return;
           void createAndSelectBusinessWorkspace(name.trim());
         }}
-        onJoin={() => {
-          const token = window.prompt("Paste company invite token");
-          if (!token?.trim()) return;
-          void acceptBusinessWorkspaceInvite(token.trim())
-            .then((ws) => switchBusinessWorkspace(ws.id))
-            .catch(() => alert("Could not join company"));
+        onJoin={() => setShowJoinCompany(true)}
+      />
+
+      <JoinCompanySheet
+        open={isBusiness && showJoinCompany}
+        onClose={() => setShowJoinCompany(false)}
+        onJoined={(workspaceId) => {
+          void switchBusinessWorkspace(workspaceId).then(() =>
+            setShowCompanyHome(true),
+          );
         }}
       />
 

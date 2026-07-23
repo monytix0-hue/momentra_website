@@ -16,7 +16,7 @@ export function TeamOpsScrollShell({
       className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-6 overflow-y-auto px-1 pt-2"
       style={{
         color: TEAM_OPS.onSurface,
-        paddingBottom: bottomPadding || 24,
+        paddingBottom: Math.max(bottomPadding || 0, 96),
         fontFamily: TEAM_OPS.fontBody,
       }}
     >

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
+import QRCode from "react-qr-code";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { businessCardStyle } from "@/components/business/empty/shared/emptyStyles";
 import type { BusinessWorkspaceSummary } from "@/lib/api/business";
@@ -45,6 +46,8 @@ export function CompanySettingsSheet({
   >([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
+  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!open || !workspace) return;
@@ -54,6 +57,8 @@ export function CompanySettingsSheet({
     setTimezone(workspace.timezone ?? "Asia/Kolkata");
     setSection("general");
     setError(null);
+    setLastInviteLink(null);
+    setCopied(false);
     void BusinessRepository.listWorkspaceMembers(workspace.id)
       .then((res) => setMembers(res.members ?? []))
       .catch(() => setMembers([]));
@@ -92,11 +97,19 @@ export function CompanySettingsSheet({
   async function sendInvite() {
     setSaving(true);
     setError(null);
+    setCopied(false);
     try {
-      await BusinessRepository.inviteWorkspaceMember(workspace!.id, {
+      const result = await BusinessRepository.inviteWorkspaceMember(workspace!.id, {
         email: inviteEmail,
         role: inviteRole,
       });
+      const link =
+        (typeof result.invite_link === "string" && result.invite_link) ||
+        (typeof result.qr_payload === "string" && result.qr_payload) ||
+        (typeof result.token === "string" && result.token
+          ? `${window.location.origin}/company-invite/${result.token}`
+          : null);
+      setLastInviteLink(link);
       setInviteEmail("");
       const res = await BusinessRepository.listWorkspaceMembers(workspace!.id);
       setMembers(res.members ?? []);
@@ -104,6 +117,16 @@ export function CompanySettingsSheet({
       setError(e instanceof Error ? e.message : "Could not invite");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!lastInviteLink) return;
+    try {
+      await navigator.clipboard.writeText(lastInviteLink);
+      setCopied(true);
+    } catch {
+      setError("Could not copy link");
     }
   }
 
@@ -341,6 +364,54 @@ export function CompanySettingsSheet({
                   >
                     Send invite
                   </button>
+                  {lastInviteLink ? (
+                    <div
+                      className="space-y-3 pt-3"
+                      style={{
+                        borderTop: `1px solid color-mix(in srgb, ${colors.border} 40%, transparent)`,
+                      }}
+                    >
+                      <p
+                        className="text-sm font-semibold"
+                        style={{ color: colors.textPrimary }}
+                      >
+                        Invite link ready
+                      </p>
+                      <p
+                        className="break-all text-xs"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        {lastInviteLink}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void copyInviteLink()}
+                        className="flex w-full items-center justify-center gap-2 py-2.5 text-sm font-semibold"
+                        style={{
+                          border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+                          color: colors.textPrimary,
+                          borderRadius: radius.button,
+                        }}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4" strokeWidth={2.5} />
+                        ) : (
+                          <Copy className="h-4 w-4" strokeWidth={2.5} />
+                        )}
+                        {copied ? "Copied" : "Copy link"}
+                      </button>
+                      <div
+                        className="mx-auto flex items-center justify-center p-3"
+                        style={{
+                          background: "#fff",
+                          borderRadius: radius.md,
+                          width: "fit-content",
+                        }}
+                      >
+                        <QRCode value={lastInviteLink} size={148} />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

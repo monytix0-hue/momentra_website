@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import { groupSectionLabel } from "@/lib/group/groupTypography";
 import { MaterialIcon } from "./MaterialIcon";
 
@@ -366,29 +367,50 @@ export function ExperienceScrollShell({
   bottomPadding = 0,
   className,
   style,
+  onRefresh,
 }: {
   children: ReactNode;
   bottomPadding?: number;
   className?: string;
   style?: CSSProperties;
+  onRefresh?: () => void | Promise<void>;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
+  const contentPad = bottomPadding || tokens.spacing.md;
+  const shellStyle: CSSProperties = {
+    background: colors.background,
+    color: colors.textPrimary,
+    ...style,
+  };
+  const inner = (
+    <div
+      className="mx-auto w-full max-w-[600px] space-y-6 px-5 py-4 md:max-w-[1080px] md:px-20 md:py-6"
+      style={{ paddingBottom: contentPad }}
+    >
+      {children}
+    </div>
+  );
+
+  if (onRefresh) {
+    return (
+      <div
+        data-momentra-context="group"
+        className={["relative flex min-h-0 flex-1 flex-col", className].filter(Boolean).join(" ")}
+        style={shellStyle}
+      >
+        <PullToRefresh onRefresh={onRefresh}>{inner}</PullToRefresh>
+      </div>
+    );
+  }
 
   return (
     <div
       data-momentra-context="group"
       className={["relative min-h-0 flex-1 overflow-y-auto", className].filter(Boolean).join(" ")}
-      style={{
-        background: colors.background,
-        color: colors.textPrimary,
-        paddingBottom: bottomPadding || tokens.spacing.md,
-        ...style,
-      }}
+      style={shellStyle}
     >
-      <div className="mx-auto w-full max-w-[600px] space-y-6 px-5 py-4 md:max-w-[1080px] md:px-20 md:py-6">
-        {children}
-      </div>
+      {inner}
     </div>
   );
 }

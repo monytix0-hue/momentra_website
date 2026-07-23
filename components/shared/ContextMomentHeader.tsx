@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Settings } from "lucide-react";
+import { ChevronDown, Settings, Trash2, UserPlus } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 
 export type ContextMomentSwitcherOption = {
@@ -19,6 +19,10 @@ type ContextMomentHeaderProps = {
   selectedTypeCode: string;
   onSelect: (option: ContextMomentSwitcherOption) => void;
   onManageClick?: () => void;
+  /** Group / Business only — Personal omits this. Acts on the selected moment. */
+  onInviteMoment?: (option: ContextMomentSwitcherOption) => void;
+  /** Acts on the selected moment. */
+  onDeleteMoment?: (option: ContextMomentSwitcherOption) => void;
   accentVariant?: ContextAccentVariant;
 };
 
@@ -29,6 +33,8 @@ export function ContextMomentHeader({
   selectedTypeCode,
   onSelect,
   onManageClick,
+  onInviteMoment,
+  onDeleteMoment,
   accentVariant = "business",
 }: ContextMomentHeaderProps) {
   const [expanded, setExpanded] = useState(false);
@@ -40,12 +46,17 @@ export function ContextMomentHeader({
   const selected = options.find((o) => o.typeCode === selectedTypeCode) ?? options[0];
   const canExpand = options.length > 1;
   const isPersonal = accentVariant === "personal";
+  const showInvite = accentVariant !== "personal" && Boolean(onInviteMoment);
+  const hasMoment = Boolean(selected.momentId);
   const accentColor = isPersonal ? colors.brandTertiary : colors.brandPrimary;
   const avatarGradient = isPersonal
     ? `linear-gradient(135deg, ${colors.primaryContainer}, ${colors.brandTertiary})`
     : accentVariant === "group"
       ? `linear-gradient(135deg, ${colors.primaryContainer}, ${colors.brandPrimary})`
       : `linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`;
+
+  const iconBtnClass =
+    "flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-40";
 
   return (
     <header
@@ -92,16 +103,52 @@ export function ContextMomentHeader({
             </button>
           </div>
         </div>
-        <button
-          type="button"
-          aria-label="Settings"
-          disabled={!onManageClick}
-          onClick={onManageClick}
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-40"
-          style={{ background: colors.surfaceContainer }}
-        >
-          <Settings className="size-5" style={{ color: accentColor }} />
-        </button>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          {showInvite ? (
+            <button
+              type="button"
+              aria-label="Invite"
+              disabled={!hasMoment}
+              className={iconBtnClass}
+              style={{ background: colors.surfaceContainer }}
+              onClick={() => {
+                if (!hasMoment || !onInviteMoment) return;
+                onInviteMoment(selected);
+              }}
+            >
+              <UserPlus className="size-5" style={{ color: accentColor }} />
+            </button>
+          ) : null}
+          {onDeleteMoment ? (
+            <button
+              type="button"
+              aria-label="Delete"
+              disabled={!hasMoment}
+              className={iconBtnClass}
+              style={{ background: colors.surfaceContainer }}
+              onClick={() => {
+                if (!hasMoment || !onDeleteMoment) return;
+                onDeleteMoment(selected);
+              }}
+            >
+              <Trash2
+                className="size-5"
+                style={{ color: hasMoment ? colors.error : colors.textSubtle }}
+              />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Settings"
+            disabled={!onManageClick}
+            onClick={onManageClick}
+            className={iconBtnClass}
+            style={{ background: colors.surfaceContainer }}
+          >
+            <Settings className="size-5" style={{ color: accentColor }} />
+          </button>
+        </div>
       </div>
 
       {expanded && canExpand ? (
@@ -113,7 +160,7 @@ export function ContextMomentHeader({
             const isSelected = option.typeCode === selectedTypeCode;
             return (
               <button
-                key={option.typeCode}
+                key={`${option.typeCode}:${option.momentId ?? ""}`}
                 type="button"
                 onClick={() => {
                   onSelect(option);

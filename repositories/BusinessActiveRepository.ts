@@ -44,7 +44,7 @@ import { BusinessRepository } from "@/repositories/BusinessRepository";
 function withForce(url: string, forceRefresh?: boolean): string {
   if (!forceRefresh) return url;
   const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}_refresh=${Date.now()}`;
+  return `${url}${sep}force_refresh=true`;
 }
 
 /**

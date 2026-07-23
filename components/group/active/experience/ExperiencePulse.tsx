@@ -5,7 +5,6 @@ import { Activity } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { GroupSkeletonBlocks } from "@/components/group/shared/skeleton/GroupSkeletonBlocks";
 import { GroupFadeSections } from "@/components/group/shared/GroupFadeSections";
-import { GroupSettlementPanel } from "@/components/group/settlement/GroupSettlementPanel";
 import { useGroupLivingPulse, useGroupPulse, useGroupPurchasePulse, useGroupTripPulse } from "@/hooks/useGroupTabCache";
 import { ExperienceGlassCard } from "./ui/ExperienceGlassCard";
 import { MaterialIcon } from "./ui/MaterialIcon";
@@ -158,7 +157,7 @@ export function ExperiencePulse({
 
   if (loading && !data && !tripData && !purchaseData && !livingData) {
     return (
-      <ExperienceScrollShell bottomPadding={bottomPadding}>
+      <ExperienceScrollShell bottomPadding={bottomPadding} onRefresh={reload}>
         <GroupSkeletonBlocks variant="pulse" />
       </ExperienceScrollShell>
     );
@@ -206,7 +205,7 @@ export function ExperiencePulse({
     const participationPct = Math.round(purchaseData.participation_percent ?? 0);
 
     return (
-      <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle}>
+      <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle} onRefresh={reload}>
         <GroupFadeSections skipEntrance={refreshing}>
           <ExperienceGlassCard glow>
             <h2 className="text-2xl font-semibold" style={{ color: tripStitchTheme.onSurface }}>
@@ -337,7 +336,7 @@ export function ExperiencePulse({
     const participationPct = Math.round(livingData.participation_percent ?? 0);
 
     return (
-      <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle}>
+      <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle} onRefresh={reload}>
         <GroupFadeSections skipEntrance={refreshing}>
           <ExperienceGlassCard glow>
             <h2 className="text-2xl font-semibold" style={{ color: tripStitchTheme.onSurface }}>
@@ -444,10 +443,12 @@ export function ExperiencePulse({
 
   if (isTrip && tripData) {
     const stats = tripData.stats;
-    const currency = stats.total_expenses_currency ?? "INR";
+    const currency = stats.total_expenses_currency ?? stats.contributions_currency ?? "INR";
     const members = Math.max(stats.guests_joined ?? 0, stats.participants_joined ?? 0);
     const healthScore = Math.round(tripData.experience_health_percent ?? tripData.readiness_score ?? 0);
     const readinessPct = Math.round(tripData.readiness_score ?? 0);
+    const budgetLabel = formatMinor(stats.total_budget_minor, currency) ?? "—";
+    const spentLabel = formatMinor(stats.total_expenses_minor, currency) ?? "—";
     const signals = (tripData.attention_items ?? []).map((item) => ({
       title: item.title,
       tone: (item.accent === "error" ? "error" : item.accent === "tertiary" ? "tertiary" : "primary") as "error" | "tertiary" | "primary",
@@ -462,67 +463,157 @@ export function ExperiencePulse({
     }));
     const breakdown = tripData.participation_breakdown ?? { active: 0, pending: 0, inactive: 0 };
     const participationPct = Math.round(tripData.participation_percent ?? 0);
+    const updatedLabel = stats.updated_at_display?.label;
+    const healthDims = tripData.health_dimensions ?? [];
+    const nba = tripData.next_best_action;
 
     return (
-      <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle}>
+      <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle} onRefresh={reload}>
         <GroupFadeSections skipEntrance={refreshing}>
           <ExperienceGlassCard glow>
-            <h2 className="text-2xl font-semibold" style={{ color: tripStitchTheme.onSurface }}>{tripData.trip_name}</h2>
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="mb-4 flex items-center gap-2">
+              <MaterialIcon name={labels.icon} style={{ color: tripStitchTheme.primary }} />
+              <h2 className="text-2xl font-semibold" style={{ color: tripStitchTheme.onSurface }}>{tripData.trip_name}</h2>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
               <MetricTile label="Participants" value={String(members)} />
               <MetricTile label="Bookings" value={String(stats.confirmed_bookings ?? 0)} />
               <MetricTile label="Activities" value={String(stats.active_plan_items ?? 0)} />
-              <MetricTile label="Spent" value={formatMinor(stats.total_expenses_minor, currency) ?? "—"} valueColor={tripStitchTheme.primary} />
+              <MetricTile label="Budget" value={budgetLabel} />
+              <MetricTile label="Spent" value={spentLabel} valueColor={tripStitchTheme.primary} />
+              <MetricTile label="Readiness" value={`${readinessPct}%`} />
             </div>
-            {tripData.days_remaining != null ? (
-              <p className="mt-4 text-sm font-bold" style={{ color: tripStitchTheme.primary }}>{tripData.days_remaining} days remaining</p>
-            ) : null}
+            <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-6">
+              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                {labels.footer}
+              </span>
+              <span className="text-2xl font-bold" style={{ color: tripStitchTheme.primary }}>
+                {tripData.days_remaining != null ? String(tripData.days_remaining) : "—"}
+              </span>
+              {updatedLabel ? (
+                <span className="text-[10px] italic" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                  {updatedLabel}
+                </span>
+              ) : null}
+            </div>
           </ExperienceGlassCard>
           <ExperienceGlassCard>
             <HealthRing value={healthScore} label={labels.health} />
-            <div className="mt-4 flex flex-wrap gap-2">
-              {(tripData.health_dimensions ?? []).map((dim) => (
-                <span key={dim.label} className="rounded-full px-3 py-1 text-[10px] font-bold uppercase" style={{ background: tripStitchTheme.surfaceContainerHigh, color: tripStitchTheme.onSurfaceVariant }}>
-                  {dim.label} {dim.status ?? `${Math.round(dim.percent)}%`}
-                </span>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {healthDims.length > 0 ? (
+                healthDims.map((dim) => (
+                  <span
+                    key={dim.label}
+                    className="rounded-full px-3 py-1 text-[10px] font-bold uppercase"
+                    style={{ background: tripStitchTheme.surfaceContainerHigh, color: tripStitchTheme.onSurfaceVariant }}
+                  >
+                    {dim.label} {dim.status ?? `${Math.round(dim.percent)}%`}
+                  </span>
+                ))
+              ) : (
+                <EmptySection label="Health dimensions will appear as the trip progresses." />
+              )}
+            </div>
+          </ExperienceGlassCard>
+          <div>
+            <SectionLabel icon="warning">Attention Signals</SectionLabel>
+            {signals.length > 0 ? (
+              signals.map((s) => <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} />)
+            ) : (
+              <EmptySection label="No attention signals right now." />
+            )}
+          </div>
+          <ExperienceGlassCard>
+            <div className="mb-4 flex items-end justify-between">
+              <div>
+                <SectionLabel>{labels.readiness}</SectionLabel>
+                <span className="text-2xl font-bold" style={{ color: tripStitchTheme.onSurface }}>{readinessPct}%</span>
+              </div>
+              <MaterialIcon name="trending_up" style={{ color: tripStitchTheme.primary }} />
+            </div>
+            <ProgressBar percent={readinessPct} />
+            {tripData.readiness_narrative ? (
+              <p className="mt-3 text-xs uppercase tracking-tighter" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                {tripData.readiness_narrative}
+              </p>
+            ) : null}
+            {healthDims.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {healthDims.map((dim) => (
+                  <span
+                    key={`ready-${dim.label}`}
+                    className="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase"
+                    style={{ background: "color-mix(in srgb, #ff7a3d 10%, transparent)", color: tripStitchTheme.primary }}
+                  >
+                    {dim.label} {Math.round(dim.percent)}%
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </ExperienceGlassCard>
+          <ExperienceGlassCard>
+            <SectionLabel>Participation</SectionLabel>
+            <p className="text-2xl font-bold" style={{ color: tripStitchTheme.primary }}>{participationPct}%</p>
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
+              {(
+                [
+                  ["Active", breakdown.active],
+                  ["Pending", breakdown.pending],
+                  ["Inactive", breakdown.inactive],
+                ] as const
+              ).map(([label, count]) => (
+                <div key={label} className="text-center">
+                  <span className="block text-[10px] uppercase tracking-tighter" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                    {label}
+                  </span>
+                  <span className="font-bold" style={{ color: tripStitchTheme.onSurface }}>{count}</span>
+                </div>
               ))}
             </div>
           </ExperienceGlassCard>
-          {signals.length > 0 ? (
-            <div>
-              <SectionLabel icon="warning">Attention Signals</SectionLabel>
-              {signals.map((s) => (
-                <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} />
-              ))}
-            </div>
+          <ExperienceGlassCard>
+            <SectionLabel action="View All" onAction={onViewAllActivity}>
+              Recent Activity
+            </SectionLabel>
+            {recentActivities.length > 0 ? (
+              <div className="relative space-y-6 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-px before:bg-white/10">
+                {recentActivities.map((item, index) => (
+                  <TimelineRow
+                    key={item.id || `activity-${index}`}
+                    icon={item.icon}
+                    category={item.category}
+                    title={item.title}
+                    time={item.time}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptySection label="No recent activity yet." />
+            )}
+          </ExperienceGlassCard>
+          {nba ? (
+            <SunsetCta
+              eyebrow="Next Best Action"
+              title={nba.title}
+              subtitle={nba.subtitle}
+              impacts={nba.impact_labels ?? []}
+              icon="bolt"
+              onClick={onQuickAdd}
+            />
           ) : null}
           <ExperienceGlassCard>
-            <SectionLabel>{labels.readiness}</SectionLabel>
-            <ProgressBar percent={readinessPct} />
-          </ExperienceGlassCard>
-          <ExperienceGlassCard>
-            <p className="text-2xl font-bold" style={{ color: tripStitchTheme.primary }}>{participationPct}%</p>
-            <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
-              Active {breakdown.active} · Pending {breakdown.pending} · Inactive {breakdown.inactive}
+            <SectionLabel>Budget</SectionLabel>
+            <p className="text-lg font-semibold" style={{ color: tripStitchTheme.onSurface }}>
+              {Number(stats.total_expenses_minor ?? 0) <= Number(stats.total_budget_minor ?? 0) && Number(stats.total_budget_minor ?? 0) > 0
+                ? "Budget under control"
+                : Number(stats.total_budget_minor ?? 0) > 0
+                  ? "Budget needs attention"
+                  : "Set a trip budget"}
+            </p>
+            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+              Spent {spentLabel} of {budgetLabel}
             </p>
           </ExperienceGlassCard>
-          {recentActivities.length > 0 ? (
-            <div>
-              <SectionLabel action="View All">Recent Activity</SectionLabel>
-              {recentActivities.map((item, index) => (
-                <TimelineRow
-                  key={item.id || `activity-${index}`}
-                  icon={item.icon}
-                  category={item.category}
-                  title={item.title}
-                  time={item.time}
-                />
-              ))}
-            </div>
-          ) : null}
-          {tripData.next_best_action ? (
-            <SunsetCta eyebrow="Next Best Action" title={tripData.next_best_action.title} subtitle={tripData.next_best_action.subtitle} icon="bolt" onClick={onQuickAdd} />
-          ) : null}
           {(tripData.insights ?? []).length > 0 ? (
             <div className="grid gap-3">
               {tripData.insights!.map((insight) => (
@@ -607,7 +698,7 @@ export function ExperiencePulse({
     participationPct > 0 || activeCount > 0 || pendingCount > 0 || inactiveCount > 0;
 
   return (
-    <ExperienceScrollShell bottomPadding={bottomPadding}>
+    <ExperienceScrollShell bottomPadding={bottomPadding} onRefresh={reload}>
       <GroupFadeSections skipEntrance={softRefresh}>
         <ExperienceGlassCard glow>
           <div className="mb-6 flex items-center gap-2">
@@ -715,10 +806,6 @@ export function ExperiencePulse({
         ) : (
           <SunsetCta eyebrow="Quick action" title="Add something to this moment" impacts={[]} onClick={onQuickAdd} />
         )}
-
-        <div role="region" aria-label="Settlement">
-          <GroupSettlementPanel momentId={momentId} />
-        </div>
       </GroupFadeSections>
     </ExperienceScrollShell>
   );

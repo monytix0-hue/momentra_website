@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Loader2, X } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { acceptInvite } from "@/lib/api/group";
-import { extractInviteToken, isBusinessMomentType } from "@/lib/invite/inviteToken";
+import { extractInviteToken } from "@/lib/invite/inviteToken";
 import type { InviteAcceptResult } from "@/lib/api/group";
 
 type InviteQrScanModalProps = {
@@ -39,6 +39,7 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraSkipped, setCameraSkipped] = useState(false);
 
   const stopCamera = useCallback(() => {
     scanningRef.current = false;
@@ -84,6 +85,7 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
       setPaste("");
       setError(null);
       setStatus(null);
+      setCameraSkipped(false);
       return;
     }
 
@@ -91,8 +93,9 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
     const detector = getBarcodeDetector();
 
     async function start() {
-      if (!detector || !navigator.mediaDevices?.getUserMedia) {
-        setStatus("Camera QR scan needs Chrome/Edge — or paste an invite link below.");
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraSkipped(true);
+        setStatus("Camera not available in this browser — paste an invite link below.");
         return;
       }
       try {
@@ -110,6 +113,14 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
         video.srcObject = stream;
         await video.play();
         setCameraReady(true);
+
+        if (!detector) {
+          setStatus(
+            "Live QR decode needs Chrome/Edge. Camera is on — or paste an invite link below.",
+          );
+          return;
+        }
+
         setStatus("Point at an invite QR code");
         scanningRef.current = true;
 
@@ -138,6 +149,7 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
         };
         requestAnimationFrame(() => void tick());
       } catch {
+        setCameraSkipped(true);
         setStatus("Camera unavailable — paste an invite link below.");
       }
     }
@@ -196,7 +208,9 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
           {!cameraReady ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/80">
               <Camera className="size-8 opacity-70" />
-              <span className="text-xs">Starting camera…</span>
+              <span className="text-xs px-4 text-center">
+                {cameraSkipped ? "Camera unavailable" : "Starting camera…"}
+              </span>
             </div>
           ) : null}
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { Brain } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Brain, ChevronDown } from "lucide-react";
 import { GroupSkeletonBlocks } from "@/components/group/shared/skeleton/GroupSkeletonBlocks";
 import { useGroupLivingMoments, useGroupMoments, useGroupPurchaseMoments } from "@/hooks/useGroupTabCache";
 import type {
@@ -44,6 +44,7 @@ export function ActiveMemory({
   const loading = isPurchase ? purchaseHook.loading : isLiving ? livingHook.loading : tripHook.loading;
   const error = isPurchase ? purchaseHook.error : isLiving ? livingHook.error : tripHook.error;
   const reload = isPurchase ? purchaseHook.reload : isLiving ? livingHook.reload : tripHook.reload;
+  const [showExtras, setShowExtras] = useState(false);
 
   useEffect(() => {
     if (reloadKey > 0) void reload();
@@ -51,7 +52,7 @@ export function ActiveMemory({
 
   if (loading && !moments) {
     return (
-      <ExperienceScrollShell bottomPadding={bottomPadding}>
+      <ExperienceScrollShell bottomPadding={bottomPadding} onRefresh={reload}>
         <GroupSkeletonBlocks variant="memory" />
       </ExperienceScrollShell>
     );
@@ -79,7 +80,6 @@ export function ActiveMemory({
         ? moments.moment_name
         : "Untitled moment";
   const tripName = hub?.hero?.moment_name?.trim() || fallbackName;
-  const chips = hub?.hero?.chips ?? [];
   const timeline = hub?.timeline ?? [];
   const milestones = hub?.milestone_wall ?? [];
   const people = hub?.people_impact ?? [];
@@ -87,9 +87,24 @@ export function ActiveMemory({
   const highlights = hub?.highlights ?? [];
   const intelligence = hub?.intelligence;
   const budget = hub?.budget_reflection;
+  const chips =
+    hub?.hero?.chips && hub.hero.chips.length > 0
+      ? hub.hero.chips
+      : [
+          { icon: "photo_library", label: `${gallery.length} Memories` },
+          { icon: "group", label: `${people.length} Participants` },
+          { icon: "military_tech", label: `${milestones.length} Milestones` },
+        ];
+  const galleryOverflow = Math.max(0, gallery.length - 3);
+  const hasExtras =
+    Boolean(intelligence?.insight) ||
+    people.length > 0 ||
+    Boolean(hub?.lessons_pattern) ||
+    Boolean(hub?.group_identity) ||
+    Boolean(budget);
 
   return (
-    <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle}>
+    <ExperienceScrollShell bottomPadding={bottomPadding} style={tripStitchShellStyle} onRefresh={reload}>
       <ExperienceGlassCard glow accentBorder="left" className="relative min-h-[280px] overflow-hidden">
         <div className="relative z-10 flex h-full flex-col justify-end">
           <h2 className="mb-4 text-4xl font-bold" style={{ color: tripStitchTheme.onSurface }}>
@@ -99,44 +114,34 @@ export function ActiveMemory({
             {chips.map((chip) => (
               <span
                 key={chip.label}
-                className="rounded-full px-3 py-1 text-xs font-medium"
-                style={{ background: `${tripStitchTheme.primary}22`, color: tripStitchTheme.primary }}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
+                style={{
+                  background: `${tripStitchTheme.primary}1A`,
+                  borderColor: `${tripStitchTheme.primary}33`,
+                  color: tripStitchTheme.primary,
+                }}
               >
+                {chip.icon ? <MaterialIcon name={chip.icon} className="text-[16px]" /> : null}
                 {chip.label}
               </span>
             ))}
           </div>
         </div>
+        <MaterialIcon
+          name="travel_explore"
+          className="pointer-events-none absolute bottom-4 right-4 text-[64px] opacity-20"
+          style={{ color: tripStitchTheme.primary }}
+        />
       </ExperienceGlassCard>
 
-      {intelligence?.insight ? (
+      <div>
+        <SectionLabel action="VIEW ALL">Memory Timeline</SectionLabel>
         <ExperienceGlassCard>
-          <SectionLabel icon="auto_awesome">Memory Intelligence</SectionLabel>
-          <p className="text-sm leading-relaxed" style={{ color: tripStitchTheme.onSurface }}>
-            {intelligence.insight}
-          </p>
-          <div className="mt-4 flex gap-6">
-            {(intelligence.metrics ?? []).map((m) => (
-              <div key={m.label}>
-                <p
-                  className="text-[10px] uppercase tracking-wider"
-                  style={{ color: tripStitchTheme.onSurfaceVariant }}
-                >
-                  {m.label}
-                </p>
-                <p className="font-bold" style={{ color: tripStitchTheme.primary }}>
-                  {m.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </ExperienceGlassCard>
-      ) : null}
-
-      {timeline.length > 0 ? (
-        <div>
-          <SectionLabel action="VIEW ALL">Memory Timeline</SectionLabel>
-          <ExperienceGlassCard>
+          {timeline.length === 0 ? (
+            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+              No timeline events yet
+            </p>
+          ) : (
             <div className="space-y-4">
               {timeline.map((item, index) => (
                 <div key={item.event_id ?? item.title} className="flex items-center gap-3">
@@ -157,19 +162,28 @@ export function ActiveMemory({
                 </div>
               ))}
             </div>
-          </ExperienceGlassCard>
-        </div>
-      ) : null}
+          )}
+        </ExperienceGlassCard>
+      </div>
 
-      {milestones.length > 0 ? (
-        <div>
-          <SectionLabel>Milestone Wall</SectionLabel>
-          <div className="flex gap-4">
+      <div>
+        <SectionLabel>Milestone Wall</SectionLabel>
+        {milestones.length === 0 ? (
+          <ExperienceGlassCard>
+            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+              No milestones yet
+            </p>
+          </ExperienceGlassCard>
+        ) : (
+          <div className="flex flex-wrap gap-4">
             {milestones.map((m) => (
               <div key={m.milestone_id ?? m.label} className="text-center">
                 <div
-                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl"
-                  style={{ background: tripStitchTheme.surfaceContainerHigh }}
+                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border"
+                  style={{
+                    background: tripStitchTheme.surfaceContainerHigh,
+                    borderColor: "rgba(255,255,255,0.05)",
+                  }}
                 >
                   <MaterialIcon name={m.icon ?? "star"} style={{ color: tripStitchTheme.primary }} />
                 </div>
@@ -179,130 +193,227 @@ export function ActiveMemory({
               </div>
             ))}
           </div>
-        </div>
-      ) : null}
+        )}
+      </div>
 
-      {people.length > 0 ? (
-        <div>
-          <SectionLabel>People Impact</SectionLabel>
-          <ExperienceGlassCard>
+      <div>
+        <SectionLabel>Memory Highlights</SectionLabel>
+        <ExperienceGlassCard>
+          {highlights.length === 0 ? (
+            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+              No highlights yet
+            </p>
+          ) : (
             <div className="space-y-3">
-              {people.map((person) => (
-                <div key={person.display_name} className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full"
-                    style={{ background: tripStitchTheme.surfaceContainerHigh }}
-                  >
-                    <MaterialIcon name="person" style={{ color: tripStitchTheme.primary }} />
-                  </div>
-                  <div>
-                    <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>
-                      {person.display_name}
-                    </p>
-                    <p
-                      className="text-[10px] uppercase tracking-wider"
-                      style={{ color: tripStitchTheme.primary }}
-                    >
-                      {person.impact_label}
-                    </p>
-                  </div>
+              {highlights.map((h) => (
+                <div
+                  key={h.highlight_id ?? h.label}
+                  className="flex items-center gap-3 rounded-xl p-3"
+                  style={{ background: `${tripStitchTheme.surfaceContainerHigh}80` }}
+                >
+                  <MaterialIcon name={h.icon ?? "favorite"} style={{ color: tripStitchTheme.primary }} />
+                  <p className="text-sm" style={{ color: tripStitchTheme.onSurface }}>
+                    {h.label}
+                  </p>
                 </div>
               ))}
             </div>
-          </ExperienceGlassCard>
-        </div>
-      ) : null}
-
-      {gallery.length > 0 ? (
-        <div>
-          <SectionLabel>Memory Gallery</SectionLabel>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {gallery.slice(0, 4).map((item) => (
-              <div
-                key={item.memory_id ?? item.title}
-                className="aspect-square rounded-xl"
-                style={{ background: tripStitchTheme.surfaceContainerHigh }}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {hub?.lessons_pattern ? (
-        <ExperienceGlassCard>
-          <p
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: tripStitchTheme.onSurfaceVariant }}
-          >
-            Lessons & Patterns
-          </p>
-          <p className="mt-2 italic" style={{ color: tripStitchTheme.onSurface }}>
-            {hub.lessons_pattern}
-          </p>
+          )}
         </ExperienceGlassCard>
-      ) : null}
+      </div>
 
-      {hub?.group_identity ? (
+      <div>
+        <SectionLabel action={galleryOverflow > 0 ? `+${galleryOverflow} More` : undefined}>
+          Moments Captured
+        </SectionLabel>
         <ExperienceGlassCard>
-          <p
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: tripStitchTheme.onSurfaceVariant }}
-          >
-            Group Identity
-          </p>
-          <p className="mt-2 text-xl font-bold" style={{ color: tripStitchTheme.onSurface }}>
-            {hub.group_identity}
-          </p>
-        </ExperienceGlassCard>
-      ) : null}
-
-      {highlights.length > 0 ? (
-        <div>
-          <SectionLabel>Memory Highlights</SectionLabel>
-          {highlights.map((h) => (
-            <ExperienceGlassCard key={h.highlight_id ?? h.label} className="mb-3 !p-4">
-              <p className="text-sm" style={{ color: tripStitchTheme.onSurface }}>
-                {h.label}
-              </p>
-            </ExperienceGlassCard>
-          ))}
-        </div>
-      ) : null}
-
-      {budget ? (
-        <ExperienceGlassCard>
-          <p
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: tripStitchTheme.onSurfaceVariant }}
-          >
-            Budget Reflection
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
-                Planned
-              </p>
-              <p style={{ color: tripStitchTheme.onSurface }}>{budget.planned_budget}</p>
-            </div>
-            <div>
-              <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
-                Actual
-              </p>
-              <p style={{ color: tripStitchTheme.primary }}>{budget.actual_spend}</p>
-            </div>
-          </div>
-          <p className="mt-2 text-sm" style={{ color: tripStitchTheme.onSurface }}>
-            Accuracy: {budget.budget_accuracy}
-          </p>
-          {budget.summary ? (
-            <p className="mt-1 text-sm" style={{ color: tripStitchTheme.primary }}>
-              {budget.summary}
+          {gallery.length === 0 ? (
+            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+              No memories captured yet
             </p>
-          ) : null}
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {gallery.slice(0, 3).map((item) => (
+                <div
+                  key={item.memory_id ?? item.title}
+                  className="aspect-square overflow-hidden rounded-xl"
+                  style={{ background: tripStitchTheme.surfaceContainerHigh }}
+                >
+                  {item.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.image_url}
+                      alt={item.title || "Memory"}
+                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-110"
+                    />
+                  ) : null}
+                </div>
+              ))}
+              {galleryOverflow > 0 && gallery[3] ? (
+                <div
+                  className="relative aspect-square overflow-hidden rounded-xl"
+                  style={{ background: tripStitchTheme.surfaceContainerHigh }}
+                >
+                  {gallery[3].image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={gallery[3].image_url}
+                      alt={gallery[3].title || "More memories"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <span className="text-sm font-semibold text-white">+{galleryOverflow}</span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
         </ExperienceGlassCard>
-      ) : null}
+      </div>
 
       <SunsetCta eyebrow="Add Memory" title="Preserve this moment" icon="add" onClick={onQuickAdd} />
+
+      {hasExtras ? (
+        <div>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: tripStitchTheme.onSurfaceVariant,
+            }}
+            onClick={() => setShowExtras((v) => !v)}
+            aria-expanded={showExtras}
+          >
+            More insights
+            <ChevronDown
+              size={18}
+              className={`transition-transform ${showExtras ? "rotate-180" : ""}`}
+            />
+          </button>
+          {showExtras ? (
+            <div className="mt-4 space-y-4">
+              {intelligence?.insight ? (
+                <ExperienceGlassCard>
+                  <SectionLabel icon="auto_awesome">Memory Intelligence</SectionLabel>
+                  <p className="text-sm leading-relaxed" style={{ color: tripStitchTheme.onSurface }}>
+                    {intelligence.insight}
+                  </p>
+                  <div className="mt-4 flex gap-6">
+                    {(intelligence.metrics ?? []).map((m) => (
+                      <div key={m.label}>
+                        <p
+                          className="text-[10px] uppercase tracking-wider"
+                          style={{ color: tripStitchTheme.onSurfaceVariant }}
+                        >
+                          {m.label}
+                        </p>
+                        <p className="font-bold" style={{ color: tripStitchTheme.primary }}>
+                          {m.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </ExperienceGlassCard>
+              ) : null}
+
+              {people.length > 0 ? (
+                <div>
+                  <SectionLabel>People Impact</SectionLabel>
+                  <ExperienceGlassCard>
+                    <div className="space-y-3">
+                      {people.map((person) => (
+                        <div key={person.display_name} className="flex items-center gap-3">
+                          <div
+                            className="flex h-10 w-10 items-center justify-center rounded-full"
+                            style={{ background: tripStitchTheme.surfaceContainerHigh }}
+                          >
+                            <MaterialIcon name="person" style={{ color: tripStitchTheme.primary }} />
+                          </div>
+                          <div>
+                            <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>
+                              {person.display_name}
+                            </p>
+                            <p
+                              className="text-[10px] uppercase tracking-wider"
+                              style={{ color: tripStitchTheme.primary }}
+                            >
+                              {person.impact_label}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ExperienceGlassCard>
+                </div>
+              ) : null}
+
+              {hub?.lessons_pattern ? (
+                <ExperienceGlassCard>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: tripStitchTheme.onSurfaceVariant }}
+                  >
+                    Lessons & Patterns
+                  </p>
+                  <p className="mt-2 italic" style={{ color: tripStitchTheme.onSurface }}>
+                    {hub.lessons_pattern}
+                  </p>
+                </ExperienceGlassCard>
+              ) : null}
+
+              {hub?.group_identity ? (
+                <ExperienceGlassCard>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: tripStitchTheme.onSurfaceVariant }}
+                  >
+                    Group Identity
+                  </p>
+                  <p className="mt-2 text-xl font-bold" style={{ color: tripStitchTheme.onSurface }}>
+                    {hub.group_identity}
+                  </p>
+                </ExperienceGlassCard>
+              ) : null}
+
+              {budget ? (
+                <ExperienceGlassCard>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: tripStitchTheme.onSurfaceVariant }}
+                  >
+                    Budget Reflection
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                        Planned
+                      </p>
+                      <p style={{ color: tripStitchTheme.onSurface }}>{budget.planned_budget}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+                        Actual
+                      </p>
+                      <p style={{ color: tripStitchTheme.primary }}>{budget.actual_spend}</p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm" style={{ color: tripStitchTheme.onSurface }}>
+                    Accuracy: {budget.budget_accuracy}
+                  </p>
+                  {budget.summary ? (
+                    <p className="mt-1 text-sm" style={{ color: tripStitchTheme.primary }}>
+                      {budget.summary}
+                    </p>
+                  ) : null}
+                </ExperienceGlassCard>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </ExperienceScrollShell>
   );
 }

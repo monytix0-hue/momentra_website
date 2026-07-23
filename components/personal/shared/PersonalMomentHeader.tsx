@@ -10,6 +10,7 @@ type PersonalMomentHeaderProps = {
   selectedTypeCode: PersonalMomentTypeCode;
   onSelect: (option: PersonalMomentSwitcherOption) => void;
   onManageClick?: () => void;
+  onDeleteMoment?: (option: PersonalMomentSwitcherOption) => void;
 };
 
 export function PersonalMomentHeader(props: PersonalMomentHeaderProps) {
@@ -21,6 +22,11 @@ export function PersonalMomentHeader(props: PersonalMomentHeaderProps) {
       selectedTypeCode={props.selectedTypeCode}
       onSelect={(option) => props.onSelect(option as PersonalMomentSwitcherOption)}
       onManageClick={props.onManageClick}
+      onDeleteMoment={
+        props.onDeleteMoment
+          ? (option) => props.onDeleteMoment!(option as PersonalMomentSwitcherOption)
+          : undefined
+      }
       accentVariant="personal"
     />
   );

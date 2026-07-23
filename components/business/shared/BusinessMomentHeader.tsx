@@ -9,6 +9,8 @@ type BusinessMomentHeaderProps = {
   selectedTypeCode: string;
   onSelect: (option: BusinessMomentSwitcherOption) => void;
   onManageClick?: () => void;
+  onInviteMoment?: (option: BusinessMomentSwitcherOption) => void;
+  onDeleteMoment?: (option: BusinessMomentSwitcherOption) => void;
 };
 
 export function BusinessMomentHeader(props: BusinessMomentHeaderProps) {
@@ -20,6 +22,8 @@ export function BusinessMomentHeader(props: BusinessMomentHeaderProps) {
       selectedTypeCode={props.selectedTypeCode}
       onSelect={props.onSelect}
       onManageClick={props.onManageClick}
+      onInviteMoment={props.onInviteMoment}
+      onDeleteMoment={props.onDeleteMoment}
       accentVariant="business"
     />
   );

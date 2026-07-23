@@ -82,12 +82,14 @@ import {
 import { PersonalMomentHeader } from "@/components/personal/shared/PersonalMomentHeader";
 import { PersonalMomentManageSheet } from "@/components/personal/shared/PersonalMomentManageSheet";
 import { MomentManageSheet } from "@/components/shared/MomentManageSheet";
+import { MomentInviteSheet } from "@/components/shared/MomentInviteSheet";
 import {
   resolveBusinessMomentManageContext,
   resolveBusinessMomentSwitcherOptions,
   resolveSelectedBusinessMoment,
 } from "@/components/business/shared/businessMomentRouting";
 import { BusinessMomentHeader } from "@/components/business/shared/BusinessMomentHeader";
+import type { BusinessMomentSwitcherOption } from "@/components/business/shared/businessMomentRouting";
 import { PersonalMomentSetup } from "@/components/personal/shared/setup/PersonalMomentSetup";
 import { PersonalLife, PersonalLifeSkeleton } from "@/components/personal/life/PersonalLife";
 import { PulseEmpty as PersonalPulseEmpty } from "@/components/personal/empty/pulse/PulseEmpty";
@@ -235,6 +237,10 @@ export function ContextHomePlaceholderLegacy({
   const [reconciledActivePulse, setReconciledActivePulse] = useState(false);
   const [holdReconcileTypeCode, setHoldReconcileTypeCode] = useState<PersonalMomentTypeCode | null>(null);
   const [showManageSheet, setShowManageSheet] = useState(false);
+  const [inviteMoment, setInviteMoment] = useState<{
+    momentId: string;
+    label: string;
+  } | null>(null);
   const businessSession = useBusinessSessionStore();
   const selectedBusinessMomentType = businessSession.selectedMomentType;
   const selectedBusinessMomentId = businessSession.selectedMomentId;
@@ -825,6 +831,84 @@ export function ContextHomePlaceholderLegacy({
     setSelectedMomentTypeCode(option.typeCode);
   }
 
+  async function archivePersonalMomentOption(option: PersonalMomentSwitcherOption) {
+    if (!option.momentId) return;
+    if (!confirm(`Archive ${option.label}? This removes it from your active list.`)) return;
+    if (option.typeCode !== selectedMomentTypeCode) {
+      setPersonalMomentType(option.typeCode);
+      setSelectedMomentTypeCode(option.typeCode);
+    }
+    const inventory: LifecycleInventoryItem[] = (createOptions?.cards ?? [])
+      .filter((c) => c.linked_moment_id)
+      .map((c) => ({
+        momentId: c.linked_moment_id as string,
+        momentTypeCode: c.moment_type_code,
+        status: c.linked_moment_status || "ACTIVE",
+      }));
+    try {
+      await runMomentLifecycle({
+        contextType: "PERSONAL",
+        momentId: option.momentId,
+        momentTypeCode: option.typeCode,
+        action: "archive",
+        previousStatus: "ACTIVE",
+        inventory,
+        selectedMomentId: option.momentId,
+      });
+      await refreshAfterManage({ skipBootstrapInvalidate: true });
+    } catch (e) {
+      alert(e instanceof MomentLifecycleError ? e.userMessage : "Could not archive moment");
+    }
+  }
+
+  async function archiveBusinessMomentOption(option: BusinessMomentSwitcherOption) {
+    if (!option.momentId) return;
+    if (!confirm(`Archive ${option.label}? This removes it from your active list.`)) return;
+    if (
+      option.typeCode !== selectedBusinessMomentType ||
+      option.momentId !== selectedBusinessMomentId
+    ) {
+      setBusinessSelection(option.typeCode, option.momentId);
+    }
+    const snap = getBusinessSessionSnapshot();
+    const inventory: LifecycleInventoryItem[] = (snap.bootstrap?.moments ?? []).map((m) => ({
+      momentId: m.moment_id,
+      momentTypeCode: m.moment_type_code || "",
+      status: m.status || "ACTIVE",
+    }));
+    try {
+      const result = await runMomentLifecycle(
+        {
+          contextType: "BUSINESS",
+          momentId: option.momentId,
+          momentTypeCode: option.typeCode,
+          action: "archive",
+          previousStatus: "ACTIVE",
+          inventory,
+          selectedMomentId: snap.selectedMomentId,
+        },
+        {
+          onOptimistic: ({ replacementMomentId, replacementMomentTypeCode }) => {
+            if (replacementMomentId) {
+              setBusinessSelection(
+                replacementMomentTypeCode || option.typeCode,
+                replacementMomentId,
+              );
+            } else {
+              setBusinessSelection(option.typeCode, null);
+            }
+          },
+        },
+      );
+      await refreshAfterBusinessManage({
+        momentId: result.replacementMomentId,
+        momentTypeCode: result.replacementMomentTypeCode,
+      });
+    } catch (e) {
+      alert(e instanceof MomentLifecycleError ? e.userMessage : "Could not archive moment");
+    }
+  }
+
   useEffect(() => {
     if (!holdReconcileTypeCode) return;
     if (momentSwitcherOptions.some((o) => o.typeCode === holdReconcileTypeCode)) {
@@ -908,6 +992,9 @@ export function ContextHomePlaceholderLegacy({
           onManageClick={
             manageContext ? () => setShowManageSheet(true) : undefined
           }
+          onDeleteMoment={(option) => {
+            void archivePersonalMomentOption(option);
+          }}
         />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{content}</div>
       </div>
@@ -2516,6 +2603,19 @@ export function ContextHomePlaceholderLegacy({
               onManageClick={
                 businessManageContext ? () => setShowManageSheet(true) : undefined
               }
+              onInviteMoment={(option) => {
+                if (!option.momentId) return;
+                if (
+                  option.typeCode !== selectedBusinessMomentType ||
+                  option.momentId !== selectedBusinessMomentId
+                ) {
+                  setBusinessSelection(option.typeCode, option.momentId);
+                }
+                setInviteMoment({ momentId: option.momentId, label: option.label });
+              }}
+              onDeleteMoment={(option) => {
+                void archiveBusinessMomentOption(option);
+              }}
             />
           ) : null}
           {variant === "personal" ? (
@@ -2558,11 +2658,19 @@ export function ContextHomePlaceholderLegacy({
           }}
           onSuccess={() => {
             invalidateAfterQuickAdd(selectedMomentTypeCode);
-            void reloadPulse();
-            void reloadLife();
-            void reloadTemplateMemory();
-            if (loTemplateEnabled) {
-              void reloadTemplateMoments();
+            if (visibleTab === "pulse") void reloadPulse();
+            else if (visibleTab === "moments") {
+              void reloadMoments();
+              if (loTemplateEnabled) void reloadTemplateMoments();
+            } else if (visibleTab === "memory") {
+              void reloadMemory();
+              void reloadTemplateMemory();
+            } else if (visibleTab === "life") void reloadLife();
+            else {
+              void reloadPulse();
+              void reloadLife();
+              void reloadTemplateMemory();
+              if (loTemplateEnabled) void reloadTemplateMoments();
             }
           }}
         />
@@ -2682,10 +2790,22 @@ export function ContextHomePlaceholderLegacy({
           onSuccess={() => {
             setActivityReloadToken((t) => t + 1);
             invalidateAfterQuickAdd(selectedMomentTypeCode);
-            void reloadPulse();
-            void reloadTemplateMemory();
-            if (selectedMomentTypeCode === "FUTURE_BUILDING" || loTemplateEnabled) {
-              void reloadTemplateMoments();
+            if (visibleTab === "pulse") void reloadPulse();
+            else if (visibleTab === "moments") {
+              void reloadMoments();
+              if (selectedMomentTypeCode === "FUTURE_BUILDING" || loTemplateEnabled) {
+                void reloadTemplateMoments();
+              }
+            } else if (visibleTab === "memory") {
+              void reloadMemory();
+              void reloadTemplateMemory();
+            } else if (visibleTab === "life") void reloadLife();
+            else {
+              void reloadPulse();
+              void reloadTemplateMemory();
+              if (selectedMomentTypeCode === "FUTURE_BUILDING" || loTemplateEnabled) {
+                void reloadTemplateMoments();
+              }
             }
           }}
         />
@@ -2774,6 +2894,14 @@ export function ContextHomePlaceholderLegacy({
           {creatingBusinessType ? ` (${creatingBusinessType})` : ""}
         </div>
       ) : null}
+
+      <MomentInviteSheet
+        open={Boolean(inviteMoment)}
+        onClose={() => setInviteMoment(null)}
+        momentId={inviteMoment?.momentId ?? null}
+        momentLabel={inviteMoment?.label}
+        variant="business"
+      />
 
       {variant === "personal" ? (
         <PersonalMomentManageSheet

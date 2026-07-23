@@ -225,10 +225,18 @@ export type TripPulseStats = {
   participants_joined?: number;
   members_joined?: number;
   guests_joined?: number;
+  participants_expected?: number | null;
   active_plan_items?: number;
   confirmed_bookings?: number;
   total_expenses_minor?: number;
   total_expenses_currency?: string;
+  total_budget_minor?: number;
+  contributions_minor?: number;
+  contributions_currency?: string;
+  corpus_balance_minor?: number;
+  open_polls?: number;
+  memories_count?: number;
+  updated_at_display?: { label?: string; minutes_ago?: number };
 };
 
 export type TripPulseResponse = {
@@ -605,20 +613,44 @@ export async function setupBasics(
  }
 
  // Active API functions
- export async function getActivePulse(momentId: string): Promise<ActivePulseResponse> {
-   return requestWithRetry<ActivePulseResponse>(`/api/v1/group/active/pulse/${momentId}`);
+ export async function getActivePulse(
+  momentId: string,
+  forceRefresh = false,
+): Promise<ActivePulseResponse> {
+   const qs = forceRefresh ? "?force_refresh=true" : "";
+   return requestWithRetry<ActivePulseResponse>(
+     `/api/v1/group/active/pulse/${momentId}${qs}`,
+   );
  }
 
- export async function getActiveMoments(momentId: string): Promise<ActiveMomentsResponse> {
-   return requestWithRetry<ActiveMomentsResponse>(`/api/v1/group/active/moments/${momentId}`);
+ export async function getActiveMoments(
+  momentId: string,
+  forceRefresh = false,
+): Promise<ActiveMomentsResponse> {
+   const qs = forceRefresh ? "?force_refresh=true" : "";
+   return requestWithRetry<ActiveMomentsResponse>(
+     `/api/v1/group/active/moments/${momentId}${qs}`,
+   );
  }
 
- export async function getTripMomentsView(momentId: string): Promise<TripMomentsViewResponse> {
-   return requestWithRetry<TripMomentsViewResponse>(`/api/v1/group/trips/${momentId}/moments-view`);
+ export async function getTripMomentsView(
+  momentId: string,
+  forceRefresh = false,
+): Promise<TripMomentsViewResponse> {
+   const qs = forceRefresh ? "?force_refresh=true" : "";
+   return requestWithRetry<TripMomentsViewResponse>(
+     `/api/v1/group/trips/${momentId}/moments-view${qs}`,
+   );
  }
 
- export async function getTripPulse(momentId: string): Promise<TripPulseResponse> {
-   return requestWithRetry<TripPulseResponse>(`/api/v1/group/trips/${momentId}/pulse`);
+ export async function getTripPulse(
+  momentId: string,
+  forceRefresh = false,
+): Promise<TripPulseResponse> {
+   const qs = forceRefresh ? "?force_refresh=true" : "";
+   return requestWithRetry<TripPulseResponse>(
+     `/api/v1/group/trips/${momentId}/pulse${qs}`,
+   );
  }
 
 export type PurchasePulseResponse = {
@@ -673,13 +705,23 @@ export type PurchaseMomentsViewResponse = {
   memory_hub: GroupMemoryHub;
 };
 
-export async function getPurchasePulse(momentId: string): Promise<PurchasePulseResponse> {
-  return requestWithRetry<PurchasePulseResponse>(`/api/v1/group/shared-purchase/moments/${momentId}/pulse`);
+export async function getPurchasePulse(
+  momentId: string,
+  forceRefresh = false,
+): Promise<PurchasePulseResponse> {
+  const qs = forceRefresh ? "?force_refresh=true" : "";
+  return requestWithRetry<PurchasePulseResponse>(
+    `/api/v1/group/shared-purchase/moments/${momentId}/pulse${qs}`,
+  );
 }
 
-export async function getPurchaseMomentsView(momentId: string): Promise<PurchaseMomentsViewResponse> {
+export async function getPurchaseMomentsView(
+  momentId: string,
+  forceRefresh = false,
+): Promise<PurchaseMomentsViewResponse> {
+  const qs = forceRefresh ? "?force_refresh=true" : "";
   return requestWithRetry<PurchaseMomentsViewResponse>(
-    `/api/v1/group/shared-purchase/moments/${momentId}/moments-view`,
+    `/api/v1/group/shared-purchase/moments/${momentId}/moments-view${qs}`,
   );
 }
 
@@ -752,8 +794,14 @@ export type LivingMomentsViewResponse = {
   memory_hub: GroupMemoryHub;
 };
 
-export async function getLivingPulse(momentId: string): Promise<LivingPulseResponse> {
-  return requestWithRetry<LivingPulseResponse>(`/api/v1/group/shared-living/moments/${momentId}/pulse`);
+export async function getLivingPulse(
+  momentId: string,
+  forceRefresh = false,
+): Promise<LivingPulseResponse> {
+  const qs = forceRefresh ? "?force_refresh=true" : "";
+  return requestWithRetry<LivingPulseResponse>(
+    `/api/v1/group/shared-living/moments/${momentId}/pulse${qs}`,
+  );
 }
 
 export type LivingActivityItem = {
@@ -809,14 +857,24 @@ export async function deleteLivingActivity(momentId: string, eventId: string): P
   );
 }
 
-export async function getLivingMomentsView(momentId: string): Promise<LivingMomentsViewResponse> {
+export async function getLivingMomentsView(
+  momentId: string,
+  forceRefresh = false,
+): Promise<LivingMomentsViewResponse> {
+  const qs = forceRefresh ? "?force_refresh=true" : "";
   return requestWithRetry<LivingMomentsViewResponse>(
-    `/api/v1/group/shared-living/moments/${momentId}/moments-view`,
+    `/api/v1/group/shared-living/moments/${momentId}/moments-view${qs}`,
   );
 }
 
- export async function getActiveMemory(momentId: string): Promise<ActiveMemoryResponse> {
-   return requestWithRetry<ActiveMemoryResponse>(`/api/v1/group/active/memory/${momentId}`);
+ export async function getActiveMemory(
+  momentId: string,
+  forceRefresh = false,
+): Promise<ActiveMemoryResponse> {
+   const qs = forceRefresh ? "?force_refresh=true" : "";
+   return requestWithRetry<ActiveMemoryResponse>(
+     `/api/v1/group/active/memory/${momentId}${qs}`,
+   );
  }
 
  export async function getActiveLife(): Promise<ActiveLifeResponse> {

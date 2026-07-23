@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   dedupeFetch,
   diskCacheLoad,
+  diskCacheRemove,
   diskCacheSave,
   isInflight,
 } from "@/lib/cache/cacheStore";
@@ -32,6 +33,7 @@ import {
   type TripPulseResponse,
 } from "@/lib/api/group";
 import { getGroupLife, type GroupLifeResponse } from "@/lib/api/groupLife";
+import { subscribeTripMomentStream } from "@/lib/api/groupStream";
 import { useGroupSessionStore } from "@/stores/groupSessionStore";
 
 type CacheEntry<T> = { data: T; at: number };
@@ -68,7 +70,7 @@ function useGroupTabCache<T>(
   tab: keyof typeof groupDedupeMetrics,
   cache: Map<string, CacheEntry<T>>,
   momentId: string | null | undefined,
-  fetcher: (id: string) => Promise<T>,
+  fetcher: (id: string, forceRefresh?: boolean) => Promise<T>,
   enabled: boolean,
   generation = 0,
 ) {
@@ -81,6 +83,10 @@ function useGroupTabCache<T>(
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
+  const hasDataRef = useRef(Boolean(initial));
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+  hasDataRef.current = Boolean(data);
 
   useEffect(() => {
     mounted.current = true;
@@ -92,7 +98,11 @@ function useGroupTabCache<T>(
   const load = useCallback(
     async (force = false) => {
       if (!enabled || !id) return;
-      const entry = cache.get(id);
+      if (force) {
+        cache.delete(id);
+        diskCacheRemove(diskKey(tab, id));
+      }
+      const entry = force ? undefined : cache.get(id);
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < FRESH_TTL_MS;
       const staleUsable = !force && entry && age < STALE_TTL_MS;
@@ -111,14 +121,16 @@ function useGroupTabCache<T>(
         } else {
           setLoading(true);
         }
+      } else if (force && hasDataRef.current) {
+        setRefreshing(true);
       } else {
         setLoading(true);
       }
       setError(null);
-      const key = `group:${tab}:${id}`;
+      const key = `group:${tab}:${id}${force ? ":force" : ""}`;
       trackDedupe(tab, key);
       try {
-        const result = await dedupeFetch(key, () => fetcher(id));
+        const result = await dedupeFetch(key, () => fetcherRef.current(id, force));
         cache.set(id, { data: result, at: Date.now() });
         diskCacheSave(diskKey(tab, id), result);
         if (mounted.current) {
@@ -135,7 +147,7 @@ function useGroupTabCache<T>(
         }
       }
     },
-    [cache, enabled, fetcher, id, tab],
+    [cache, enabled, id, tab],
   );
 
   useEffect(() => {
@@ -143,7 +155,7 @@ function useGroupTabCache<T>(
     void load(false);
   }, [enabled, id, load, generation]);
 
-  return { data, loading, refreshing, error, reload: () => void load(true) };
+  return { data, loading, refreshing, error, reload: () => load(true) };
 }
 
 export function useGroupPulse(momentId: string | null | undefined, enabled = true) {
@@ -252,11 +264,17 @@ export function useGroupLife(enabled = true) {
   const [loading, setLoading] = useState(!initial && enabled);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasDataRef = useRef(Boolean(initial));
+  hasDataRef.current = Boolean(data);
 
   const load = useCallback(
     async (force = false) => {
       if (!enabled) return;
-      const entry = lifeCache.get(cacheKey);
+      if (force) {
+        lifeCache.delete(cacheKey);
+        diskCacheRemove(diskKey("life", "aggregate"));
+      }
+      const entry = force ? undefined : lifeCache.get(cacheKey);
       const age = entry ? Date.now() - entry.at : Infinity;
       if (!force && entry && age < FRESH_TTL_MS) {
         setData(entry.data);
@@ -267,10 +285,12 @@ export function useGroupLife(enabled = true) {
         setData(entry?.data ?? disk);
         setLoading(false);
         setRefreshing(true);
+      } else if (force && hasDataRef.current) {
+        setRefreshing(true);
       } else {
         setLoading(true);
       }
-      const key = "group:life:aggregate";
+      const key = force ? "group:life:aggregate:force" : "group:life:aggregate";
       trackDedupe("life", key);
       try {
         const result = await dedupeFetch(key, () => getGroupLife());
@@ -284,7 +304,7 @@ export function useGroupLife(enabled = true) {
         setRefreshing(false);
       }
     },
-    [enabled, disk],
+    [disk, enabled],
   );
 
   useEffect(() => {
@@ -292,7 +312,7 @@ export function useGroupLife(enabled = true) {
     void load(false);
   }, [enabled, load, generation]);
 
-  return { data, loading, refreshing, error, reload: () => void load(true) };
+  return { data, loading, refreshing, error, reload: () => load(true) };
 }
 
 export async function fetchGroupSessionBootstrapDeduped(): Promise<SessionBootstrapResponse> {
@@ -304,12 +324,47 @@ export async function fetchGroupSessionBootstrapDeduped(): Promise<SessionBootst
 export function invalidateGroupTabCaches(momentId?: string) {
   if (momentId) {
     pulseCache.delete(momentId);
+    tripPulseCache.delete(momentId);
+    purchasePulseCache.delete(momentId);
+    livingPulseCache.delete(momentId);
     momentsCache.delete(momentId);
+    purchaseMomentsCache.delete(momentId);
+    livingMomentsCache.delete(momentId);
     memoryCache.delete(momentId);
+    diskCacheRemove(diskKey("pulse", momentId));
+    diskCacheRemove(diskKey("moments", momentId));
+    diskCacheRemove(diskKey("memory", momentId));
   } else {
     pulseCache.clear();
+    tripPulseCache.clear();
+    purchasePulseCache.clear();
+    livingPulseCache.clear();
     momentsCache.clear();
+    purchaseMomentsCache.clear();
+    livingMomentsCache.clear();
     memoryCache.clear();
   }
   lifeCache.clear();
+  diskCacheRemove(diskKey("life", "aggregate"));
+}
+
+/**
+ * Subscribe to trip moment SSE invalidate events.
+ * Clears pulse/moments/memory caches for the id; optional callback bumps reloadKey.
+ */
+export function useTripMomentStream(
+  momentId: string | null | undefined,
+  onInvalidate?: () => void,
+  enabled = true,
+) {
+  const onInvalidateRef = useRef(onInvalidate);
+  onInvalidateRef.current = onInvalidate;
+
+  useEffect(() => {
+    if (!enabled || !momentId) return;
+    return subscribeTripMomentStream(momentId, () => {
+      invalidateGroupTabCaches(momentId);
+      onInvalidateRef.current?.();
+    });
+  }, [momentId, enabled]);
 }

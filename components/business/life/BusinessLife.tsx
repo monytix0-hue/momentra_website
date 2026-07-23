@@ -13,11 +13,16 @@ import {
 } from "@/components/business/active/team-operations/shared/shared";
 import {
   LmBandHero,
-  LmDimensionChips,
+  LmConnectionsSection,
+  LmContributionDetails,
+  LmDriftAlertSection,
+  LmDrivesGrowthSection,
+  LmJourneySection,
+  LmLeverageSection,
+  LmMonthlyChangesSection,
   LmQuickActions,
-  LmSignalCards,
   LmSliceCard,
-  LmTimeline,
+  LmTrendsSection,
 } from "@/components/business/life-memory/LifeMemoryStitchComponents";
 
 type Props = {
@@ -37,7 +42,10 @@ const LIFE_SLICE_KEYS = [
   ...OPS_LIFE_SLICE_KEYS,
 ] as const;
 
-/** Shared Business Life — stitch chrome, real bands/slices only (no composite score). */
+/**
+ * Shared Business Life — stitch layout (life_business docs).
+ * Real bands/signals/dimensions/journey only; no composite score or invented narrative.
+ */
 export function TeamOperationsLifeContribution({
   data,
   loading,
@@ -74,17 +82,17 @@ export function TeamOperationsLifeContribution({
   const dimensions = Array.isArray(data.dimensions) ? data.dimensions : [];
   const journey = Array.isArray(data.journey) ? data.journey : [];
   const uniqueSliceKeys = Array.from(new Set(LIFE_SLICE_KEYS));
-
-  let section = 2; // hero is always 1
-  const signalsIndex = signals.length ? section++ : 0;
-  const dimsIndex = dimensions.some((d) => d.count > 0 || (d.band && d.band !== "empty"))
-    ? section++
-    : 0;
-  const sliceStart = section;
   const slicesWithData = uniqueSliceKeys.filter((key) => data.slices[key]);
-  section += slicesWithData.length;
-  const journeyIndex = journey.length ? section++ : 0;
-  const actionsIndex = onQuickAdd || onCreateMoment ? section++ : 0;
+
+  // Fixed stitch section numbering (docs): 1 Health … 8 Journey … QA last
+  const nConnections = 2;
+  const nDrift = 3;
+  const nLeverage = 4;
+  const nTrends = 5;
+  const nGrowth = 6;
+  const nMonthly = 7;
+  const nJourney = 8;
+  const nActions = onQuickAdd || onCreateMoment ? 9 : 0;
 
   return (
     <TeamOpsScrollShell bottomPadding={bottomPadding}>
@@ -94,39 +102,46 @@ export function TeamOperationsLifeContribution({
 
       <LmBandHero health={data.health} activeMomentCount={data.active_moment_count} />
 
-      {signals.length > 0 && signalsIndex ? (
-        <LmSignalCards signals={signals} sectionIndex={signalsIndex} />
-      ) : null}
+      <LmConnectionsSection sectionIndex={nConnections} />
 
-      {dimsIndex ? (
-        <LmDimensionChips dimensions={dimensions} sectionIndex={dimsIndex} />
-      ) : null}
+      <LmDriftAlertSection signals={signals} sectionIndex={nDrift} />
 
-      {slicesWithData.map((key, i) => {
-        const slice = data.slices[key]!;
-        return (
-          <LmSliceCard
-            key={key}
-            index={sliceStart + i}
-            title={slice.label || key}
-            band={slice.band}
-            count={slice.count}
-            state={slice.state}
-            items={slice.items ?? []}
-          />
-        );
-      })}
+      <LmLeverageSection dimensions={dimensions} sectionIndex={nLeverage} />
 
-      {journeyIndex ? (
-        <LmTimeline items={journey} sectionIndex={journeyIndex} title="Business journey" />
-      ) : null}
+      <div className="grid grid-cols-2 gap-4">
+        <LmTrendsSection dimensions={dimensions} sectionIndex={nTrends} />
+        <LmDrivesGrowthSection sectionIndex={nGrowth} />
+      </div>
 
-      {actionsIndex ? (
+      <LmMonthlyChangesSection sectionIndex={nMonthly} />
+
+      <LmJourneySection items={journey} sectionIndex={nJourney} title="Business Journey" />
+
+      {nActions ? (
         <LmQuickActions
-          sectionIndex={actionsIndex}
+          sectionIndex={nActions}
           onQuickAdd={onQuickAdd}
           onCreateMoment={onCreateMoment}
         />
+      ) : null}
+
+      {slicesWithData.length > 0 ? (
+        <LmContributionDetails>
+          {slicesWithData.map((key, i) => {
+            const slice = data.slices[key]!;
+            return (
+              <LmSliceCard
+                key={key}
+                index={i + 1}
+                title={slice.label || key}
+                band={slice.band}
+                count={slice.count}
+                state={slice.state}
+                items={slice.items ?? []}
+              />
+            );
+          })}
+        </LmContributionDetails>
       ) : null}
     </TeamOpsScrollShell>
   );

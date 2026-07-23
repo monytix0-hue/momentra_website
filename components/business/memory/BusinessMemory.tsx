@@ -9,18 +9,19 @@ import {
   TeamOpsStatusBanner,
 } from "@/components/business/active/team-operations/shared/shared";
 import {
+  LmBiggestLearningSection,
   LmBucketSection,
+  LmContributionDetails,
   LmFilterChips,
-  LmGlassCard,
-  LmInsightCards,
-  LmMemoryHero,
-  LmNumberedHeader,
-  LmPatternPills,
+  LmJourneySection,
+  LmMemoryStrengthHero,
+  LmPatternNetworkSection,
+  LmPlaybookSection,
   LmQuickActions,
-  LmTimeline,
-  LmTimelineFeed,
+  LmRiskMemorySection,
+  LmSuccessMemorySection,
+  LmWisdomSection,
 } from "@/components/business/life-memory/LifeMemoryStitchComponents";
-import { TEAM_OPS } from "@/components/business/active/team-operations/shared/teamOpsTheme";
 
 type Props = {
   data: BusinessMemoryResponse | null;
@@ -43,6 +44,10 @@ function matchesFilter(
   return momentTypes.includes(t);
 }
 
+/**
+ * Shared Business Memory — stitch layout (memory_business docs).
+ * Factual summary + allowlisted evidence only; no strength score / AI narrative.
+ */
 export function TeamOperationsMemoryContribution({
   data,
   loading,
@@ -93,17 +98,31 @@ export function TeamOperationsMemoryContribution({
   const success = data.success_memory ?? [];
   const risk = data.risk_memory ?? [];
   const journey = data.journey ?? [];
-
-  let n = 2; // hero is 1
-  const timelineN = n++;
-  const patternsN = patterns.length ? n++ : 0;
-  const insightN = success.length || risk.length ? n++ : 0;
+  const playbooks = data.playbooks ?? [];
+  const biggestLearning = success[0] ?? null;
   const bucketKeys = MEMORY_BUCKET_ORDER.filter((key) => key in (data.buckets ?? {}));
-  const bucketStart = n;
-  n += bucketKeys.length;
-  const journeyN = journey.length ? n++ : 0;
-  const momentsN = data.moments?.length ? n++ : 0;
-  const actionsN = onQuickAdd || onCreateMoment ? n++ : 0;
+  const satellites = patterns
+    .filter((p) => typeof p !== "string" && (p.pattern_type || "").toLowerCase() === "dimension_active")
+    .map((p) => (typeof p === "string" ? p : p.label || p.dimension || ""))
+    .filter(Boolean)
+    .map((s) =>
+      s
+        .replace(/is actively being tracked/gi, "")
+        .replace(/BUSINESS_/gi, "")
+        .replace(/_/g, " ")
+        .trim(),
+    )
+    .slice(0, 4);
+
+  // Fixed stitch numbering from memory_business docs
+  const nLearning = 2;
+  const nPatterns = 3;
+  const nPlaybook = 4;
+  const nSuccess = 5;
+  const nRisk = 6;
+  const nWisdom = 7;
+  const nJourney = 8;
+  const nActions = onQuickAdd || onCreateMoment ? 9 : 0;
 
   return (
     <TeamOpsScrollShell bottomPadding={bottomPadding}>
@@ -117,66 +136,63 @@ export function TeamOperationsMemoryContribution({
         onChange={setFilterKey}
       />
 
-      <LmMemoryHero
+      <LmMemoryStrengthHero
         summary={data.summary}
         activeMomentCount={data.active_moment_count}
-        eventCount={data.events?.length ?? 0}
+        eventCount={data.summary?.event_count ?? filteredEvents.length}
+        satellites={satellites}
       />
 
-      <LmTimelineFeed items={filteredEvents.slice(0, 40)} sectionIndex={timelineN} />
+      <LmBiggestLearningSection item={biggestLearning} sectionIndex={nLearning} />
 
-      {patternsN ? <LmPatternPills patterns={patterns} sectionIndex={patternsN} /> : null}
+      <LmPatternNetworkSection patterns={patterns} sectionIndex={nPatterns} />
 
-      {insightN ? (
-        <LmInsightCards success={success} risk={risk} sectionIndex={insightN} />
-      ) : null}
+      <LmPlaybookSection playbooks={playbooks} sectionIndex={nPlaybook} />
 
-      {bucketKeys.map((key, i) => {
-        const items = (data.buckets?.[key]?.items ?? []).filter((e) =>
-          matchesFilter(e, activeFilter?.key ?? "all", momentTypes),
-        );
-        const label = MEMORY_BUCKET_LABELS[key] ?? key;
-        return (
-          <LmBucketSection
-            key={key}
-            index={bucketStart + i}
-            title={label}
-            items={items}
-          />
-        );
-      })}
+      <LmSuccessMemorySection items={success} sectionIndex={nSuccess} />
 
-      {journeyN ? (
-        <LmTimeline items={journey} sectionIndex={journeyN} title="Knowledge journey" />
-      ) : null}
+      <LmRiskMemorySection items={risk} sectionIndex={nRisk} />
 
-      {momentsN && data.moments?.length ? (
-        <LmGlassCard>
-          <LmNumberedHeader index={momentsN} title="Source moments" />
-          <ul className="space-y-2">
-            {data.moments.map((m) => (
-              <li
-                key={m.moment_id}
-                className="rounded-xl border px-3 py-3 text-sm"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: `${TEAM_OPS.outline}22`,
-                  color: TEAM_OPS.onSurface,
-                }}
-              >
-                {m.moment_name || m.moment_type} · {m.status}
-              </li>
-            ))}
-          </ul>
-        </LmGlassCard>
-      ) : null}
+      <LmWisdomSection sectionIndex={nWisdom} />
 
-      {actionsN ? (
+      <LmJourneySection
+        items={journey}
+        sectionIndex={nJourney}
+        title="Knowledge Journey"
+      />
+
+      {nActions ? (
         <LmQuickActions
-          sectionIndex={actionsN}
+          sectionIndex={nActions}
           onQuickAdd={onQuickAdd}
           onCreateMoment={onCreateMoment}
         />
+      ) : null}
+
+      {bucketKeys.length > 0 || filteredEvents.length > 0 ? (
+        <LmContributionDetails>
+          {filteredEvents.length > 0 ? (
+            <LmBucketSection
+              index={1}
+              title="Timeline"
+              items={filteredEvents.slice(0, 40)}
+            />
+          ) : null}
+          {bucketKeys.map((key, i) => {
+            const items = (data.buckets?.[key]?.items ?? []).filter((e) =>
+              matchesFilter(e, activeFilter?.key ?? "all", momentTypes),
+            );
+            const label = MEMORY_BUCKET_LABELS[key] ?? key;
+            return (
+              <LmBucketSection
+                key={key}
+                index={i + 2}
+                title={label}
+                items={items}
+              />
+            );
+          })}
+        </LmContributionDetails>
       ) : null}
     </TeamOpsScrollShell>
   );

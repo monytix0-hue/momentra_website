@@ -19,6 +19,8 @@ import { GroupPurchaseSetup } from "@/components/group/setup/GroupPurchaseSetup"
 import { GroupTripSetup } from "@/components/group/setup/GroupTripSetup";
 
 import { GroupMomentHeader } from "@/components/group/shared/GroupMomentHeader";
+import { MomentInviteSheet } from "@/components/shared/MomentInviteSheet";
+import type { GroupMomentSwitcherOption } from "@/components/group/shared/groupMomentRouting";
 
 import {
 
@@ -101,7 +103,7 @@ import {
   type LifecycleInventoryItem,
 } from "@/lib/lifecycle/MomentLifecycleCoordinator";
 
-import { invalidateGroupTabCaches } from "@/hooks/useGroupTabCache";
+import { invalidateGroupTabCaches, useTripMomentStream } from "@/hooks/useGroupTabCache";
 import {
   applyGroupLifecyclePatch,
   ensureGroupSession,
@@ -168,6 +170,14 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [tripMomentsReloadKey, setTripMomentsReloadKey] = useState(0);
+  const bumpTripReload = useCallback(() => {
+    setTripMomentsReloadKey((k) => k + 1);
+  }, []);
+  useTripMomentStream(
+    activeMomentType === "SHARED_EXPERIENCE" ? activeMomentId : null,
+    bumpTripReload,
+    Boolean(activeMomentId) && activeMomentType === "SHARED_EXPERIENCE",
+  );
   const [quickAddSuccess, setQuickAddSuccess] = useState<string | null>(null);
   const [showLivingActivity, setShowLivingActivity] = useState(false);
   const [editingLivingActivity, setEditingLivingActivity] = useState<{
@@ -177,6 +187,10 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
   const [livingActivityReloadToken, setLivingActivityReloadToken] = useState(0);
 
   const [showManageSheet, setShowManageSheet] = useState(false);
+  const [inviteMoment, setInviteMoment] = useState<{
+    momentId: string;
+    label: string;
+  } | null>(null);
 
   const selectedMomentTypeCode = useGroupMomentSession();
 
@@ -197,6 +211,15 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
       const momentId = detail?.moment_id?.trim();
       if (!momentId) return;
       const typeFromResult = (detail.moment_type || "").toUpperCase();
+      // Business joins are handled via openBusinessMomentAndPulse — do not map into Group.
+      if (
+        typeFromResult.includes("BUSINESS") ||
+        typeFromResult.startsWith("TEAM_") ||
+        typeFromResult === "ORG" ||
+        typeFromResult.includes("OPERATIONS")
+      ) {
+        return;
+      }
       const typeCode = (typeFromResult.includes("PURCHASE")
         ? "SHARED_PURCHASE"
         : typeFromResult.includes("LIVING")
@@ -338,6 +361,42 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
     setGroupSelection(option.typeCode, option.momentId);
 
+  }
+
+  async function archiveGroupMomentOption(option: GroupMomentSwitcherOption) {
+    if (!option.momentId) return;
+    if (!confirm(`Archive ${option.label}? This removes it from your active list.`)) return;
+    if (option.momentId !== activeMomentId || option.typeCode !== selectedMomentTypeCode) {
+      setGroupSelection(option.typeCode, option.momentId);
+    }
+    const inventory: LifecycleInventoryItem[] = (sessionBootstrap?.moments ?? [])
+      .map((m) => ({
+        momentId: String(m.id || ""),
+        momentTypeCode: String(m.moment_type || ""),
+        status: String(m.lifecycle_status || "ACTIVE"),
+      }))
+      .filter((m) => m.momentId);
+    try {
+      const result = await runMomentLifecycle({
+        contextType: "GROUP",
+        momentId: option.momentId,
+        momentTypeCode: option.typeCode,
+        action: "archive",
+        previousStatus: "ACTIVE",
+        inventory,
+        selectedMomentId: option.momentId,
+        refreshBootstrap: false,
+      });
+      applyGroupLifecyclePatch(
+        option.momentId,
+        "ARCHIVED",
+        result.replacementMomentId,
+        result.replacementMomentTypeCode,
+      );
+      await refreshAfterManage();
+    } catch (e) {
+      alert(e instanceof MomentLifecycleError ? e.userMessage : "Could not archive moment");
+    }
   }
 
 
@@ -989,6 +1048,18 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
           onManageClick={manageContext ? () => setShowManageSheet(true) : undefined}
 
+          onInviteMoment={(option) => {
+            if (!option.momentId) return;
+            if (option.momentId !== activeMomentId || option.typeCode !== selectedMomentTypeCode) {
+              setGroupSelection(option.typeCode, option.momentId);
+            }
+            setInviteMoment({ momentId: option.momentId, label: option.label });
+          }}
+
+          onDeleteMoment={(option) => {
+            void archiveGroupMomentOption(option);
+          }}
+
         />
 
         <div className="flex min-h-0 flex-1 flex-col">{content}</div>
@@ -1091,6 +1162,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
           }}
 
           onSuccess={() => {
+            if (activeMomentId) invalidateGroupTabCaches(activeMomentId);
             setTripMomentsReloadKey((key) => key + 1);
             setQuickAddSuccess("Quick Add saved");
             setShowQuickAdd(false);
@@ -1117,10 +1189,19 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
           onClose={() => setEditingLivingActivity(null)}
           onSuccess={() => {
             setLivingActivityReloadToken((t) => t + 1);
+            if (activeMomentId) invalidateGroupTabCaches(activeMomentId);
             setTripMomentsReloadKey((key) => key + 1);
           }}
         />
       ) : null}
+
+      <MomentInviteSheet
+        open={Boolean(inviteMoment)}
+        onClose={() => setInviteMoment(null)}
+        momentId={inviteMoment?.momentId ?? null}
+        momentLabel={inviteMoment?.label}
+        variant="group"
+      />
 
       <MomentManageSheet
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // Shared personal + business home shell. Group uses GroupHomePlaceholder; Personal uses PersonalHomePlaceholder.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";

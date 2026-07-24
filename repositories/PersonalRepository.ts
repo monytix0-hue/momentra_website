@@ -87,6 +87,33 @@ export function invalidateAfterQuickAdd(
   invalidateQuickAddOptionsCache();
 }
 
+/** Narrow invalidation for Build Momentum / Future Building saves — no life or bootstrap. */
+export function invalidateAfterFutureBuildingQuickAdd() {
+  invalidatePersonalPulseCache("FUTURE_BUILDING");
+  invalidatePersonalMomentsCache("FUTURE_BUILDING");
+  invalidatePersonalMemoryCache("FUTURE_BUILDING");
+  invalidateTemplateProjectionCaches("FUTURE_BUILDING");
+  invalidateQuickAddOptionsCache();
+}
+
+/** Narrow invalidation for Capture Lifestyle — no life or bootstrap. */
+export function invalidateAfterLifestyleQuickAdd() {
+  invalidatePersonalPulseCache("LIFESTYLE");
+  invalidatePersonalMomentsCache("LIFESTYLE");
+  invalidatePersonalMemoryCache("LIFESTYLE");
+  invalidateTemplateProjectionCaches("LIFESTYLE");
+  invalidateQuickAddOptionsCache();
+}
+
+/** Narrow invalidation for Capture Relationships — no life or bootstrap. */
+export function invalidateAfterRelationshipsQuickAdd() {
+  invalidatePersonalPulseCache("RELATIONSHIPS");
+  invalidatePersonalMomentsCache("RELATIONSHIPS");
+  invalidatePersonalMemoryCache("RELATIONSHIPS");
+  invalidateTemplateProjectionCaches("RELATIONSHIPS");
+  invalidateQuickAddOptionsCache();
+}
+
 export function invalidateAfterMasterExpense(includeRelationships: boolean) {
   invalidatePersonalPulseCache("LIFE_OPERATIONS");
   invalidatePersonalMemoryCache("LIFE_OPERATIONS");
@@ -168,7 +195,15 @@ export const PersonalRepository = {
       if (options.momentId && options.tab) {
         clearQuickAddDraft(options.momentId, options.tab);
       }
-      invalidateAfterQuickAdd(momentTypeCode);
+      if (momentTypeCode === "RELATIONSHIPS") {
+        invalidateAfterRelationshipsQuickAdd();
+      } else if (momentTypeCode === "LIFESTYLE") {
+        invalidateAfterLifestyleQuickAdd();
+      } else if (momentTypeCode === "FUTURE_BUILDING") {
+        invalidateAfterFutureBuildingQuickAdd();
+      } else {
+        invalidateAfterQuickAdd(momentTypeCode);
+      }
       return { result, clientRequestId };
     } catch (err) {
       const { momentId, tab, form } = options;
@@ -189,7 +224,15 @@ export const PersonalRepository = {
         if (momentId && tab) {
           clearQuickAddDraft(momentId, tab);
         }
-        invalidateAfterQuickAdd(momentTypeCode);
+        if (momentTypeCode === "RELATIONSHIPS") {
+          invalidateAfterRelationshipsQuickAdd();
+        } else if (momentTypeCode === "LIFESTYLE") {
+          invalidateAfterLifestyleQuickAdd();
+        } else if (momentTypeCode === "FUTURE_BUILDING") {
+          invalidateAfterFutureBuildingQuickAdd();
+        } else {
+          invalidateAfterQuickAdd(momentTypeCode);
+        }
         return { result: null, clientRequestId, idempotent: true as const };
       }
 

@@ -2657,7 +2657,7 @@ export function ContextHomePlaceholderLegacy({
             void beginMomentFromMoments(selectedMomentTypeCode);
           }}
           onSuccess={() => {
-            invalidateAfterQuickAdd(selectedMomentTypeCode);
+            // submitQuickAdd already called invalidateAfterQuickAdd — only reload visible tab.
             if (visibleTab === "pulse") void reloadPulse();
             else if (visibleTab === "moments") {
               void reloadMoments();
@@ -2666,12 +2666,7 @@ export function ContextHomePlaceholderLegacy({
               void reloadMemory();
               void reloadTemplateMemory();
             } else if (visibleTab === "life") void reloadLife();
-            else {
-              void reloadPulse();
-              void reloadLife();
-              void reloadTemplateMemory();
-              if (loTemplateEnabled) void reloadTemplateMoments();
-            }
+            else void reloadPulse();
           }}
         />
       ) : null}

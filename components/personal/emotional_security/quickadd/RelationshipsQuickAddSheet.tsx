@@ -1,92 +1,51 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePersonalDomainTokens } from "@/lib/personal/personalDomainPalette";
 import type { ContextThemeTokens } from "@/lib/contextTokens";
-import {
-  personalGlassCardStyle,
-  personalTypography,
-} from "@/components/personal/empty/shared/emptyStyles";
+import { personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import { SkeletonQuickAddSheet } from "@/components/personal/shared/skeleton/SkeletonBlocks";
+import { AppToast } from "@/components/shared/AppToast";
 import { useQuickAddOptions } from "@/hooks/useQuickAddOptions";
 import {
-  createPersonalQuickAdd,
   type PersonalEmotionalSecurityQuickAddFieldGroup,
   type PersonalQuickAddOptionsResponse,
   type PersonalQuickAddTab,
 } from "@/lib/api/client";
+import { PersonalRepository } from "@/repositories/PersonalRepository";
+import {
+  RS_EVENT_TYPES,
+  buildEmotionalSecurityPayload,
+  canSubmitRelationships,
+  normalizeRelationshipsEventType,
+  rsErrorMessage,
+  rsGuidingQuestion,
+  rsSelectorBlurb,
+  rsSuccessMessage,
+  rsTitlePlaceholder,
+} from "@/lib/personal/relationships/relationshipsQuickAddHelpers";
 
-const RS_EVENT_TYPES = new Set([
-  "CONNECTION",
-  "SUPPORT",
-  "SHARED_EXPERIENCE",
-  "RELATIONSHIP_INVESTMENT",
-  "RELATIONSHIP_ADJUST",
-]);
-
-const FIELD_TO_PAYLOAD_KEY: Record<string, string> = {
-  notes: "notes",
-  amount: "amount",
-  spend_category: "spend_category",
-  connection_type: "connection_type",
-  relationship_type: "relationship_type",
-  connection_quality: "connection_quality",
-  emotional_tone: "emotional_tone",
-  time_invested: "time_invested",
-  support_type: "support_type",
-  support_direction: "support_direction",
-  support_impact: "support_impact",
-  experience_type: "experience_type",
-  value_received: "value_received",
-  investment_type: "investment_type",
-  investment_purpose: "investment_purpose",
-  perceived_value: "perceived_value",
-  adjustment_area: "adjustment_area",
-  relationship_focus: "relationship_focus",
-  priority_level: "priority_level",
-  confidence_level: "confidence_level",
+type Draft = {
+  eventTitle: string;
+  fields: Record<string, string>;
+  spendingExpanded: boolean;
+  notesExpanded: boolean;
 };
 
-const VALUE_CARD_SUBTITLES: Record<string, string> = {
-  WORTH_IT: "Expected return",
-  LIFE_ENRICHING: "Profound impact",
-};
+const emptyDraft = (): Draft => ({
+  eventTitle: "",
+  fields: {},
+  spendingExpanded: false,
+  notesExpanded: false,
+});
 
-function requiredKeysForTab(tab: string): Set<string> {
-  switch (tab) {
-    case "CONNECTION":
-      return new Set(["connection_type"]);
-    case "SUPPORT":
-      return new Set(["support_type", "support_direction"]);
-    case "SHARED_EXPERIENCE":
-      return new Set(["experience_type", "notes"]);
-    case "RELATIONSHIP_INVESTMENT":
-      return new Set(["investment_type"]);
-    case "RELATIONSHIP_ADJUST":
-      return new Set(["adjustment_area", "notes"]);
-    default:
-      return new Set();
-  }
-}
-
-function canSubmit(
-  tab: string,
-  groups: PersonalEmotionalSecurityQuickAddFieldGroup[],
-  values: Record<string, string>,
-): boolean {
-  if (groups.length === 0) {
-    return Boolean(values.notes?.trim());
-  }
-  return [...requiredKeysForTab(tab)].every((key) => Boolean(values[key]?.trim()));
-}
-
-function buildEmotionalSecurityPayload(values: Record<string, string>) {
-  const payload: Record<string, string> = {};
-  for (const [fieldKey, payloadKey] of Object.entries(FIELD_TO_PAYLOAD_KEY)) {
-    const trimmed = values[fieldKey]?.trim();
-    if (trimmed) payload[payloadKey] = trimmed;
-  }
-  return payload;
+function isDraftDirty(draft: Draft): boolean {
+  return (
+    Boolean(draft.eventTitle.trim()) ||
+    Object.values(draft.fields).some((v) => Boolean(v?.trim())) ||
+    draft.spendingExpanded ||
+    draft.notesExpanded
+  );
 }
 
 type RelationshipsQuickAddSheetProps = {
@@ -106,27 +65,38 @@ export function RelationshipsQuickAddSheet({
 }: RelationshipsQuickAddSheetProps) {
   const tokens = usePersonalDomainTokens();
   const { colors } = tokens;
-
   const { options, loading, error } = useQuickAddOptions({ momentId: defaultMomentId, enabled: open });
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState("SHARED_EXPERIENCE");
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [selectedTab, setSelectedTab] = useState("CONNECTION");
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [confirmClose, setConfirmClose] = useState(false);
+  const savingRef = useRef(false);
+
+  const dirty = useMemo(
+    () => Object.values(drafts).some(isDraftDirty),
+    [drafts],
+  );
+
+  function requestClose() {
+    if (dirty && !submitting) {
+      setConfirmClose(true);
+      return;
+    }
+    onClose();
+  }
 
   useEffect(() => {
     if (!options) return;
     const initial = initialEventType?.toUpperCase();
     if (initial && RS_EVENT_TYPES.has(initial)) {
-      setSelectedTab(initial);
+      setSelectedTab(normalizeRelationshipsEventType(initial));
     } else if (options.tabs?.[0]?.event_type) {
-      setSelectedTab(options.tabs[0].event_type);
+      setSelectedTab(normalizeRelationshipsEventType(options.tabs[0].event_type));
     }
   }, [options, initialEventType]);
-
-  useEffect(() => {
-    setFieldValues({});
-  }, [selectedTab]);
 
   const moment = useMemo(() => {
     if (!options?.moments.length) return null;
@@ -134,47 +104,72 @@ export function RelationshipsQuickAddSheet({
       return options.moments.find((m) => m.moment_id === defaultMomentId) ?? options.moments[0];
     }
     return (
-      options.moments.find((m) => m.moment_type_code === "RELATIONSHIPS" || m.moment_type_code === "EMOTIONAL_SECURITY") ?? options.moments[0]
+      options.moments.find(
+        (m) => m.moment_type_code === "RELATIONSHIPS" || m.moment_type_code === "EMOTIONAL_SECURITY",
+      ) ?? options.moments[0]
     );
   }, [defaultMomentId, options]);
 
   const tabs = options?.tabs ?? [];
-  const activeTab: PersonalQuickAddTab | undefined = tabs.find((t) => t.event_type === selectedTab);
+  const activeTab: PersonalQuickAddTab | undefined = tabs.find(
+    (t) => normalizeRelationshipsEventType(t.event_type) === selectedTab,
+  );
   const tabFields =
-    options?.metadata?.emotional_security_tabs?.find((t) => t.event_type === selectedTab) ??
-    { event_type: selectedTab, field_groups: [] };
+    options?.metadata?.emotional_security_tabs?.find(
+      (t) => normalizeRelationshipsEventType(t.event_type) === selectedTab,
+    ) ?? { event_type: selectedTab, field_groups: [] };
 
-  const submitEnabled = moment && canSubmit(selectedTab, tabFields.field_groups, fieldValues);
+  const draft = drafts[selectedTab] ?? emptyDraft();
+  const submitEnabled =
+    Boolean(moment) && canSubmitRelationships(selectedTab, draft.fields, draft.eventTitle);
 
-  async function handleSubmit() {
-    if (!moment || !submitEnabled) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await createPersonalQuickAdd({
-        moment_id: moment.moment_id,
-        event_type: selectedTab,
-        event_title: activeTab?.label ?? selectedTab.replace(/_/g, " "),
-        emotional_security: buildEmotionalSecurityPayload(fieldValues),
-      });
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Quick Add failed.");
-      setSubmitting(false);
-    }
+  function updateDraft(patch: Partial<Draft>) {
+    setDrafts((prev) => ({
+      ...prev,
+      [selectedTab]: { ...(prev[selectedTab] ?? emptyDraft()), ...patch },
+    }));
   }
 
   function setField(key: string, value: string) {
-    setFieldValues((prev) => ({ ...prev, [key]: value }));
+    updateDraft({ fields: { ...draft.fields, [key]: value } });
   }
 
-  const expenseCostGroups = tabFields.field_groups.filter((g) =>
-    ["amount", "spend_category"].includes(g.group_key),
+  async function handleSubmit() {
+    if (!moment || !submitEnabled || savingRef.current) return;
+    savingRef.current = true;
+    setSubmitting(true);
+    setSubmitError(null);
+    const title = draft.eventTitle.trim();
+    const fields = { ...draft.fields };
+    if (!fields.notes?.trim()) fields.notes = title;
+    try {
+      await PersonalRepository.submitQuickAdd(
+        {
+          moment_id: moment.moment_id,
+          event_type: selectedTab,
+          event_title: title,
+          emotional_security: buildEmotionalSecurityPayload(fields),
+        },
+        { momentTypeCode: "RELATIONSHIPS", momentId: moment.moment_id, tab: selectedTab },
+      );
+      setToast({ message: rsSuccessMessage(selectedTab), tone: "success" });
+      onSuccess?.();
+      setTimeout(() => onClose(), 350);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : rsErrorMessage(selectedTab);
+      setSubmitError(message);
+      setToast({ message: rsErrorMessage(selectedTab), tone: "error" });
+      setSubmitting(false);
+      savingRef.current = false;
+    }
+  }
+
+  const spendingKeys = new Set(["amount", "spend_category"]);
+  const showSpending = selectedTab === "SHARED_EXPERIENCE" || selectedTab === "RELATIONSHIP_INVESTMENT";
+  const coreGroups = tabFields.field_groups.filter(
+    (g) => !spendingKeys.has(g.group_key) && g.group_key !== "notes",
   );
-  const expenseOtherGroups = tabFields.field_groups.filter(
-    (g) => !["amount", "spend_category"].includes(g.group_key),
-  );
+  const notesGroup = tabFields.field_groups.find((g) => g.group_key === "notes");
 
   if (!open) return null;
 
@@ -183,7 +178,7 @@ export function RelationshipsQuickAddSheet({
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border sm:rounded-2xl"
@@ -191,259 +186,226 @@ export function RelationshipsQuickAddSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 border-b px-5 pb-3 pt-5" style={{ borderColor: colors.border }}>
-          <h2 style={{ ...personalTypography.heroTitle, color: colors.brandPrimary }}>
-            Capture Relationships
-          </h2>
-          <div className="mt-3 flex gap-4 overflow-x-auto pb-1">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 style={{ ...personalTypography.heroTitle, color: colors.brandPrimary }}>
+                Capture Relationships
+              </h2>
+              <p className="mt-1 text-xs" style={{ color: colors.textSecondary }}>
+                Record the moments and actions that shape your connections.
+              </p>
+            </div>
+            <button type="button" onClick={requestClose} aria-label="Close" className="min-h-11 px-2 text-lg">
+              ×
+            </button>
+          </div>
+          <p className="mt-3 text-xs font-medium" style={{ color: colors.textSecondary }}>
+            Choose what you want to record.
+          </p>
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {tabs.map((tab) => {
-              const active = tab.event_type === selectedTab;
+              const code = normalizeRelationshipsEventType(tab.event_type);
+              const active = code === selectedTab;
               return (
                 <button
                   key={tab.event_type}
                   type="button"
-                  onClick={() => setSelectedTab(tab.event_type)}
-                  className="shrink-0 border-b-2 pb-2 text-xs font-semibold transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+                  aria-pressed={active}
+                  onClick={() => setSelectedTab(code)}
+                  className="min-w-[148px] shrink-0 rounded-2xl border px-3 py-3 text-left"
                   style={{
-                    color: active ? colors.brandPrimary : colors.textSecondary,
-                    borderColor: active ? colors.brandPrimary : "transparent",
-                    opacity: active ? 1 : 0.5,
+                    borderColor: active ? colors.brandPrimary : colors.border,
+                    background: active ? "rgba(108, 78, 242, 0.16)" : "rgba(255,255,255,0.03)",
                   }}
                 >
-                  {tab.label}
+                  <p className="text-sm font-semibold" style={{ color: active ? colors.textPrimary : colors.textSecondary }}>
+                    {tab.label}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug" style={{ color: colors.textSecondary }}>
+                    {tab.description || rsSelectorBlurb(code)}
+                  </p>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
-          {loading && !options ? (
-            <SkeletonQuickAddSheet />
-          ) : error && !options ? (
-            <p style={{ color: colors.error }}>{error}</p>
-          ) : !moment ? (
-            <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
-              Activate a Relationships moment to use Quick Add.
-            </p>
-          ) : (
-            <div className="space-y-5">
-              {selectedTab === "CONNECTION" && activeTab?.insight_body ? (
-                <section
-                  style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}
-                >
-                  <div className="flex gap-3">
-                    <span aria-hidden>⚡</span>
-                    <div>
-                      <p className="font-semibold" style={{ color: colors.textPrimary }}>
-                        {activeTab.insight_title ?? "Runtime Insight"}
-                      </p>
-                      <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
-                        {activeTab.insight_body}
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              ) : null}
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {loading ? <SkeletonQuickAddSheet /> : null}
+          {error ? <p className="text-sm text-red-300">{error}</p> : null}
+          {!loading && options ? (
+            <>
+              <div>
+                <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>
+                  {activeTab?.hero_title ?? activeTab?.label ?? selectedTab}
+                </h3>
+                <p className="mt-1 text-sm font-medium" style={{ color: colors.brandPrimary }}>
+                  {(activeTab as { guiding_question?: string } | undefined)?.guiding_question ??
+                    rsGuidingQuestion(selectedTab)}
+                </p>
+                <p className="mt-1 text-xs" style={{ color: colors.textSecondary }}>
+                  {activeTab?.hero_subtitle ?? activeTab?.description ?? rsSelectorBlurb(selectedTab)}
+                </p>
+              </div>
 
-              {activeTab ? (
-                <div className="space-y-2">
-                  <h3 style={{ ...personalTypography.sectionHeader, color: colors.brandPrimary }}>
-                    {activeTab.hero_title ?? activeTab.label}
-                  </h3>
-                  <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
-                    {activeTab.hero_subtitle ?? activeTab.description}
-                  </p>
+              <div className="space-y-2">
+                <label style={{ ...personalTypography.sectionHeader, color: colors.textSecondary }}>
+                  {rsGuidingQuestion(selectedTab)}
+                </label>
+                <input
+                  value={draft.eventTitle}
+                  onChange={(e) => updateDraft({ eventTitle: e.target.value })}
+                  placeholder={rsTitlePlaceholder(selectedTab)}
+                  className="w-full rounded-xl border px-3 py-3 text-sm"
+                  style={{
+                    borderColor: colors.border,
+                    background: colors.surfaceContainerLowest ?? "#0e0d16",
+                    color: colors.textPrimary,
+                  }}
+                />
+              </div>
+
+              {coreGroups.map((group) => (
+                <FieldGroup
+                  key={group.group_key}
+                  group={group}
+                  value={draft.fields[group.group_key] ?? ""}
+                  onChange={(v) => setField(group.group_key, v)}
+                  colors={colors}
+                />
+              ))}
+
+              {showSpending ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    className="text-sm font-semibold"
+                    style={{ color: colors.brandPrimary }}
+                    onClick={() => updateDraft({ spendingExpanded: !draft.spendingExpanded })}
+                  >
+                    {draft.spendingExpanded ? "Hide spending details" : "+ Add spending details"}
+                  </button>
+                  {draft.spendingExpanded ? (
+                    <>
+                      <p className="text-xs" style={{ color: colors.textSecondary }}>
+                        If you enter an amount, Momentra also logs a personal money event.
+                      </p>
+                      {tabFields.field_groups
+                        .filter((g) => spendingKeys.has(g.group_key))
+                        .map((group) => (
+                          <FieldGroup
+                            key={group.group_key}
+                            group={group}
+                            value={draft.fields[group.group_key] ?? ""}
+                            onChange={(v) => setField(group.group_key, v)}
+                            colors={colors}
+                          />
+                        ))}
+                    </>
+                  ) : null}
                 </div>
               ) : null}
 
-              {selectedTab === "SHARED_EXPERIENCE" ? (
-                <>
-                  {expenseOtherGroups.map((group) => (
-                    <FieldGroup
-                      key={group.group_key}
-                      group={group}
-                      value={fieldValues[group.group_key] ?? ""}
-                      onChange={(value) => setField(group.group_key, value)}
-                      colors={colors}
-                    />
-                  ))}
-                  {expenseCostGroups.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      {expenseCostGroups.map((group) => (
-                        <FieldGroup
-                          key={group.group_key}
-                          group={group}
-                          value={fieldValues[group.group_key] ?? ""}
-                          onChange={(value) => setField(group.group_key, value)}
-                          colors={colors}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                </>
-              ) : selectedTab === "CONNECTION" ? (
-                tabFields.field_groups.map((group) =>
-                  group.field_type === "textarea" ? (
-                    <FieldGroup
-                      key={group.group_key}
-                      group={group}
-                      value={fieldValues[group.group_key] ?? ""}
-                      onChange={(value) => setField(group.group_key, value)}
-                      colors={colors}
-                    />
-                  ) : (
-                    <PanelFieldGroup
-                      key={group.group_key}
-                      group={group}
-                      value={fieldValues[group.group_key] ?? ""}
-                      onChange={(value) => setField(group.group_key, value)}
-                      colors={colors}
-                    />
-                  ),
-                )
-              ) : (
-                tabFields.field_groups.map((group) => (
+              {notesGroup ? (
+                draft.notesExpanded || draft.fields.notes ? (
                   <FieldGroup
-                    key={group.group_key}
-                    group={group}
-                    value={fieldValues[group.group_key] ?? ""}
-                    onChange={(value) => setField(group.group_key, value)}
+                    group={notesGroup}
+                    value={draft.fields.notes ?? ""}
+                    onChange={(v) => setField("notes", v)}
                     colors={colors}
                   />
-                ))
-              )}
-
-              {selectedTab !== "CONNECTION" && activeTab?.teaches_items?.length ? (
-                <section
-                  style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}
-                >
-                  <p
-                    className="mb-2 text-xs font-semibold uppercase tracking-wide"
+                ) : (
+                  <button
+                    type="button"
+                    className="text-sm font-semibold"
                     style={{ color: colors.brandPrimary }}
+                    onClick={() => updateDraft({ notesExpanded: true })}
                   >
-                    This teaches
+                    Add note — optional
+                  </button>
+                )
+              ) : null}
+
+              {activeTab?.teaches_items?.length ? (
+                <section className="rounded-2xl border p-4" style={{ borderColor: colors.border }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: colors.textSecondary }}>
+                    What Momentra may learn
                   </p>
-                  <ul className="space-y-1">
+                  <ul className="mt-2 space-y-1 text-xs" style={{ color: colors.textSecondary }}>
                     {activeTab.teaches_items.map((item) => (
-                      <li key={item} style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
-                        • {item}
-                      </li>
+                      <li key={item}>• {item}</li>
                     ))}
                   </ul>
                 </section>
               ) : null}
 
-              {selectedTab !== "CONNECTION" && activeTab?.insight_body ? (
-                <section
-                  style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}
-                >
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: colors.brandPrimary }}>
-                    {activeTab.insight_title ?? "Runtime Insight"}
-                  </p>
-                  <p style={{ ...personalTypography.bodyMd, color: colors.textPrimary }}>
-                    {activeTab.insight_body}
-                  </p>
-                </section>
-              ) : null}
-
-              {selectedTab === "CONNECTION" && activeTab?.teaches_items?.length ? (
-                <section
-                  style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}
-                >
-                  <p
-                    className="mb-2 text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: colors.brandPrimary }}
-                  >
-                    This teaches
-                  </p>
-                  <ul className="space-y-1">
-                    {activeTab.teaches_items.map((item) => (
-                      <li key={item} style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
-                        • {item}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
-              {submitError ? (
-                <p className="text-sm" style={{ color: colors.error }}>
-                  {submitError}
-                </p>
-              ) : null}
-
-              <button
-                type="button"
-                disabled={!submitEnabled || submitting}
-                onClick={() => void handleSubmit()}
-                className="w-full rounded-2xl py-3 font-semibold transition-transform duration-200 hover:scale-[1.02] active:scale-95"
-                style={{
-                  background: colors.brandPrimaryContainer ?? colors.brandPrimary,
-                  color: colors.brandOnPrimary,
-                  opacity: !submitEnabled || submitting ? 0.6 : 1,
-                }}
-              >
-                {submitting ? "Saving…" : activeTab?.cta_label ?? "Save Entry"}
-              </button>
-            </div>
-          )}
+              {submitError ? <p className="text-sm text-red-300">{submitError}</p> : null}
+            </>
+          ) : null}
         </div>
 
         <div className="shrink-0 border-t px-5 py-4" style={{ borderColor: colors.border }}>
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-xl border py-3 transition-transform duration-200 hover:scale-[1.02] active:scale-95"
-            style={{ borderColor: colors.border, color: colors.textSecondary }}
+            disabled={!submitEnabled || submitting}
+            onClick={() => void handleSubmit()}
+            className="w-full rounded-2xl py-4 text-sm font-bold disabled:opacity-50"
+            style={{ background: colors.brandPrimary, color: colors.onPrimary }}
           >
-            Close
+            {submitting ? "Saving…" : activeTab?.cta_label ?? "Save Entry"}
           </button>
         </div>
       </div>
-    </div>
-  );
-}
 
-function PanelFieldGroup({
-  group,
-  value,
-  onChange,
-  colors,
-}: {
-  group: PersonalEmotionalSecurityQuickAddFieldGroup;
-  value: string;
-  onChange: (value: string) => void;
-  colors: ContextThemeTokens["colors"];
-}) {
-  return (
-    <section
-      className="rounded-2xl border p-4"
-      style={{ borderColor: colors.border, background: "rgba(255,255,255,0.03)" }}
-    >
-      <p className="mb-3 font-semibold" style={{ color: colors.textPrimary }}>
-        {group.label}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {(group.options ?? []).map((opt) => {
-          const selected = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange(opt.value)}
-              className="rounded-full px-3 py-2 text-xs font-medium transition-transform duration-200 hover:scale-[1.02] active:scale-95"
-              style={{
-                border: `1px solid ${selected ? colors.brandPrimary : colors.border}`,
-                background: selected ? "rgba(108, 78, 242, 0.15)" : "transparent",
-                color: selected ? colors.brandPrimary : colors.textSecondary,
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-    </section>
+      <AppToast
+        open={Boolean(toast)}
+        message={toast?.message ?? ""}
+        tone={toast?.tone ?? "success"}
+        onDismiss={() => setToast(null)}
+      />
+
+      {confirmClose ? (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 px-6"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="rs-discard-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border p-5"
+            style={{ borderColor: colors.border, background: colors.surface }}
+          >
+            <h3 id="rs-discard-title" style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>
+              Discard changes?
+            </h3>
+            <p className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
+              You have unsaved changes that will be lost.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="min-h-11 rounded-xl px-3 text-sm"
+                onClick={() => setConfirmClose(false)}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                className="min-h-11 rounded-xl px-3 text-sm font-semibold"
+                style={{ background: colors.brandPrimary, color: colors.onPrimary }}
+                onClick={() => {
+                  setConfirmClose(false);
+                  onClose();
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -460,133 +422,90 @@ function FieldGroup({
 }) {
   const labelStyle = { ...personalTypography.sectionHeader, color: colors.textSecondary };
 
-  if (group.field_type === "icon_grid") {
-    return (
-      <div className="space-y-2">
-        {group.label ? <label style={labelStyle}>{group.label}</label> : null}
-        <div className="grid grid-cols-3 gap-2">
-          {(group.options ?? []).map((opt) => {
-            const selected = value === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onChange(opt.value)}
-                className="flex flex-col items-center gap-2 rounded-2xl border p-3 text-center transition-transform duration-200 hover:scale-[1.02] active:scale-95"
-                style={{
-                  borderColor: selected ? colors.brandPrimary : colors.border,
-                  background: selected ? "rgba(108, 78, 242, 0.12)" : "rgba(255,255,255,0.03)",
-                  color: selected ? colors.brandPrimary : colors.textSecondary,
-                }}
-              >
-                <span className="text-lg" aria-hidden>
-                  {experienceIcon(opt.icon_name)}
-                </span>
-                <span className="text-xs font-medium">{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  if (group.field_type === "value_card") {
-    return (
-      <div className="space-y-2">
-        <label style={labelStyle}>{group.label}</label>
-        <div className="grid grid-cols-2 gap-2">
-          {(group.options ?? []).map((opt) => {
-            const selected = value === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onChange(opt.value)}
-                className="rounded-2xl border p-4 text-left transition-transform duration-200 hover:scale-[1.02] active:scale-95"
-                style={{
-                  borderColor: selected ? colors.brandPrimary : colors.border,
-                  background: selected ? "rgba(108, 78, 242, 0.1)" : "rgba(255,255,255,0.03)",
-                }}
-              >
-                <p
-                  className="font-semibold"
-                  style={{ color: selected ? colors.brandPrimary : colors.textPrimary }}
-                >
-                  {opt.label}
-                </p>
-                <p className="text-xs" style={{ color: colors.textSecondary }}>
-                  {VALUE_CARD_SUBTITLES[opt.value] ?? ""}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   if (group.field_type === "amount") {
     return (
       <div className="space-y-2">
         <label style={labelStyle}>{group.label}</label>
         <div className="relative">
-            <span
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold"
-                style={{ color: colors.brandPrimary }}
-              >
-                ₹
-              </span>
-              <input
-                type="number"
-                inputMode="decimal"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="0.00"
-                className="w-full rounded-2xl border-none py-6 pl-12 pr-4 text-3xl font-bold input-focus-glow"
-                style={{ background: colors.surfaceContainerLowest ?? "#0e0d16", color: colors.textPrimary }}
-              />
-            </div>
-          </div>
-        );
-      }
+          <span
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold"
+            style={{ color: colors.brandPrimary }}
+          >
+            ₹
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="0.00"
+            className="w-full rounded-2xl border-none py-6 pl-12 pr-4 text-3xl font-bold"
+            style={{ background: colors.surfaceContainerLowest ?? "#0e0d16", color: colors.textPrimary }}
+          />
+        </div>
+      </div>
+    );
+  }
 
-      if (group.field_type === "textarea") {
-        return (
-          <div className="space-y-2">
-            <label style={labelStyle}>{group.label}</label>
-            <textarea
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border p-3 input-focus-glow"
-              style={{
-                borderColor: colors.border,
-                background: colors.surfaceContainerLowest ?? "#0e0d16",
-                color: colors.textPrimary,
-              }}
-            />
-          </div>
-        );
+  if (group.field_type === "textarea") {
+    return (
+      <div className="space-y-2">
+        <label style={labelStyle}>{group.label}</label>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          className="w-full rounded-xl border p-3"
+          style={{
+            borderColor: colors.border,
+            background: colors.surfaceContainerLowest ?? "#0e0d16",
+            color: colors.textPrimary,
+          }}
+        />
+      </div>
+    );
   }
 
   if (
     group.field_type === "slider" ||
     group.field_type === "single_select" ||
-    group.field_type === "panel_select"
+    group.field_type === "panel_select" ||
+    group.field_type === "chip_grid" ||
+    group.field_type === "icon_grid" ||
+    group.field_type === "value_card"
   ) {
+    const options = group.options ?? [];
+    if (options.length === 0) {
+      return (
+        <div className="space-y-2">
+          <label style={labelStyle}>{group.label}</label>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-xl border px-3 py-3"
+            style={{
+              borderColor: colors.border,
+              background: colors.surfaceContainerLowest ?? "#0e0d16",
+              color: colors.textPrimary,
+            }}
+          />
+        </div>
+      );
+    }
     return (
       <div className="space-y-2">
         <label style={labelStyle}>{group.label}</label>
-        <div className="flex flex-wrap gap-2">
-          {(group.options ?? []).map((opt) => {
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={group.label}>
+          {options.map((opt) => {
             const selected = value === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
+                aria-pressed={selected}
                 onClick={() => onChange(opt.value)}
-                className="rounded-lg px-3 py-2 text-xs font-medium transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+                className="min-h-11 rounded-xl px-3 py-2 text-xs font-medium"
                 style={{
                   border: `1px solid ${selected ? colors.brandPrimary : colors.border}`,
                   background: selected ? "rgba(108, 78, 242, 0.15)" : "transparent",
@@ -620,25 +539,6 @@ function FieldGroup({
   );
 }
 
-function experienceIcon(iconName?: string | null): string {
-  switch (iconName) {
-    case "restaurant":
-      return "🍽";
-    case "flight":
-      return "✈";
-    case "celebration":
-      return "🎉";
-    case "theater_comedy":
-      return "🎭";
-    case "fitness_center":
-      return "🏋";
-    case "school":
-      return "📚";
-    default:
-      return "•";
-  }
-}
-
 export function isRelationshipsQuickAddEventType(eventType?: string | null): boolean {
   return Boolean(eventType && RS_EVENT_TYPES.has(eventType.toUpperCase()));
 }
@@ -652,7 +552,9 @@ export function shouldUseRelationshipsQuickAdd(
   if (options.tabs?.[0]?.event_type === "SHARED_EXPERIENCE") {
     const onlyRs =
       options.moments.length > 0 &&
-      options.moments.every((m) => m.moment_type_code === "RELATIONSHIPS" || m.moment_type_code === "EMOTIONAL_SECURITY");
+      options.moments.every(
+        (m) => m.moment_type_code === "RELATIONSHIPS" || m.moment_type_code === "EMOTIONAL_SECURITY",
+      );
     if (onlyRs) return true;
   }
   return false;

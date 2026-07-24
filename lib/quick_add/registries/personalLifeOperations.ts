@@ -13,7 +13,7 @@ const actions: ActionDef[] = [
     icon: "payments",
     tab_code: "MONEY",
     display_order: 1,
-    cta_label: "Save Money Event",
+    cta_label: "Save Expense",
     fields: [
       field("transaction_type", "Entry type", "segmented", {
         options: [

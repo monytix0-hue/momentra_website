@@ -1,17 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import { SkeletonQuickAddSheet } from "@/components/personal/shared/skeleton/SkeletonBlocks";
+import { AppToast } from "@/components/shared/AppToast";
 import { useQuickAddOptions } from "@/hooks/useQuickAddOptions";
-import { getQuickAddBundleByContext } from "@/lib/quick_add/registry";
 import {
   createPersonalQuickAdd,
   type PersonalFutureBuildingQuickAddFieldGroup,
   type PersonalQuickAddOptionsResponse,
   type PersonalQuickAddTab,
 } from "@/lib/api/client";
+import { createClientRequestId } from "@/lib/quick_add/draftStore";
+import {
+  LS_SELECTOR_HELPER,
+  LS_SHEET_SUPPORTING,
+  lsErrorMessage,
+  lsSavingLabel,
+  lsSelectorFallback,
+  lsSuccessMessage,
+  lsTitlePlaceholder,
+  normalizeLifestyleEventType,
+} from "@/lib/quick_add/lifestyleCopy";
+import {
+  buildLifestylePayload,
+  canSubmitLifestyle,
+  resolveLsFieldOptions,
+} from "@/lib/quick_add/lifestyleOptions";
+import { invalidateAfterLifestyleQuickAdd } from "@/repositories/PersonalRepository";
+
+type FieldState = Record<string, string>;
+type MultiFieldState = Record<string, Set<string>>;
+type Draft = { values: FieldState; multi: MultiFieldState };
+type DraftMap = Record<string, Draft>;
 
 type LifestyleQuickAddHubProps = {
   initialEventType?: string | null;
@@ -21,102 +50,443 @@ type LifestyleQuickAddHubProps = {
   onSuccess?: () => void;
 };
 
-type FieldState = Record<string, string>;
-type MultiFieldState = Record<string, Set<string>>;
+export function LifestyleQuickAddHub({
+  initialEventType,
+  momentId,
+  open = true,
+  onClose,
+  onSuccess,
+}: LifestyleQuickAddHubProps) {
+  const { colors } = useThemeTokens();
+  const titleId = useId();
+  const { options, loading, error, reload: reloadOptions } = useQuickAddOptions({
+    momentId,
+    enabled: open,
+  });
 
-function tabFieldsFor(
-  options: PersonalQuickAddOptionsResponse,
-  eventType: string,
-): PersonalFutureBuildingQuickAddFieldGroup[] {
-  return (
-    options.metadata?.lifestyle_tabs?.find((t) => t.event_type === eventType)?.field_groups ?? []
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [selectedTab, setSelectedTab] = useState(
+    normalizeLifestyleEventType(initialEventType),
   );
-}
+  const [drafts, setDrafts] = useState<DraftMap>({});
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [selectorTouched, setSelectorTouched] = useState(false);
+  const saveLatch = useRef(false);
+  const clientRequestId = useRef(createClientRequestId());
 
-function canSubmit(
-  tab: string,
-  values: FieldState,
-  multi: MultiFieldState,
-): boolean {
-  switch (tab) {
-    case "LIFESTYLE_EXPENSE":
-      return Boolean(values.amount?.trim());
-    case "EXPERIENCE":
-      return Boolean(values.experience_type);
-    case "WELLBEING":
-      return Boolean(values.wellbeing_state) && (multi.wellbeing_areas?.size ?? 0) > 0;
-    case "DISCOVERY":
-      return Boolean(values.discovery_type);
-    case "CREATIVE":
-      return Boolean(values.creation_type);
-    case "LIFESTYLE_ADJUST":
-      return Boolean(values.adjustment_area);
-    default:
-      return Boolean(values.notes?.trim());
+  useEffect(() => {
+    if (!options) return;
+    if (initialEventType) {
+      setSelectedTab(normalizeLifestyleEventType(initialEventType));
+    } else if (options.tabs?.[0]?.event_type) {
+      setSelectedTab(normalizeLifestyleEventType(options.tabs[0].event_type));
+    }
+  }, [options, initialEventType]);
+
+  useEffect(() => {
+    if (!open) {
+      saveLatch.current = false;
+      clientRequestId.current = createClientRequestId();
+      setDrafts({});
+      setNotesExpanded(false);
+      setSelectorTouched(false);
+      setSubmitError(null);
+      setSubmitting(false);
+    }
+  }, [open]);
+
+  const draft = drafts[selectedTab] ?? { values: {}, multi: {} };
+  const values = draft.values;
+  const multi = draft.multi;
+  const eventTitle = values.event_title ?? "";
+
+  function patchDraft(patch: Partial<Draft>) {
+    setDrafts((prev) => ({
+      ...prev,
+      [selectedTab]: {
+        values: patch.values ?? prev[selectedTab]?.values ?? {},
+        multi: patch.multi ?? prev[selectedTab]?.multi ?? {},
+      },
+    }));
   }
-}
 
-function buildLifestylePayload(values: FieldState, multi: MultiFieldState) {
-  const trim = (key: string) => values[key]?.trim() || undefined;
-  const raw = (key: string) => values[key] || undefined;
-  const wellbeingAreas = Array.from(multi.wellbeing_areas ?? []).sort();
-  return {
-    notes: trim("notes"),
-    amount: trim("amount"),
-    spend_category: raw("spend_category"),
-    experience_type: raw("experience_type"),
-    experience_quality: raw("experience_quality"),
-    energy_impact: raw("energy_impact"),
-    people_context: raw("people_context"),
-    location_context: raw("location_context"),
-    value_received: raw("value_received"),
-    wellbeing_area: wellbeingAreas[0],
-    wellbeing_areas: wellbeingAreas,
-    wellbeing_state: raw("wellbeing_state"),
-    contributors: Array.from(multi.contributors ?? []).sort(),
-    discovery_type: raw("discovery_type"),
-    discovery_impact: raw("discovery_impact"),
-    curiosity_level: raw("curiosity_level"),
-    creation_type: raw("creation_type"),
-    satisfaction_level: raw("satisfaction_level"),
-    time_invested: raw("time_invested"),
-    adjustment_area: raw("adjustment_area"),
-    priority_level: raw("priority_level"),
-    confidence_level: raw("confidence_level"),
-  };
+  function setValue(key: string, value: string) {
+    patchDraft({ values: { ...values, [key]: value }, multi });
+  }
+
+  function toggleMulti(key: string, value: string) {
+    const current = new Set(multi[key] ?? []);
+    if (current.has(value)) current.delete(value);
+    else current.add(value);
+    patchDraft({ values, multi: { ...multi, [key]: current } });
+  }
+
+  function selectTab(eventType: string) {
+    const normalized = normalizeLifestyleEventType(eventType);
+    setSelectedTab(normalized);
+    setSelectorTouched(true);
+    const next = drafts[normalized];
+    setNotesExpanded(Boolean(next?.values.notes?.trim()));
+    setSubmitError(null);
+  }
+
+  const tabs = options?.tabs ?? [];
+  const activeTab: PersonalQuickAddTab | undefined = tabs.find(
+    (t) => normalizeLifestyleEventType(t.event_type) === selectedTab,
+  );
+  const groups =
+    options?.metadata?.lifestyle_tabs?.find(
+      (t) => normalizeLifestyleEventType(t.event_type) === selectedTab,
+    )?.field_groups ?? [];
+
+  const visibleGroups = groups.filter((g) => g.group_key !== "notes");
+
+  const lifestyleMoment =
+    options?.moments.find((m) => m.moment_type_code === "LIFESTYLE") ??
+    options?.moments.find((m) => m.moment_id === momentId) ??
+    options?.moments[0] ??
+    null;
+
+  const submitEnabled =
+    Boolean(lifestyleMoment) &&
+    canSubmitLifestyle(selectedTab, values, multi, eventTitle) &&
+    !submitting;
+
+  async function handleSubmit() {
+    if (!lifestyleMoment || !submitEnabled || saveLatch.current) return;
+    saveLatch.current = true;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await createPersonalQuickAdd(
+        {
+          moment_id: lifestyleMoment.moment_id,
+          event_type: selectedTab,
+          event_title: eventTitle.trim(),
+          lifestyle: buildLifestylePayload(values, multi),
+        },
+        { clientRequestId: clientRequestId.current },
+      );
+      invalidateAfterLifestyleQuickAdd();
+      setToast({ message: lsSuccessMessage(selectedTab), tone: "success" });
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message.toLowerCase().includes("offline")
+          ? "You're offline. Check your connection and try again."
+          : err instanceof Error && err.message.toLowerCase().includes("timeout")
+            ? "Saving is taking longer than expected. Try again."
+            : lsErrorMessage(selectedTab);
+      setSubmitError(msg);
+      setToast({ message: msg, tone: "error" });
+      setSubmitting(false);
+      saveLatch.current = false;
+    }
+  }
+
+  const onKeyDownSelector = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      if (!tabs.length) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        selectTab(tabs[(index + 1) % tabs.length].event_type);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        selectTab(tabs[(index - 1 + tabs.length) % tabs.length].event_type);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tabs],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) {
+    return (
+      <AppToast
+        open={Boolean(toast)}
+        message={toast?.message ?? ""}
+        tone={toast?.tone ?? "success"}
+        onDismiss={() => setToast(null)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={onClose}
+      >
+        <div
+          className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border sm:rounded-2xl"
+          style={{ borderColor: colors.border, background: colors.surface }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="shrink-0 border-b px-5 pb-3 pt-5" style={{ borderColor: colors.border }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id={titleId} style={{ ...personalTypography.heroTitle, color: colors.brandPrimary, fontSize: 22 }}>
+                  Capture Lifestyle
+                </h2>
+                <p className="mt-1" style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
+                  {LS_SHEET_SUPPORTING}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close Capture Lifestyle"
+                className="rounded-lg px-2 py-1 text-lg leading-none"
+                style={{ color: colors.textSecondary }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div role="tablist" aria-label="Lifestyle entry type" className="mt-4 flex gap-2 overflow-x-auto pb-1">
+              {tabs.map((tab, index) => {
+                const normalized = normalizeLifestyleEventType(tab.event_type);
+                const active = normalized === selectedTab;
+                const fallback = lsSelectorFallback(normalized);
+                const blurb = tab.description?.trim() || fallback.blurb;
+                return (
+                  <button
+                    key={tab.event_type}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={`${tab.label}. ${blurb}.${active ? " Selected." : ""}`}
+                    tabIndex={active ? 0 : -1}
+                    onClick={() => selectTab(tab.event_type)}
+                    onKeyDown={(e) => onKeyDownSelector(e, index)}
+                    className="min-w-[9.5rem] shrink-0 rounded-2xl border px-3 py-3 text-left"
+                    style={{
+                      borderColor: active ? colors.brandPrimary : colors.border,
+                      background: active ? `${colors.brandPrimary}18` : "transparent",
+                      minHeight: 48,
+                    }}
+                  >
+                    <span className="block text-sm font-semibold" style={{ color: active ? colors.brandPrimary : colors.textPrimary }}>
+                      {tab.label || fallback.title}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug" style={{ color: colors.textSecondary }}>
+                      {blurb}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {!selectorTouched ? (
+              <p className="mt-2 text-xs" style={{ color: colors.textSecondary }}>
+                {LS_SELECTOR_HELPER}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+            {loading && !options ? (
+              <SkeletonQuickAddSheet />
+            ) : error && !options ? (
+              <div className="space-y-2">
+                <p style={{ color: colors.error }}>{error}</p>
+                <button type="button" onClick={() => void reloadOptions()} className="text-sm underline">
+                  Retry
+                </button>
+              </div>
+            ) : !lifestyleMoment ? (
+              <p style={{ color: colors.textSecondary }}>Activate a lifestyle moment first.</p>
+            ) : (
+              <div className="space-y-4 pb-4">
+                {activeTab ? (
+                  <div className="space-y-1">
+                    <h3 style={{ ...personalTypography.screenTitle, color: colors.textPrimary }}>
+                      {activeTab.hero_title ?? activeTab.label}
+                    </h3>
+                    <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
+                      {activeTab.hero_subtitle ?? activeTab.description}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <label htmlFor="ls-event-title" style={{ ...personalTypography.labelSm, color: colors.textSecondary }}>
+                    {activeTab?.hero_subtitle ?? "What do you want to capture?"}
+                  </label>
+                  <input
+                    id="ls-event-title"
+                    type="text"
+                    value={eventTitle}
+                    onChange={(e) => setValue("event_title", e.target.value)}
+                    placeholder={lsTitlePlaceholder(selectedTab)}
+                    className="w-full rounded-xl border px-3 py-3 outline-none"
+                    style={{
+                      borderColor: colors.border,
+                      background: colors.surfaceContainer ?? "transparent",
+                      color: colors.textPrimary,
+                    }}
+                  />
+                </div>
+
+                {selectedTab === "LIFESTYLE_EXPENSE" ? (
+                  <p className="text-xs" style={{ color: colors.textSecondary }}>
+                    Saves a lifestyle spend to your money timeline — not a Master Expense bookkeeping entry.
+                  </p>
+                ) : null}
+
+                {options
+                  ? visibleGroups.map((group) => (
+                      <FieldGroupView
+                        key={group.group_key}
+                        group={group}
+                        values={values}
+                        multi={multi}
+                        options={resolveLsFieldOptions(group, options)}
+                        onValue={setValue}
+                        onToggle={toggleMulti}
+                        colors={colors}
+                      />
+                    ))
+                  : null}
+
+                {!notesExpanded ? (
+                  <button
+                    type="button"
+                    onClick={() => setNotesExpanded(true)}
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Add note — optional
+                  </button>
+                ) : (
+                  <label className="block">
+                    <span style={{ ...personalTypography.labelSm, color: colors.textSecondary }}>
+                      Note — optional
+                    </span>
+                    <textarea
+                      value={values.notes ?? ""}
+                      onChange={(e) => setValue("notes", e.target.value)}
+                      rows={2}
+                      className="mt-2 w-full rounded-xl border px-3 py-2 outline-none"
+                      style={{
+                        borderColor: colors.border,
+                        background: colors.surfaceContainer ?? "transparent",
+                        color: colors.textPrimary,
+                      }}
+                    />
+                  </label>
+                )}
+
+                {activeTab?.teaches_items?.length ? (
+                  <section className="rounded-2xl border p-3" style={{ borderColor: colors.border }}>
+                    <p className="mb-2 text-xs font-semibold" style={{ color: colors.brandPrimary }}>
+                      Possible impact
+                    </p>
+                    <ul className="space-y-1">
+                      {activeTab.teaches_items.map((item) => (
+                        <li key={item} style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
+
+                {submitError ? (
+                  <p className="text-sm" role="alert" style={{ color: colors.error }}>
+                    {submitError}
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          <div
+            className="shrink-0 border-t px-5 py-4"
+            style={{
+              borderColor: colors.border,
+              paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+            }}
+          >
+            <button
+              type="button"
+              disabled={!submitEnabled}
+              onClick={() => void handleSubmit()}
+              aria-busy={submitting}
+              className="w-full rounded-xl py-3 font-semibold disabled:opacity-55"
+              style={{
+                background: colors.brandPrimary,
+                color: colors.brandOnPrimary,
+                minHeight: 48,
+              }}
+            >
+              {submitting ? lsSavingLabel(selectedTab) : activeTab?.cta_label ?? "Save Entry"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <AppToast
+        open={Boolean(toast)}
+        message={toast?.message ?? ""}
+        tone={toast?.tone ?? "success"}
+        onDismiss={() => setToast(null)}
+      />
+    </>
+  );
 }
 
 function FieldGroupView({
   group,
   values,
   multi,
+  options,
   onValue,
   onToggle,
-  columns = 2,
+  colors,
 }: {
   group: PersonalFutureBuildingQuickAddFieldGroup;
   values: FieldState;
   multi: MultiFieldState;
+  options: { value: string; label: string }[];
   onValue: (key: string, value: string) => void;
   onToggle: (key: string, value: string) => void;
-  columns?: number;
+  colors: ReturnType<typeof useThemeTokens>["colors"];
 }) {
-  const tokens = useThemeTokens();
-  const { colors } = tokens;
-
   if (group.field_type === "amount") {
     return (
       <label className="block">
         <span style={{ ...personalTypography.labelSm, color: colors.textSecondary }}>{group.label}</span>
-        <input
-          type="number"
-          inputMode="decimal"
-          value={values[group.group_key] ?? ""}
-          onChange={(e) => onValue(group.group_key, e.target.value)}
-          className="mt-2 w-full rounded-xl border bg-transparent px-4 py-4 text-2xl font-bold outline-none"
-          style={{ borderColor: colors.border, color: colors.brandPrimary }}
-          placeholder="₹0"
-        />
+        <div className="relative mt-2">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold" style={{ color: colors.brandPrimary }}>
+            ₹
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={values[group.group_key] ?? ""}
+            onChange={(e) => onValue(group.group_key, e.target.value)}
+            className="w-full rounded-xl border bg-transparent py-4 pl-12 pr-4 text-2xl font-bold outline-none"
+            style={{ borderColor: colors.border, color: colors.textPrimary }}
+            placeholder="0.00"
+          />
+        </div>
       </label>
     );
   }
@@ -128,351 +498,68 @@ function FieldGroupView({
         <textarea
           value={values[group.group_key] ?? ""}
           onChange={(e) => onValue(group.group_key, e.target.value)}
-          rows={3}
-          className="mt-2 w-full rounded-xl border bg-transparent px-4 py-3 outline-none"
+          rows={2}
+          className="mt-2 w-full rounded-xl border px-3 py-2 outline-none"
           style={{ borderColor: colors.border, color: colors.textPrimary }}
         />
       </label>
     );
   }
 
-  const isMulti = group.field_type === "multi_select";
-  const options = group.options ?? [];
-  const rows = Array.from({ length: Math.ceil(options.length / columns) }, (_, i) =>
-    options.slice(i * columns, i * columns + columns),
-  );
-
-  return (
-    <div>
-      <p style={{ ...personalTypography.sectionHeader, color: colors.textSecondary }}>{group.label}</p>
-      <div className="mt-3 space-y-2">
-        {rows.map((row, rowIndex) => (
-          <div key={rowIndex} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-            {row.map((option) => {
-              const active = isMulti
-                ? multi[group.group_key]?.has(option.value)
-                : values[group.group_key] === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => (isMulti ? onToggle(group.group_key, option.value) : onValue(group.group_key, option.value))}
-                  className="rounded-xl border px-3 py-3 text-sm font-medium transition-colors"
-                  style={{
-                    borderColor: active ? colors.brandPrimary : colors.border,
-                    background: active ? `${colors.brandPrimary}22` : colors.surfaceContainer,
-                    color: active ? colors.brandPrimary : colors.textPrimary,
-                  }}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+  if (
+    group.field_type === "single_select" ||
+    group.field_type === "chip_grid" ||
+    group.field_type === "multi_select" ||
+    group.field_type === "slider"
+  ) {
+    const isMulti = group.field_type === "multi_select" || group.group_key === "wellbeing_areas" || group.group_key === "contributors";
+    const opts = options.length ? options : group.options ?? [];
+    return (
+      <div>
+        <p style={{ ...personalTypography.labelSm, color: colors.textSecondary }}>{group.label}</p>
+        <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={group.label}>
+          {opts.map((option) => {
+            const active = isMulti
+              ? multi[group.group_key]?.has(option.value)
+              : values[group.group_key] === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={Boolean(active)}
+                onClick={() =>
+                  isMulti ? onToggle(group.group_key, option.value) : onValue(group.group_key, option.value)
+                }
+                className="rounded-lg border px-3 py-2 text-xs font-medium"
+                style={{
+                  borderColor: active ? colors.brandPrimary : colors.border,
+                  background: active ? `${colors.brandPrimary}22` : "transparent",
+                  color: active ? colors.brandPrimary : colors.textSecondary,
+                  minHeight: 40,
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
-}
-
-function ExperienceTypeField({
-  group,
-  values,
-  onValue,
-}: {
-  group: PersonalFutureBuildingQuickAddFieldGroup;
-  values: FieldState;
-  onValue: (key: string, value: string) => void;
-}) {
-  const { colors } = useThemeTokens();
-  return (
-    <div>
-      <p style={{ ...personalTypography.sectionHeader, color: colors.textSecondary }}>{group.label}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {(group.options ?? []).map((option) => {
-          const active = values[group.group_key] === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onValue(group.group_key, option.value)}
-              className="rounded-full border px-4 py-2 text-sm"
-              style={{
-                borderColor: active ? colors.brandPrimary : colors.border,
-                color: active ? colors.brandPrimary : colors.textSecondary,
-              }}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function TabFields({
-  selectedTab,
-  options,
-  values,
-  multi,
-  onValue,
-  onToggle,
-}: {
-  selectedTab: string;
-  options: PersonalQuickAddOptionsResponse;
-  values: FieldState;
-  multi: MultiFieldState;
-  onValue: (key: string, value: string) => void;
-  onToggle: (key: string, value: string) => void;
-}) {
-  const groups = tabFieldsFor(options, selectedTab);
-  const columnsFor = (key: string) => {
-    if (key === "creation_type") return 3;
-    if (key === "experience_type") return 0;
-    return 2;
-  };
-
-  return (
-    <div className="space-y-5">
-      {groups.map((group) => {
-        if (group.group_key === "experience_type") {
-          return (
-            <ExperienceTypeField
-              key={group.group_key}
-              group={group}
-              values={values}
-              onValue={onValue}
-            />
-          );
-        }
-        return (
-          <FieldGroupView
-            key={group.group_key}
-            group={group}
-            values={values}
-            multi={multi}
-            onValue={onValue}
-            onToggle={onToggle}
-            columns={columnsFor(group.group_key) || 2}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-export function LifestyleQuickAddHub({
-  initialEventType,
-  momentId,
-  open = true,
-  onClose,
-  onSuccess,
-}: LifestyleQuickAddHubProps) {
-  const tokens = useThemeTokens();
-  const { colors } = tokens;
-
-  const {
-    options,
-    loading,
-    error,
-    reload: reloadOptions,
-  } = useQuickAddOptions({ momentId, enabled: open });
-
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState(
-    initialEventType?.toUpperCase() || "LIFESTYLE_EXPENSE",
-  );
-  const [values, setValues] = useState<FieldState>({});
-  const [multi, setMulti] = useState<MultiFieldState>({});
-
-  useEffect(() => {
-    if (!options) return;
-    if (!initialEventType) {
-      setSelectedTab(options.tabs?.[0]?.event_type ?? "LIFESTYLE_EXPENSE");
-    }
-  }, [options, initialEventType]);
-
-  useEffect(() => {
-    setValues({});
-    setMulti({});
-  }, [selectedTab]);
-
-  const fallbackTabs = useMemo(
-    () =>
-      (getQuickAddBundleByContext("LIFESTYLE")?.actions ?? []).map((action) => ({
-        event_type: action.action_id,
-        label: action.label,
-        tab_code: action.tab_code ?? action.action_id,
-        description: action.label,
-        hero_title: action.label,
-        hero_subtitle: "",
-        cta_label: action.cta_label,
-      })),
-    [],
-  );
-
-  const displayTabs = options?.tabs?.length ? options.tabs : fallbackTabs;
-
-  const activeTab: PersonalQuickAddTab | undefined = useMemo(
-    () => options?.tabs?.find((t) => t.event_type === selectedTab),
-    [options, selectedTab],
-  );
-
-  const lifestyleMoment =
-    options?.moments.find((m) => m.moment_type_code === "LIFESTYLE") ??
-    options?.moments.find((m) => m.moment_id === momentId) ??
-    options?.moments[0] ??
-    null;
-
-  async function handleSubmit() {
-    if (!lifestyleMoment || !activeTab) return;
-    setSubmitting(true);
-    try {
-      await createPersonalQuickAdd({
-        moment_id: lifestyleMoment.moment_id,
-        event_type: selectedTab,
-        event_title: activeTab.label,
-        lifestyle: buildLifestylePayload(values, multi),
-      });
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Quick Add failed.");
-      setSubmitting(false);
-    }
+    );
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border sm:rounded-2xl"
-        style={{ borderColor: colors.border, background: colors.surface }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-b px-5 py-4" style={{ borderColor: colors.border }}>
-          <h2 style={{ ...personalTypography.heroTitle, color: colors.brandPrimary, fontSize: 22 }}>
-            Capture Lifestyle
-          </h2>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {(displayTabs ?? []).map((tab) => {
-              const active = tab.event_type === selectedTab;
-              return (
-                <button
-                  key={tab.event_type}
-                  type="button"
-                  onClick={() => setSelectedTab(tab.event_type)}
-                  className="shrink-0 rounded-full border px-4 py-2 text-xs font-semibold"
-                  style={{
-                    borderColor: active ? colors.brandPrimary : colors.border,
-                    background: active ? `${colors.brandPrimary}18` : "transparent",
-                    color: active ? colors.brandPrimary : colors.textSecondary,
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-5">
-          {loading && !options ? (
-            <SkeletonQuickAddSheet />
-          ) : error && !options ? (
-            <div className="space-y-2">
-              <p style={{ color: colors.error }}>{error}</p>
-              <button type="button" onClick={() => void reloadOptions()} className="text-sm underline">
-                Retry
-              </button>
-            </div>
-          ) : !lifestyleMoment ? (
-            <p style={{ color: colors.textSecondary }}>Activate a lifestyle moment first.</p>
-          ) : (
-            <>
-              {activeTab ? (
-                <div className="mb-5">
-                  <h3 style={{ ...personalTypography.screenTitle, color: colors.textPrimary }}>
-                    {activeTab.hero_title ?? activeTab.label}
-                  </h3>
-                  <p className="mt-1" style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>
-                    {activeTab.hero_subtitle ?? activeTab.description}
-                  </p>
-                </div>
-              ) : null}
-              {options ? (
-                <TabFields
-                  selectedTab={selectedTab}
-                  options={options}
-                  values={values}
-                  multi={multi}
-                  onValue={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
-                  onToggle={(key, value) =>
-                    setMulti((prev) => {
-                      const current = new Set(prev[key] ?? []);
-                      if (current.has(value)) current.delete(value);
-                      else current.add(value);
-                      return { ...prev, [key]: current };
-                    })
-                  }
-                />
-              ) : null}
-              {activeTab?.teaches_items?.length ? (
-                <div className="mt-6 rounded-2xl border p-4" style={{ borderColor: colors.border }}>
-                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: colors.brandPrimary }}>
-                    This teaches
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {activeTab.teaches_items.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border px-3 py-1 text-xs"
-                        style={{ borderColor: colors.border, color: colors.textSecondary }}
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                  {activeTab.insight_body ? (
-                    <p className="mt-3 text-sm italic" style={{ color: colors.textSecondary }}>
-                      {activeTab.insight_body}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-              {submitError ? <p className="mt-4 text-sm" style={{ color: colors.error }}>{submitError}</p> : null}
-            </>
-          )}
-        </div>
-
-        <div className="space-y-2 border-t px-5 py-4" style={{ borderColor: colors.border }}>
-          <button
-            type="button"
-            disabled={submitting || !lifestyleMoment || !canSubmit(selectedTab, values, multi)}
-            onClick={() => void handleSubmit()}
-            className="w-full rounded-xl py-3 font-semibold disabled:opacity-50"
-            style={{ background: colors.brandPrimary, color: colors.brandOnPrimary }}
-          >
-            {submitting ? "Saving…" : activeTab?.cta_label ?? "Save Entry"}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-xl border py-3"
-            style={{ borderColor: colors.border, color: colors.textSecondary }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+    <label className="block">
+      <span style={{ ...personalTypography.labelSm, color: colors.textSecondary }}>{group.label}</span>
+      <input
+        type="text"
+        value={values[group.group_key] ?? ""}
+        onChange={(e) => onValue(group.group_key, e.target.value)}
+        className="mt-2 w-full rounded-xl border px-3 py-2.5 outline-none"
+        style={{ borderColor: colors.border, color: colors.textPrimary }}
+      />
+    </label>
   );
 }
+
+// Keep type for consumers that imported it previously
+export type { PersonalQuickAddOptionsResponse };

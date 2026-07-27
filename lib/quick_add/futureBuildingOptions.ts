@@ -138,3 +138,31 @@ export function canSubmitFb(
   if (groups.length === 0) return Boolean(values.notes?.trim());
   return [...requiredKeysForFbTab(tab)].every((key) => Boolean(values[key]?.trim()));
 }
+
+const REQUIRED_FIELD_LABELS: Record<string, string> = {
+  pivot_change: "What changed?",
+  notes: "Notes",
+  amount: "Amount",
+  learning_type: "Learning type",
+  milestone_nature: "Milestone nature",
+  opportunity_source: "Opportunity source",
+  progress_type: "Progress type",
+};
+
+export function missingFbRequiredHint(
+  tab: string,
+  groups: PersonalFutureBuildingQuickAddFieldGroup[],
+  values: Record<string, string>,
+  eventTitle: string,
+): string | null {
+  if (canSubmitFb(tab, groups, values, eventTitle)) return null;
+  const missing: string[] = [];
+  if (!eventTitle.trim()) missing.push("title");
+  for (const key of [...requiredKeysForFbTab(tab)].sort()) {
+    if (!values[key]?.trim()) {
+      missing.push(REQUIRED_FIELD_LABELS[key] ?? key.replaceAll("_", " "));
+    }
+  }
+  if (missing.length === 0) return null;
+  return `Required: ${missing.join(", ")}`;
+}

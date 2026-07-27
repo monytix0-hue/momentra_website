@@ -31,6 +31,8 @@ type Props = {
 };
 
 const TEMPLATE_ID = "shared_experience" as const;
+/** estimated_budget / target_amount_major are major units; SetupMoneyField uses minor. */
+const MONEY_EXPONENT = 2;
 
 const EXPERIENCE_NAME_PLACEHOLDERS: Record<string, string> = {
   TRIP: "Goa Trip",
@@ -78,11 +80,17 @@ function resolveFieldKey(
   return catalogKey;
 }
 
-function moneyDisplayValue(raw: string | string[] | undefined): number | null {
-  if (raw == null || Array.isArray(raw) || raw.trim() === "") return null;
-  const n = Number(raw);
+function majorToMinor(major: string | number | null | undefined): number | null {
+  if (major == null || major === "") return null;
+  const n = typeof major === "number" ? major : Number(major);
   if (!Number.isFinite(n)) return null;
-  return Math.round(n);
+  return Math.round(n * 10 ** MONEY_EXPONENT);
+}
+
+function minorToMajorString(minor: number | null): string {
+  if (minor == null) return "";
+  const major = minor / 10 ** MONEY_EXPONENT;
+  return String(major);
 }
 
 /**
@@ -206,6 +214,9 @@ export function SharedExperienceSetup({ momentId, onClose, onActivated }: Props)
     updateAnswer(key, value);
     if (catalogKey === "experience_name" || catalogKey === "trip_name") {
       if (!answerString(answers, "moment_name")) updateAnswer("moment_name", value);
+    }
+    if (catalogKey === "estimated_budget") {
+      updateAnswer("target_amount_major", value);
     }
   }
 
@@ -357,10 +368,10 @@ export function SharedExperienceSetup({ momentId, onClose, onActivated }: Props)
                     label={field.label}
                     optionalLabel={field.optional ? "Optional" : undefined}
                     helper={field.helper}
-                    amountMinor={moneyDisplayValue(raw)}
+                    amountMinor={majorToMinor(stringValue)}
                     currencyCode={currency}
                     onChangeAmount={(minor) =>
-                      setAnswer(field.key, minor == null ? "" : String(minor))
+                      setAnswer(field.key, minorToMajorString(minor))
                     }
                   />
                 );

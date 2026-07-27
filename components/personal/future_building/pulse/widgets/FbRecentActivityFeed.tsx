@@ -55,7 +55,9 @@ export function FbRecentActivityFeed({ items, onViewAll, onEditActivity }: Props
                   <div className="flex justify-between gap-2">
                     <p style={{ fontSize: 12, fontWeight: 700, color: colors.textPrimary }}>{item.relative_time}</p>
                     <div className="flex items-center gap-2">
-                      <p style={{ fontSize: 10, fontWeight: 700, color: colors.brandTertiary }}>{fbActivityImpactTag(item.event_type)}</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: colors.brandTertiary }}>
+                        {fbActivityImpactTag(item.event_type, item.amount_label)}
+                      </p>
                       {onEditActivity ? (
                         <button
                           type="button"

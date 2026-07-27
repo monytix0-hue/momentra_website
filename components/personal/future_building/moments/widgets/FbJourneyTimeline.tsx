@@ -4,7 +4,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalLiveRecentActivityItem } from "@/lib/api/personal";
 import { fbMomentsCopy } from "@/lib/personal/future_building/moments/fbMomentsCopy";
-import { fbTimelineImpactLine } from "@/lib/personal/future_building/pulse/fbPulseUtils";
+import { fbActivityCategoryLabel, fbTimelineImpactLine } from "@/lib/personal/future_building/pulse/fbPulseUtils";
 import { FbSectionBadge } from "@/components/personal/future_building/moments/widgets/FbSectionBadge";
 import { Flag, GraduationCap, Rocket, Star } from "lucide-react";
 
@@ -54,7 +54,9 @@ export function FbJourneyTimeline({ items }: Props) {
                   <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: accent, marginBottom: 2 }}>
                     {item.relative_time}
                   </p>
-                  <h4 style={{ fontSize: 16, fontWeight: 700, color: colors.textPrimary }}>{item.category_label}</h4>
+                  <h4 style={{ fontSize: 16, fontWeight: 700, color: colors.textPrimary }}>
+                    {fbActivityCategoryLabel(item.event_type, item.category_label, item.amount_label)}
+                  </h4>
                   <p style={{ fontSize: 12, marginTop: 4, color: colors.textSecondary }}>
                     Impact: <span style={{ color: accent, fontWeight: 600 }}>{impact.label}</span>
                   </p>

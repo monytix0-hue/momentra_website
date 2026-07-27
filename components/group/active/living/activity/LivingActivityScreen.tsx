@@ -3,13 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Pencil, Search } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
-import { listLivingActivity, type LivingActivityItem } from "@/lib/api/group";
+import {
+  listLivingActivity,
+  type LivingActivityItem,
+  type LivingActivityListResponse,
+} from "@/lib/api/group";
 
 type LivingActivityScreenProps = {
   momentId: string;
   onBack: () => void;
   onEditActivity: (id: string, eventType: string) => void;
   reloadToken?: number;
+  title?: string;
+  subtitle?: string;
+  listActivity?: (momentId: string) => Promise<LivingActivityListResponse>;
 };
 
 function groupLabel(iso: string): string {
@@ -31,6 +38,9 @@ export function LivingActivityScreen({
   onBack,
   onEditActivity,
   reloadToken = 0,
+  title = "Home activity",
+  subtitle = "View and edit household updates",
+  listActivity = listLivingActivity,
 }: LivingActivityScreenProps) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
@@ -43,7 +53,7 @@ export function LivingActivityScreen({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void listLivingActivity(momentId)
+    void listActivity(momentId)
       .then((data) => {
         if (!cancelled) setItems(data.items ?? []);
       })
@@ -56,7 +66,7 @@ export function LivingActivityScreen({
     return () => {
       cancelled = true;
     };
-  }, [momentId, reloadToken]);
+  }, [momentId, reloadToken, listActivity]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,8 +101,8 @@ export function LivingActivityScreen({
           <ArrowLeft size={22} color={colors.brandPrimary} />
         </button>
         <div>
-          <h1 className="text-lg font-semibold">Home activity</h1>
-          <p className="text-xs opacity-60">View and edit household updates</p>
+          <h1 className="text-lg font-semibold">{title}</h1>
+          <p className="text-xs opacity-60">{subtitle}</p>
         </div>
       </header>
 

@@ -4,7 +4,7 @@ import { ExperiencePulse } from "@/components/group/active/experience/Experience
 
 type SharedPurchasePulseProps = {
   momentId: string;
-  onQuickAdd: () => void;
+  onQuickAdd: (actionId?: string) => void;
   bottomPadding?: number;
   reloadKey?: number;
 };

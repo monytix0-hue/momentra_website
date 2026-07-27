@@ -23,10 +23,11 @@ export function DriversSection({ drivers, variant, copy }: Props) {
     <PersonalGlassGlowSection tokens={tokens} cornerRadius={16} innerStyle={{ padding: tokens.spacing.md }}>
       <p style={memoryMicroLabelStyle(tokens, accent)}>{label}</p>
       <div className="mt-3 space-y-3">
-        {drivers.map((driver) =>
-          isLowest ? (
+        {drivers.map((driver, index) => {
+          const key = `${variant}-${driver.label}-${driver.rank}-${index}`;
+          return isLowest ? (
             <div
-              key={driver.rank}
+              key={key}
               className="flex items-center gap-2 rounded-xl p-2"
               style={{
                 background: driver.rank === 1 ? `${accent}1a` : `${colors.textSecondary}14`,
@@ -54,7 +55,7 @@ export function DriversSection({ drivers, variant, copy }: Props) {
               </div>
             </div>
           ) : (
-            <div key={driver.rank}>
+            <div key={key}>
               <div className="mb-1 flex justify-between" style={personalTypography.labelSm}>
                 <span style={{ fontWeight: 700, color: colors.textPrimary }}>
                   {driver.rank} {driver.label}
@@ -78,8 +79,8 @@ export function DriversSection({ drivers, variant, copy }: Props) {
                 />
               </div>
             </div>
-          ),
-        )}
+          );
+        })}
       </div>
     </PersonalGlassGlowSection>
   );

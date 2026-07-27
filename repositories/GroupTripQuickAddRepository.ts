@@ -154,3 +154,44 @@ export async function submitTripQuickAdd(
       throw new Error(`Unsupported quick-add action: ${actionId}`);
   }
 }
+
+export type TripAttachmentUploadUrlRequest = {
+  content_type: string;
+  byte_size: number;
+  purpose: string;
+};
+
+export type TripAttachmentUploadUrlResponse = {
+  upload_url: string;
+  storage_path: string;
+  token?: string | null;
+};
+
+export type TripAttachmentConfirmRequest = {
+  storage_path: string;
+  purpose: string;
+};
+
+export type TripAttachmentConfirmResponse = {
+  storage_path: string;
+};
+
+export async function createTripAttachmentUploadUrl(
+  momentId: string,
+  body: TripAttachmentUploadUrlRequest,
+): Promise<TripAttachmentUploadUrlResponse> {
+  return requestWithRetry<TripAttachmentUploadUrlResponse>(
+    `/api/v1/group/trips/${momentId}/attachments/upload-url`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+export async function confirmTripAttachment(
+  momentId: string,
+  body: TripAttachmentConfirmRequest,
+): Promise<TripAttachmentConfirmResponse> {
+  return requestWithRetry<TripAttachmentConfirmResponse>(
+    `/api/v1/group/trips/${momentId}/attachments/confirm`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}

@@ -6,6 +6,10 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { GroupSkeletonBlocks } from "@/components/group/shared/skeleton/GroupSkeletonBlocks";
 import { GroupFadeSections } from "@/components/group/shared/GroupFadeSections";
 import { useGroupLivingPulse, useGroupPulse, useGroupPurchasePulse, useGroupTripPulse } from "@/hooks/useGroupTabCache";
+import {
+  attentionActionOpensActivity,
+  mapAttentionActionToQuickAddId,
+} from "@/lib/action-center/mapAttentionAction";
 import { ExperienceGlassCard } from "./ui/ExperienceGlassCard";
 import { MaterialIcon } from "./ui/MaterialIcon";
 import { tripStitchShellStyle, tripStitchTheme } from "./ui/tripStitchTheme";
@@ -22,9 +26,29 @@ import {
 
 export type GroupPulseTemplate = "experience" | "purchase" | "living";
 
+function templateToMomentType(template: GroupPulseTemplate): string {
+  if (template === "purchase") return "SHARED_PURCHASE";
+  if (template === "living") return "SHARED_LIVING";
+  return "SHARED_EXPERIENCE";
+}
+
+function attentionSignalClick(
+  action: string | undefined,
+  template: GroupPulseTemplate,
+  onViewAllActivity?: () => void,
+  onQuickAdd?: (actionId?: string) => void,
+): (() => void) | undefined {
+  if (attentionActionOpensActivity(action)) {
+    return onViewAllActivity ?? (() => onQuickAdd?.());
+  }
+  const actionId = mapAttentionActionToQuickAddId(action, templateToMomentType(template));
+  if (!onQuickAdd) return onViewAllActivity;
+  return () => onQuickAdd(actionId ?? undefined);
+}
+
 type ExperiencePulseProps = {
   momentId: string;
-  onQuickAdd: () => void;
+  onQuickAdd: (actionId?: string) => void;
   bottomPadding?: number;
   reloadKey?: number;
   template?: GroupPulseTemplate;
@@ -152,6 +176,10 @@ export function ExperiencePulse({
   const labels = metricLabels(template);
 
   useEffect(() => {
+    if (isTrip && momentId) void reload();
+  }, [isTrip, momentId, reload]);
+
+  useEffect(() => {
     if (reloadKey > 0) void reload();
   }, [reloadKey, reload]);
 
@@ -189,6 +217,7 @@ export function ExperiencePulse({
         | "tertiary"
         | "primary",
       icon: item.icon,
+      onClick: attentionSignalClick(item.action, "purchase", onViewAllActivity, onQuickAdd),
     }));
     const recentActivities = (
       purchaseData.dashboard_card?.recent_items ??
@@ -240,7 +269,7 @@ export function ExperiencePulse({
             <div>
               <SectionLabel icon="warning">Attention Signals</SectionLabel>
               {signals.map((s) => (
-                <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} />
+                <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} onClick={s.onClick} />
               ))}
             </div>
           ) : null}
@@ -319,6 +348,7 @@ export function ExperiencePulse({
         | "tertiary"
         | "primary",
       icon: item.icon,
+      onClick: attentionSignalClick(item.action, "living", onViewAllActivity, onQuickAdd),
     }));
     const recentActivities = (
       livingData.dashboard_card?.recent_items ??
@@ -374,7 +404,7 @@ export function ExperiencePulse({
             <div>
               <SectionLabel icon="warning">Attention Signals</SectionLabel>
               {signals.map((s) => (
-                <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} />
+                <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} onClick={s.onClick} />
               ))}
             </div>
           ) : null}
@@ -453,13 +483,15 @@ export function ExperiencePulse({
       title: item.title,
       tone: (item.accent === "error" ? "error" : item.accent === "tertiary" ? "tertiary" : "primary") as "error" | "tertiary" | "primary",
       icon: item.icon,
+      onClick: attentionSignalClick(item.action, "experience", onViewAllActivity, onQuickAdd),
     }));
     const recentActivities = (tripData.dashboard_card?.recent_items ?? []).map((item) => ({
       id: item.id,
       icon: "history",
-      category: item.subtitle ?? "",
+      category: item.subtitle ?? item.activity_type ?? "",
       title: item.title,
       time: item.relative_time ?? "",
+      activityType: item.activity_type ?? "UPDATE",
     }));
     const breakdown = tripData.participation_breakdown ?? { active: 0, pending: 0, inactive: 0 };
     const participationPct = Math.round(tripData.participation_percent ?? 0);
@@ -518,7 +550,9 @@ export function ExperiencePulse({
           <div>
             <SectionLabel icon="warning">Attention Signals</SectionLabel>
             {signals.length > 0 ? (
-              signals.map((s) => <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} />)
+              signals.map((s) => (
+                <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} onClick={s.onClick} />
+              ))
             ) : (
               <EmptySection label="No attention signals right now." />
             )}
@@ -584,6 +618,11 @@ export function ExperiencePulse({
                     category={item.category}
                     title={item.title}
                     time={item.time}
+                    onClick={
+                      item.id && onEditActivity
+                        ? () => onEditActivity(item.id!, item.activityType)
+                        : onViewAllActivity
+                    }
                   />
                 ))}
               </div>
@@ -673,6 +712,7 @@ export function ExperiencePulse({
               ? "tertiary"
               : "primary") as "error" | "tertiary" | "primary",
           icon: "warning",
+          onClick: onQuickAdd,
         }))
       : [];
 
@@ -742,7 +782,9 @@ export function ExperiencePulse({
           {signals.length === 0 ? (
             <EmptySection label="No attention signals right now." />
           ) : (
-            signals.map((s) => <SignalRow key={s.title} title={s.title} tone={s.tone} icon={s.icon} />)
+            signals.map((s) => (
+              <SignalRow key={s.title} title={s.title} tone={s.tone} icon={s.icon} onClick={s.onClick} />
+            ))
           )}
         </div>
 

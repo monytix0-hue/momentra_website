@@ -7,7 +7,7 @@ import { refreshAccessToken } from "@/lib/api/client";
 import { clearTokens, getAccessToken } from "@/lib/auth/tokens";
 
 const baseUrl = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://veggie-handmade-splashed.ngrok-free.dev"
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.mallaapp.org"
 ).replace(/\/$/, "");
 
 export type TripInvalidatePayload = {

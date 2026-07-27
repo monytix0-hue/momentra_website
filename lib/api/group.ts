@@ -255,7 +255,13 @@ export type TripPulseResponse = {
   insights?: Array<{ id: string; title: string; subtitle?: string; icon?: string }>;
   next_best_action?: { title: string; subtitle: string; action: string; impact_labels?: string[] } | null;
   dashboard_card?: {
-    recent_items?: Array<{ id: string; title: string; subtitle?: string; relative_time?: string }>;
+    recent_items?: Array<{
+      id: string;
+      title: string;
+      subtitle?: string;
+      relative_time?: string;
+      activity_type?: string;
+    }>;
   } | null;
   participation_breakdown?: { active: number; pending: number; inactive: number };
   stats: TripPulseStats;
@@ -853,6 +859,40 @@ export async function patchLivingActivity(
 export async function deleteLivingActivity(momentId: string, eventId: string): Promise<{ status: string }> {
   return requestWithRetry<{ status: string }>(
     `/api/v1/group/shared-living/moments/${momentId}/activity/${eventId}`,
+    { method: "DELETE" },
+  );
+}
+
+/** Shared Experience / trip activity — same shape as living. */
+export async function listTripActivity(momentId: string): Promise<LivingActivityListResponse> {
+  return requestWithRetry<LivingActivityListResponse>(
+    `/api/v1/group/trips/${momentId}/activity`,
+  );
+}
+
+export async function getTripActivityDetail(
+  momentId: string,
+  eventId: string,
+): Promise<LivingActivityItem> {
+  return requestWithRetry<LivingActivityItem>(
+    `/api/v1/group/trips/${momentId}/activity/${eventId}`,
+  );
+}
+
+export async function patchTripActivity(
+  momentId: string,
+  eventId: string,
+  body: { title?: string; subtitle?: string; occurred_at?: string },
+): Promise<LivingActivityItem> {
+  return requestWithRetry<LivingActivityItem>(
+    `/api/v1/group/trips/${momentId}/activity/${eventId}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+  );
+}
+
+export async function deleteTripActivity(momentId: string, eventId: string): Promise<{ status: string }> {
+  return requestWithRetry<{ status: string }>(
+    `/api/v1/group/trips/${momentId}/activity/${eventId}`,
     { method: "DELETE" },
   );
 }

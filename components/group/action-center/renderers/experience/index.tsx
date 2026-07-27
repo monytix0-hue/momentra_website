@@ -25,6 +25,8 @@ import {
   Toggle,
   VisibilitySelector,
 } from "@/components/group/action-center/fields";
+import { MemoryMediaUploader, memoryPathsFromState } from "@/components/group/action-center/fields/MemoryMediaUploader";
+import type { MemoryMediaFormat } from "@/lib/media/memoryUpload";
 import { PollComposer } from "@/components/group/action-center/fields/PollComposer";
 import { ActionSection, ActionGlassCard } from "@/components/group/action-center/ui/ActionDesignSystem";
 import { InviteMethodsPanel } from "@/components/group/invite/InviteMethodsPanel";
@@ -322,16 +324,23 @@ export function ExperienceBookingForm(props: FormProps) {
       {...props}
       steps={steps}
       heroImageUrl={null}
-      buildPayload={(s) =>
-        buildTripQuickAddPayload("BOOKING", {
-          booking_type: String(s.booking_type ?? ""),
-          provider: String(s.provider ?? ""),
-          booking_status: String(s.confirmation ?? "planned"),
-          amount_minor: String(parseAmountMinor(String(s.amount ?? ""))),
-          description: String(s.notes ?? s.title ?? ""),
-          currency_code: String(s.currency ?? "INR"),
-        })
-      }
+      buildPayload={(s) => {
+        const amountMinor = parseAmountMinor(String(s.amount ?? ""));
+        return {
+          ...buildTripQuickAddPayload("BOOKING", {
+            booking_type: String(s.booking_type ?? ""),
+            provider: String(s.provider ?? ""),
+            // Match chip default ("confirmed"); previously fell back to "planned" when unset.
+            booking_status: String(s.confirmation ?? "confirmed"),
+            // Pass number so groupTrip.parseAmountMinor does not *100 again.
+            amount_minor: amountMinor,
+            description: String(s.notes ?? s.title ?? ""),
+            title: String(s.title ?? s.provider ?? "Booking"),
+            currency_code: String(s.currency ?? "INR"),
+          }),
+          amount_minor: amountMinor,
+        };
+      }}
       onSubmit={async (payload) => {
         await submitTripQuickAdd(props.momentId, "BOOKING", payload);
       }}
@@ -772,7 +781,8 @@ export const ExperienceContributionForm = simpleTripForm(
     { label: "Currency", value: String(s.currency ?? "INR") },
   ],
   (s) => ({
-    amount_minor: String(parseAmountMinor(String(s.amount ?? ""))),
+    // Pass number so groupTrip.parseAmountMinor does not *100 again.
+    amount_minor: parseAmountMinor(String(s.amount ?? "")),
     contributor_id: String(s.contributor ?? ""),
     currency_code: String(s.currency ?? "INR"),
     payment_method: String(s.payment_method ?? ""),
@@ -965,65 +975,98 @@ export const ExperiencePlanningItemForm = simpleTripForm(
 
 export const ExperienceMemoryForm = simpleTripForm(
   "MEMORY",
-  [
+  (momentId) => [
     {
       id: "form",
       title: "Memory",
-      validate: (s) => req(s, "title", "Title"),
-      render: ({ state, set, errors }) => (
-        <div className="space-y-6">
-          <ActionSection title="Category">
-            <ChipSelector
-              label="Category"
-              value={String(state.memory_category ?? "highlight")}
-              onChange={(v) => set("memory_category", v)}
-              options={[
-                { value: "moment", label: "Moment" },
-                { value: "highlight", label: "Highlight" },
-              ]}
-            />
-            <ChipSelector
-              label="Format"
-              value={String(state.memory_format ?? "note")}
-              onChange={(v) => set("memory_format", v)}
-              options={[
-                { value: "photo", label: "Photo" },
-                { value: "note", label: "Note" },
-              ]}
-            />
-          </ActionSection>
-          <ActionGlassCard>
-            <ActionSection title="Core Information">
-              <TextField label="Title" value={String(state.title ?? "")} onChange={(v) => set("title", v)} required error={errors.title} />
-              <TextArea label="The story" value={String(state.description ?? "")} onChange={(v) => set("description", v)} />
-              <DateField label="Date" value={String(state.date ?? "")} onChange={(v) => set("date", v)} />
+      validate: (s) => {
+        const errs = req(s, "title", "Title");
+        const format = String(s.memory_format ?? "note") as MemoryMediaFormat;
+        if (format !== "note" && memoryPathsFromState(s.media_storage_paths).length === 0) {
+          errs.media = `Add at least one ${format === "pdf" ? "PDF" : format}.`;
+        }
+        return errs;
+      },
+      render: ({ state, set, errors }) => {
+        const format = String(state.memory_format ?? "note") as MemoryMediaFormat;
+        return (
+          <div className="space-y-6">
+            <ActionSection title="Category">
               <ChipSelector
-                label="Mood"
-                value={String(state.emotion ?? "")}
-                onChange={(v) => set("emotion", v)}
+                label="Category"
+                value={String(state.memory_category ?? "highlight")}
+                onChange={(v) => set("memory_category", v)}
                 options={[
-                  { value: "happy", label: "Happy" },
-                  { value: "chill", label: "Chill" },
-                  { value: "epic", label: "Epic" },
+                  { value: "moment", label: "Moment" },
+                  { value: "highlight", label: "Highlight" },
                 ]}
               />
-              <PhotoPlaceholder label="The Visuals" />
+              <ChipSelector
+                label="Format"
+                value={format}
+                onChange={(v) => {
+                  set("memory_format", v);
+                  if (v === "note") set("media_storage_paths", []);
+                }}
+                options={[
+                  { value: "photo", label: "Photo" },
+                  { value: "video", label: "Video" },
+                  { value: "pdf", label: "PDF" },
+                  { value: "note", label: "Note" },
+                ]}
+              />
             </ActionSection>
-          </ActionGlassCard>
-        </div>
-      ),
+            <ActionGlassCard>
+              <ActionSection title="Core Information">
+                <TextField label="Title" value={String(state.title ?? "")} onChange={(v) => set("title", v)} required error={errors.title} />
+                <TextArea label="The story" value={String(state.description ?? "")} onChange={(v) => set("description", v)} />
+                <DateField label="Date" value={String(state.date ?? "")} onChange={(v) => set("date", v)} />
+                <ChipSelector
+                  label="Mood"
+                  value={String(state.emotion ?? "")}
+                  onChange={(v) => set("emotion", v)}
+                  options={[
+                    { value: "happy", label: "Happy" },
+                    { value: "chill", label: "Chill" },
+                    { value: "epic", label: "Epic" },
+                  ]}
+                />
+                <MemoryMediaUploader
+                  momentId={momentId}
+                  format={format}
+                  paths={memoryPathsFromState(state.media_storage_paths)}
+                  onChange={(paths) => set("media_storage_paths", paths)}
+                  error={errors.media}
+                />
+              </ActionSection>
+            </ActionGlassCard>
+          </div>
+        );
+      },
     },
   ],
   (s) => [
     { label: "Title", value: String(s.title ?? "") },
     { label: "Category", value: String(s.memory_category ?? "") },
+    { label: "Format", value: String(s.memory_format ?? "") },
+    {
+      label: "Attachments",
+      value: String(memoryPathsFromState(s.media_storage_paths).length || ""),
+    },
   ],
   (s) => ({
-    caption: String(s.description ?? s.title ?? ""),
+    title: String(s.title ?? ""),
+    caption: String(s.description ?? ""),
+    description: String(s.description ?? ""),
     memory_category: String(s.memory_category ?? "highlight"),
     memory_format: String(s.memory_format ?? "note"),
-    media: "placeholder",
+    media_storage_paths: memoryPathsFromState(s.media_storage_paths),
   }),
+  {
+    memory_category: "highlight",
+    memory_format: "photo",
+    media_storage_paths: [],
+  },
 );
 
 export const ExperienceUpdateForm = simpleTripForm(

@@ -46,7 +46,7 @@ import {
 import { createClientRequestId } from "@/lib/quick_add/draftStore";
 
 const baseUrl = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://veggie-handmade-splashed.ngrok-free.dev"
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.mallaapp.org"
 ).replace(/\/$/, "");
 
 /** Match Android/iOS (~30s). Web was 15s and timed out on Business Pulse over ngrok while mobile succeeded. */
@@ -334,12 +334,23 @@ export async function putToSignedUrl(
   data: Blob,
   contentType: string,
 ): Promise<void> {
-  const res = await fetchWithTimeout(uploadUrl, {
+  // Relative stub URLs (/local-uploads/...) must hit the API origin, not Next.js.
+  const resolved =
+    uploadUrl.startsWith("http://") || uploadUrl.startsWith("https://")
+      ? uploadUrl
+      : joinApiUrl(baseUrl, uploadUrl);
+
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "x-upsert": "true",
+  };
+  if (resolved.includes("ngrok")) {
+    headers["ngrok-skip-browser-warning"] = "true";
+  }
+
+  const res = await fetchWithTimeout(resolved, {
     method: "PUT",
-    headers: {
-      "Content-Type": contentType,
-      "x-upsert": "true",
-    },
+    headers,
     body: data,
   });
   if (!res.ok) {

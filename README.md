@@ -5,7 +5,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 Web uses the shared backend at `/api/v1` (not a separate `backend_v1`).
 
 1. Start the API: `cd ../backend && ./run-dev.sh` (port **8002**)
-2. Copy `web/.env.example` → `.env.local` and set Firebase + `NEXT_PUBLIC_API_BASE_URL=https://veggie-handmade-splashed.ngrok-free.dev`
+2. Copy `web/.env.example` → `.env.local` and set Firebase + `NEXT_PUBLIC_API_BASE_URL=https://api.mallaapp.org`
 3. Auth: Firebase sign-in → `POST api/v1/auth/firebase/exchange` → backend JWTs
 
 See [`docs/API_INTEGRATION.md`](../docs/API_INTEGRATION.md) for client rollout and DTO porting from `ios/` / `apk/`.

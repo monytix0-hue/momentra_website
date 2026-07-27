@@ -30,6 +30,8 @@ type GroupActionCenterShellProps = {
   momentName?: string | null;
   stageLabel?: string | null;
   heroImageUrl?: string | null;
+  /** When set, open directly on this Action Center form (skip hub). */
+  initialActionId?: string | null;
 };
 
 const HERO: Record<string, { label: string; title: string; subtitle: string }> = {
@@ -60,6 +62,7 @@ export function GroupActionCenterShell({
   momentName,
   stageLabel,
   heroImageUrl,
+  initialActionId = null,
 }: GroupActionCenterShellProps) {
   const { colors } = useThemeTokens();
   const bundle = getQuickAddBundleByMomentType(momentTypeCode);
@@ -73,7 +76,14 @@ export function GroupActionCenterShell({
     return rankSmartSuggestions(templateId, actions, signals);
   }, [templateId, actions, pulseHint]);
 
-  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const resolvedInitial =
+    initialActionId && getActionCenterAction(templateId, initialActionId) ? initialActionId : null;
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(resolvedInitial);
+
+  useEffect(() => {
+    setSelectedActionId(resolvedInitial);
+  }, [resolvedInitial]);
+
   const selected = selectedActionId ? getActionCenterAction(templateId, selectedActionId) : null;
   const Renderer = selected ? resolveActionRenderer(selected.renderer_id) : null;
 

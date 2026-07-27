@@ -8,6 +8,7 @@ import {
   buildFutureBuildingPayload,
   canSubmitFb,
   FIELD_TO_PAYLOAD_KEY,
+  missingFbRequiredHint,
   requiredKeysForFbTab,
 } from "@/lib/quick_add/futureBuildingOptions";
 import { tabSuccessMessage } from "@/lib/quick_add/lifeOpsCopy";
@@ -53,6 +54,17 @@ describe("futureBuildingOptions payload", () => {
 
   it("keeps pivot notes required", () => {
     expect(requiredKeysForFbTab("PIVOT").has("notes")).toBe(true);
+    expect(
+      missingFbRequiredHint(
+        "PIVOT",
+        [
+          { group_key: "pivot_change", label: "What changed?", field_type: "chip_grid" },
+          { group_key: "notes", label: "Notes", field_type: "textarea" },
+        ],
+        { pivot_change: "Scope" },
+        "Changed direction",
+      ),
+    ).toBe("Required: Notes");
   });
 });
 

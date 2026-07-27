@@ -309,6 +309,7 @@ export interface PersonalLiveRecentActivityItem {
   edit_event_type: string;
   can_edit?: boolean;
   can_delete?: boolean;
+  amount_label?: string | null;
 }
 
 export interface PersonalLifeOpsJourneyPhase {

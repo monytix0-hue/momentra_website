@@ -151,19 +151,22 @@ export function SignalRow({
   title,
   tone,
   icon,
+  onClick,
 }: {
   title: string;
   tone: SignalTone;
   icon?: string;
+  onClick?: () => void;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const toneColor =
     tone === "error" ? colors.error : tone === "tertiary" ? colors.warning ?? colors.brandSecondary : colors.brandPrimary;
+  const interactive = Boolean(onClick);
 
   return (
     <div
-      className="flex cursor-pointer items-center gap-4 rounded-xl p-4 transition-transform hover:scale-[1.02]"
+      className={`flex items-center gap-4 rounded-xl p-4 transition-transform ${interactive ? "cursor-pointer hover:scale-[1.02]" : ""}`}
       style={{
         background: `${toneColor}14`,
         borderTop: `1px solid ${toneColor}33`,
@@ -171,12 +174,25 @@ export function SignalRow({
         borderBottom: `1px solid ${toneColor}33`,
         borderLeft: `4px solid ${toneColor}`,
       }}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
     >
       <MaterialIcon name={icon ?? toneIcon[tone]} style={{ color: toneColor }} />
       <p className="flex-1 text-sm font-medium" style={{ color: colors.textPrimary }}>
         {title}
       </p>
-      <MaterialIcon name="chevron_right" style={{ color: colors.textSecondary }} />
+      {interactive ? <MaterialIcon name="chevron_right" style={{ color: colors.textSecondary }} /> : null}
     </div>
   );
 }

@@ -62,6 +62,12 @@ import { SharedPurchaseMoments } from "@/components/group/active/purchase/Shared
 import { SharedLivingPulse } from "@/components/group/active/living/SharedLivingPulse";
 import { LivingActivityScreen } from "@/components/group/active/living/activity/LivingActivityScreen";
 import { LivingActivityEditSheet } from "@/components/group/active/living/activity/LivingActivityEditSheet";
+import {
+  deleteTripActivity,
+  getTripActivityDetail,
+  listTripActivity,
+  patchTripActivity,
+} from "@/lib/api/group";
 
 import { SharedLivingMoments } from "@/components/group/active/living/SharedLivingMoments";
 
@@ -169,6 +175,15 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
     null) as GroupCreateType | null;
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddActionId, setQuickAddActionId] = useState<string | null>(null);
+  const openQuickAdd = useCallback((actionId?: string) => {
+    setQuickAddActionId(actionId ?? null);
+    setShowQuickAdd(true);
+  }, []);
+  const closeQuickAdd = useCallback(() => {
+    setShowQuickAdd(false);
+    setQuickAddActionId(null);
+  }, []);
   const [tripMomentsReloadKey, setTripMomentsReloadKey] = useState(0);
   const bumpTripReload = useCallback(() => {
     setTripMomentsReloadKey((k) => k + 1);
@@ -406,11 +421,8 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
     const hasActiveMoment = Boolean(activeMomentId) && momentSwitcherOptions.length > 0;
 
     if ((isActiveScreen(tabResolved) || hasActiveMoment) && activeMomentId) {
-
-      setShowQuickAdd(true);
-
+      openQuickAdd();
       return;
-
     }
 
     if (isSetupScreen(tabResolved) || (draftMomentId && momentSwitcherOptions.length === 0)) {
@@ -661,7 +673,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
     if (!activeMomentId) return renderActivePlaceholder();
 
-    const onQuickAdd = () => setShowQuickAdd(true);
+    const onQuickAdd = openQuickAdd;
 
     switch (visibleTab) {
 
@@ -679,7 +691,16 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
       default:
 
-        return <ExperiencePulse momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
+        return (
+          <ExperiencePulse
+            momentId={activeMomentId}
+            onQuickAdd={onQuickAdd}
+            bottomPadding={bottomPadding}
+            reloadKey={tripMomentsReloadKey}
+            onViewAllActivity={() => setShowLivingActivity(true)}
+            onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
+          />
+        );
 
     }
 
@@ -691,7 +712,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
     if (!activeMomentId) return renderActivePlaceholder();
 
-    const onQuickAdd = () => setShowQuickAdd(true);
+    const onQuickAdd = openQuickAdd;
 
     switch (visibleTab) {
 
@@ -721,7 +742,7 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
     if (!activeMomentId) return renderActivePlaceholder();
 
-    const onQuickAdd = () => setShowQuickAdd(true);
+    const onQuickAdd = openQuickAdd;
 
     switch (visibleTab) {
 
@@ -1157,32 +1178,45 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
           momentTypeCode={activeMomentType ?? "SHARED_EXPERIENCE"}
 
+          initialActionId={quickAddActionId}
+
           onClose={() => {
-            setShowQuickAdd(false);
+            closeQuickAdd();
           }}
 
           onSuccess={() => {
             if (activeMomentId) invalidateGroupTabCaches(activeMomentId);
             setTripMomentsReloadKey((key) => key + 1);
             setQuickAddSuccess("Quick Add saved");
-            setShowQuickAdd(false);
+            closeQuickAdd();
           }}
 
         />
 
       ) : null}
 
-      {showLivingActivity && activeMomentId && activeMomentType === "SHARED_LIVING" ? (
+      {showLivingActivity &&
+      activeMomentId &&
+      (activeMomentType === "SHARED_LIVING" || activeMomentType === "SHARED_EXPERIENCE") ? (
         <LivingActivityScreen
           key={livingActivityReloadToken}
           momentId={activeMomentId}
           onBack={() => setShowLivingActivity(false)}
           onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
           reloadToken={livingActivityReloadToken}
+          {...(activeMomentType === "SHARED_EXPERIENCE"
+            ? {
+                title: "Trip activity",
+                subtitle: "View and edit experience updates",
+                listActivity: listTripActivity,
+              }
+            : {})}
         />
       ) : null}
 
-      {editingLivingActivity && activeMomentId && activeMomentType === "SHARED_LIVING" ? (
+      {editingLivingActivity &&
+      activeMomentId &&
+      (activeMomentType === "SHARED_LIVING" || activeMomentType === "SHARED_EXPERIENCE") ? (
         <LivingActivityEditSheet
           momentId={activeMomentId}
           eventId={editingLivingActivity.id}
@@ -1192,6 +1226,13 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
             if (activeMomentId) invalidateGroupTabCaches(activeMomentId);
             setTripMomentsReloadKey((key) => key + 1);
           }}
+          {...(activeMomentType === "SHARED_EXPERIENCE"
+            ? {
+                getDetail: getTripActivityDetail,
+                patchActivity: patchTripActivity,
+                deleteActivity: deleteTripActivity,
+              }
+            : {})}
         />
       ) : null}
 

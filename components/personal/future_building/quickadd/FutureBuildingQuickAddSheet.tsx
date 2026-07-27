@@ -35,6 +35,7 @@ import {
 import {
   buildFutureBuildingPayload,
   canSubmitFb,
+  missingFbRequiredHint,
   resolveFbFieldOptions,
 } from "@/lib/quick_add/futureBuildingOptions";
 import { invalidateAfterFutureBuildingQuickAdd } from "@/repositories/PersonalRepository";
@@ -84,8 +85,11 @@ export function FutureBuildingQuickAddSheet({
     const initial = initialEventType?.toUpperCase();
     if (initial && FB_EVENT_TYPES.has(initial)) {
       setSelectedTab(initial);
+      if (initial === "PIVOT") setNotesExpanded(true);
     } else if (options.tabs?.[0]?.event_type) {
-      setSelectedTab(options.tabs[0].event_type);
+      const first = options.tabs[0].event_type;
+      setSelectedTab(first);
+      if (first === "PIVOT") setNotesExpanded(true);
     }
   }, [options, initialEventType]);
 
@@ -115,7 +119,9 @@ export function FutureBuildingQuickAddSheet({
   function selectTab(eventType: string) {
     setSelectedTab(eventType);
     setSelectorTouched(true);
-    setNotesExpanded(Boolean(drafts[eventType]?.notes?.trim()));
+    setNotesExpanded(
+      eventType === "PIVOT" || Boolean(drafts[eventType]?.notes?.trim()),
+    );
     setOutcomeExpanded(Boolean(drafts[eventType]?.outcome_value?.trim()));
     setSubmitError(null);
   }
@@ -146,6 +152,13 @@ export function FutureBuildingQuickAddSheet({
     Boolean(moment) &&
     canSubmitFb(selectedTab, tabFields.field_groups, fieldValues, eventTitle) &&
     !submitting;
+
+  const requiredHint = missingFbRequiredHint(
+    selectedTab,
+    tabFields.field_groups,
+    fieldValues,
+    eventTitle,
+  );
 
   async function handleSubmit() {
     if (!moment || !submitEnabled || saveLatch.current) return;
@@ -379,7 +392,25 @@ export function FutureBuildingQuickAddSheet({
                   </button>
                 ) : null}
 
-                {!notesExpanded ? (
+                {selectedTab === "PIVOT" || notesExpanded ? (
+                  <FieldGroup
+                    group={{
+                      group_key: "notes",
+                      label: selectedTab === "PIVOT" ? "Notes (required)" : "Note — optional",
+                      field_type: "textarea",
+                    }}
+                    value={fieldValues.notes ?? ""}
+                    onChange={(value) => setField("notes", value)}
+                    colors={colors}
+                    resolvedOptions={[]}
+                    compact
+                    placeholder={
+                      selectedTab === "PIVOT"
+                        ? "Why did this change matter?"
+                        : undefined
+                    }
+                  />
+                ) : (
                   <button
                     type="button"
                     onClick={() => setNotesExpanded(true)}
@@ -388,22 +419,10 @@ export function FutureBuildingQuickAddSheet({
                   >
                     Add note — optional
                   </button>
-                ) : (
-                  <FieldGroup
-                    group={{
-                      group_key: "notes",
-                      label: selectedTab === "PIVOT" ? "Notes" : "Note — optional",
-                      field_type: "textarea",
-                    }}
-                    value={fieldValues.notes ?? ""}
-                    onChange={(value) => setField("notes", value)}
-                    colors={colors}
-                    resolvedOptions={[]}
-                    compact
-                  />
                 )}
 
-                {activeTab?.teaches_items?.length ? (
+                {activeTab?.teaches_items?.length &&
+                !(selectedTab === "PIVOT" && requiredHint) ? (
                   <section
                     className="rounded-2xl border p-3"
                     style={{
@@ -446,6 +465,11 @@ export function FutureBuildingQuickAddSheet({
               paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
             }}
           >
+            {requiredHint && !submitError ? (
+              <p className="mb-2 text-sm" style={{ color: colors.textSecondary }}>
+                {requiredHint}
+              </p>
+            ) : null}
             <button
               type="button"
               disabled={!submitEnabled}
@@ -484,6 +508,7 @@ function FieldGroup({
   colors,
   resolvedOptions,
   compact,
+  placeholder,
 }: {
   group: PersonalFutureBuildingQuickAddFieldGroup;
   value: string;
@@ -491,6 +516,7 @@ function FieldGroup({
   colors: ContextThemeTokens["colors"];
   resolvedOptions: { value: string; label: string }[];
   compact?: boolean;
+  placeholder?: string;
 }) {
   const labelStyle = { ...personalTypography.sectionHeader, color: colors.textSecondary };
 
@@ -584,6 +610,7 @@ function FieldGroup({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={compact ? 2 : 3}
+          placeholder={placeholder}
           className="w-full rounded-xl border p-3 input-focus-glow"
           style={{
             borderColor: colors.border,

@@ -7,6 +7,7 @@ type GroupMomentQuickAddRouterProps = {
   momentTypeCode: string;
   onClose: () => void;
   onSuccess?: () => void;
+  initialActionId?: string | null;
 };
 
 /** Cutover: Group FAB opens Action Center for all Group templates. */
@@ -15,6 +16,7 @@ export function GroupMomentQuickAddRouter({
   momentTypeCode,
   onClose,
   onSuccess,
+  initialActionId = null,
 }: GroupMomentQuickAddRouterProps) {
   const supported =
     momentTypeCode === "SHARED_EXPERIENCE" ||
@@ -28,6 +30,7 @@ export function GroupMomentQuickAddRouter({
         momentTypeCode="SHARED_EXPERIENCE"
         onClose={onClose}
         onSuccess={onSuccess}
+        initialActionId={initialActionId}
       />
     );
   }
@@ -38,6 +41,7 @@ export function GroupMomentQuickAddRouter({
       momentTypeCode={momentTypeCode}
       onClose={onClose}
       onSuccess={onSuccess}
+      initialActionId={initialActionId}
     />
   );
 }

@@ -46,8 +46,13 @@ export function canSubmitTripAction(actionId: string, state: TripQuickAddFormSta
   return true;
 }
 
-function parseAmountMinor(value: unknown): number {
-  if (typeof value === "number") return Math.round(value);
+/**
+ * Normalize amount_minor for trip quick-add payloads.
+ * - number → already minor units (do not multiply)
+ * - string → major currency units (rupees) → multiply by 100
+ */
+export function parseAmountMinor(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
   const raw = String(value ?? "").replace(/[^\d.]/g, "");
   const parsed = Number.parseFloat(raw);
   if (!Number.isFinite(parsed)) return 0;
@@ -127,12 +132,28 @@ export function buildTripQuickAddPayload(actionId: string, state: TripQuickAddFo
         update_type: state.update_type || undefined,
         visibility: state.visibility || undefined,
       };
-    case "MEMORY":
+    case "MEMORY": {
+      const title =
+        (typeof state.title === "string" && state.title.trim()) ||
+        (typeof state.caption === "string" && state.caption.trim().slice(0, 80)) ||
+        "Trip memory";
+      const noteParts = [
+        typeof state.caption === "string" ? state.caption.trim() : "",
+        typeof state.description === "string" ? state.description.trim() : "",
+      ].filter(Boolean);
+      const paths = Array.isArray(state.media_storage_paths)
+        ? state.media_storage_paths.map(String).filter(Boolean)
+        : typeof state.media_storage_paths === "string" && state.media_storage_paths
+          ? state.media_storage_paths.split(",").map((p) => p.trim()).filter(Boolean)
+          : [];
       return {
-        title: state.caption ? String(state.caption).slice(0, 80) : "Trip memory",
-        note: state.caption || undefined,
-        media_storage_paths: [],
+        title,
+        note: noteParts[0] || undefined,
+        media_storage_paths: paths,
+        memory_format: state.memory_format || undefined,
+        memory_category: state.memory_category || undefined,
       };
+    }
     case "POLL":
       return buildSharedPollPayload(state);
     default:

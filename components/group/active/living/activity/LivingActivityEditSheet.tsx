@@ -6,6 +6,7 @@ import {
   deleteLivingActivity,
   getLivingActivityDetail,
   patchLivingActivity,
+  type LivingActivityItem,
 } from "@/lib/api/group";
 
 type LivingActivityEditSheetProps = {
@@ -13,6 +14,13 @@ type LivingActivityEditSheetProps = {
   eventId: string;
   onClose: () => void;
   onSuccess: () => void;
+  getDetail?: (momentId: string, eventId: string) => Promise<LivingActivityItem>;
+  patchActivity?: (
+    momentId: string,
+    eventId: string,
+    body: { title?: string; subtitle?: string; occurred_at?: string },
+  ) => Promise<LivingActivityItem>;
+  deleteActivity?: (momentId: string, eventId: string) => Promise<{ status: string }>;
 };
 
 export function LivingActivityEditSheet({
@@ -20,6 +28,9 @@ export function LivingActivityEditSheet({
   eventId,
   onClose,
   onSuccess,
+  getDetail = getLivingActivityDetail,
+  patchActivity = patchLivingActivity,
+  deleteActivity = deleteLivingActivity,
 }: LivingActivityEditSheetProps) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
@@ -35,7 +46,7 @@ export function LivingActivityEditSheet({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void getLivingActivityDetail(momentId, eventId)
+    void getDetail(momentId, eventId)
       .then((detail) => {
         if (cancelled) return;
         setTitle(detail.title ?? "");
@@ -52,13 +63,13 @@ export function LivingActivityEditSheet({
     return () => {
       cancelled = true;
     };
-  }, [momentId, eventId]);
+  }, [momentId, eventId, getDetail]);
 
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
-      await patchLivingActivity(momentId, eventId, {
+      await patchActivity(momentId, eventId, {
         title: title.trim(),
         subtitle: subtitle.trim(),
         ...(occurredAt ? { occurred_at: new Date(occurredAt).toISOString() } : {}),
@@ -78,7 +89,7 @@ export function LivingActivityEditSheet({
     setSaving(true);
     setError(null);
     try {
-      await deleteLivingActivity(momentId, eventId);
+      await deleteActivity(momentId, eventId);
       onSuccess();
       onClose();
     } catch (err: unknown) {

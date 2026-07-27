@@ -7,6 +7,7 @@ type GroupActiveQuickAddOverlayProps = {
   momentTypeCode?: string;
   onClose: () => void;
   onSuccess?: () => void;
+  initialActionId?: string | null;
 };
 
 export function GroupActiveQuickAddOverlay({
@@ -14,6 +15,7 @@ export function GroupActiveQuickAddOverlay({
   momentTypeCode = "SHARED_EXPERIENCE",
   onClose,
   onSuccess,
+  initialActionId = null,
 }: GroupActiveQuickAddOverlayProps) {
   return (
     <GroupMomentQuickAddRouter
@@ -21,6 +23,7 @@ export function GroupActiveQuickAddOverlay({
       momentTypeCode={momentTypeCode}
       onClose={onClose}
       onSuccess={onSuccess}
+      initialActionId={initialActionId}
     />
   );
 }

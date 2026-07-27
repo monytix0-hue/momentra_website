@@ -152,8 +152,10 @@ function useGroupTabCache<T>(
 
   useEffect(() => {
     if (!enabled || !id) return;
-    void load(false);
-  }, [enabled, id, load, generation]);
+    // Pulse KPIs (bookings/spent) can stick at 0 after a backend deploy if we
+    // serve fresh client/Redis cache without force_refresh. Always force pulse.
+    void load(tab === "pulse");
+  }, [enabled, id, load, generation, tab]);
 
   return { data, loading, refreshing, error, reload: () => load(true) };
 }

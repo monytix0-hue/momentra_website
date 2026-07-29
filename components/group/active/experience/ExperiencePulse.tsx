@@ -54,6 +54,7 @@ type ExperiencePulseProps = {
   template?: GroupPulseTemplate;
   onViewAllActivity?: () => void;
   onEditActivity?: (id: string, eventType: string) => void;
+  onViewSettlement?: () => void;
 };
 
 function metricLabels(template: GroupPulseTemplate) {
@@ -123,6 +124,138 @@ function EmptySection({ label }: { label: string }) {
   );
 }
 
+function GroupSettlementCard({
+  settlementWidget,
+  fallbackCurrency,
+  onViewSettlement,
+}: {
+  settlementWidget?: import("@/lib/api/group").TripSettlementWidget | null;
+  fallbackCurrency: string;
+  onViewSettlement?: () => void;
+}) {
+  const settleCurrency = settlementWidget?.currency_code ?? fallbackCurrency;
+  const settlementPreviewMembers = settlementWidget?.preview_members ?? [];
+  const membersNeedingSettlement = settlementWidget?.members_needing_settlement ?? 0;
+  const settlementTotalPaid = settlementWidget?.total_paid_minor ?? 0;
+  const settlementPending = settlementWidget?.pending_settlement_minor ?? 0;
+  const settlementStatusLine =
+    settlementWidget?.status_line ||
+    (membersNeedingSettlement > 0
+      ? `${membersNeedingSettlement} member${membersNeedingSettlement === 1 ? "" : "s"} need settlement`
+      : "All balances are settled.");
+
+  return (
+    <ExperienceGlassCard>
+      <SectionLabel
+        action={onViewSettlement ? "View Details" : undefined}
+        onAction={onViewSettlement}
+      >
+        Group Settlement
+      </SectionLabel>
+      <div className="mb-6 grid grid-cols-2 gap-4">
+        <div
+          className="rounded-xl p-3"
+          style={{ background: tripStitchTheme.surfaceContainerHigh }}
+        >
+          <span
+            className="mb-1 block text-[10px] uppercase tracking-wider"
+            style={{ color: tripStitchTheme.onSurfaceVariant }}
+          >
+            Total Paid
+          </span>
+          <span className="text-xl font-bold" style={{ color: tripStitchTheme.onSurface }}>
+            {formatMinor(settlementTotalPaid, settleCurrency) ?? "—"}
+          </span>
+        </div>
+        <div
+          className="rounded-xl p-3"
+          style={{ background: tripStitchTheme.surfaceContainerHigh }}
+        >
+          <span
+            className="mb-1 block text-[10px] uppercase tracking-wider"
+            style={{ color: tripStitchTheme.onSurfaceVariant }}
+          >
+            Pending Settlement
+          </span>
+          <span className="text-xl font-bold" style={{ color: tripStitchTheme.tertiary }}>
+            {formatMinor(settlementPending, settleCurrency) ?? "—"}
+          </span>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+          {settlementStatusLine}
+        </p>
+        {settlementPreviewMembers.length > 0 ? (
+          settlementPreviewMembers.map((m) => {
+            const chipAmt = formatMinor(m.amount_minor, m.currency_code ?? settleCurrency) ?? "";
+            const isReceive = m.status === "will_receive";
+            const chipText =
+              m.chip_label && chipAmt
+                ? `${m.chip_label} ${chipAmt}`
+                : isReceive
+                  ? `Receives ${chipAmt}`
+                  : m.status === "needs_to_pay"
+                    ? `Needs to pay ${chipAmt}`
+                    : chipAmt;
+            return (
+              <div
+                key={m.user_id}
+                className="flex items-center justify-between rounded-xl p-3"
+                style={{ background: tripStitchTheme.surfaceContainerHigh }}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold"
+                    style={{
+                      background: isReceive
+                        ? `${tripStitchTheme.primary}33`
+                        : `${tripStitchTheme.tertiary}33`,
+                      color: isReceive ? tripStitchTheme.primary : tripStitchTheme.tertiary,
+                    }}
+                  >
+                    {(m.display_name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <span style={{ color: tripStitchTheme.onSurface }}>{m.display_name}</span>
+                </div>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{
+                    background: isReceive ? `${tripStitchTheme.primary}18` : `${tripStitchTheme.tertiary}33`,
+                    color: isReceive ? tripStitchTheme.primary : tripStitchTheme.tertiary,
+                  }}
+                >
+                  {chipText}
+                </span>
+              </div>
+            );
+          })
+        ) : membersNeedingSettlement === 0 &&
+          settlementTotalPaid === 0 &&
+          settlementPending === 0 ? (
+          <EmptySection label="No settlements yet — log an expense to get started." />
+        ) : null}
+      </div>
+      {onViewSettlement ? (
+        <div className="mt-6 border-t border-white/5 pt-4">
+          <button
+            type="button"
+            className="group flex w-full items-center justify-between text-sm font-bold"
+            style={{ color: tripStitchTheme.primary }}
+            onClick={onViewSettlement}
+          >
+            <span>View Settlement</span>
+            <MaterialIcon
+              name="arrow_forward"
+              className="transition-transform group-hover:translate-x-1"
+            />
+          </button>
+        </div>
+      ) : null}
+    </ExperienceGlassCard>
+  );
+}
+
 export function ExperiencePulse({
   momentId,
   onQuickAdd,
@@ -131,6 +264,7 @@ export function ExperiencePulse({
   template = "experience",
   onViewAllActivity,
   onEditActivity,
+  onViewSettlement,
 }: ExperiencePulseProps) {
   const isTrip = template === "experience";
   const isPurchase = template === "purchase";
@@ -282,6 +416,11 @@ export function ExperiencePulse({
               Active {breakdown.active} · Pending {breakdown.pending} · Inactive {breakdown.inactive}
             </p>
           </ExperienceGlassCard>
+          <GroupSettlementCard
+            settlementWidget={purchaseData.settlement_widget}
+            fallbackCurrency={currency}
+            onViewSettlement={onViewSettlement}
+          />
           {recentActivities.length > 0 ? (
             <div>
               <SectionLabel action="View All" explainerId="PULSE-007" momentTypeCode={momentTypeCode}>Recent Activity</SectionLabel>
@@ -419,6 +558,11 @@ export function ExperiencePulse({
               Active {breakdown.active} · Pending {breakdown.pending} · Inactive {breakdown.inactive}
             </p>
           </ExperienceGlassCard>
+          <GroupSettlementCard
+            settlementWidget={livingData.settlement_widget}
+            fallbackCurrency={currency}
+            onViewSettlement={onViewSettlement}
+          />
           {recentActivities.length > 0 ? (
             <div>
               <SectionLabel action="View All" onAction={onViewAllActivity} explainerId="PULSE-007" momentTypeCode={momentTypeCode}>
@@ -606,6 +750,11 @@ export function ExperiencePulse({
               ))}
             </div>
           </ExperienceGlassCard>
+          <GroupSettlementCard
+            settlementWidget={tripData.settlement_widget}
+            fallbackCurrency={currency}
+            onViewSettlement={onViewSettlement}
+          />
           <ExperienceGlassCard>
             <SectionLabel action="View All" onAction={onViewAllActivity} explainerId="PULSE-007" momentTypeCode={momentTypeCode}>
               Recent Activity
@@ -640,19 +789,6 @@ export function ExperiencePulse({
               icon="bolt"
               onClick={onQuickAdd} explainerId="PULSE-008" momentTypeCode={momentTypeCode} />
           ) : null}
-          <ExperienceGlassCard>
-            <SectionLabel>Budget</SectionLabel>
-            <p className="text-lg font-semibold" style={{ color: tripStitchTheme.onSurface }}>
-              {Number(stats.total_expenses_minor ?? 0) <= Number(stats.total_budget_minor ?? 0) && Number(stats.total_budget_minor ?? 0) > 0
-                ? "Budget under control"
-                : Number(stats.total_budget_minor ?? 0) > 0
-                  ? "Budget needs attention"
-                  : "Set a trip budget"}
-            </p>
-            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
-              Spent {spentLabel} of {budgetLabel}
-            </p>
-          </ExperienceGlassCard>
           {(tripData.insights ?? []).length > 0 ? (
             <div className="grid gap-3">
               <SectionLabel explainerId="PULSE-009" momentTypeCode={momentTypeCode}>

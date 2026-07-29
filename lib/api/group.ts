@@ -239,6 +239,24 @@ export type TripPulseStats = {
   updated_at_display?: { label?: string; minutes_ago?: number };
 };
 
+export type TripSettlementWidget = {
+  currency_code?: string;
+  total_paid_minor?: number;
+  pending_settlement_minor?: number;
+  members_needing_settlement?: number;
+  preview_members?: Array<{
+    user_id: string;
+    display_name: string;
+    photo_url?: string | null;
+    amount_minor: number;
+    currency_code?: string;
+    status: string;
+    chip_label?: string;
+  }>;
+  status_line?: string;
+  harmony_label?: string;
+};
+
 export type TripPulseResponse = {
   moment_id: string;
   trip_name: string;
@@ -264,6 +282,7 @@ export type TripPulseResponse = {
     }>;
   } | null;
   participation_breakdown?: { active: number; pending: number; inactive: number };
+  settlement_widget?: TripSettlementWidget | null;
   stats: TripPulseStats;
 };
 
@@ -694,6 +713,17 @@ export type PurchasePulseResponse = {
     ownership_status?: string;
     updated_at_display?: { label?: string; minutes_ago?: number };
   };
+  settlement_widget?: TripSettlementWidget | null;
+  settlement_preview?: {
+    harmony_label?: string | null;
+    balance_insight?: string | null;
+    currency_code?: string;
+    total_spent_minor?: number;
+    pending_count?: number;
+    suggested_transfer?: Record<string, unknown> | null;
+    total_paid_minor?: number;
+    pending_settlement_minor?: number;
+  } | null;
 };
 
 export type PurchaseMomentsViewResponse = {
@@ -783,6 +813,17 @@ export type LivingPulseResponse = {
     rules_count?: number;
     assets_count?: number;
   };
+  settlement_widget?: TripSettlementWidget | null;
+  settlement_preview?: {
+    harmony_label?: string | null;
+    balance_insight?: string | null;
+    currency_code?: string;
+    total_spent_minor?: number;
+    pending_count?: number;
+    suggested_transfer?: Record<string, unknown> | null;
+    total_paid_minor?: number;
+    pending_settlement_minor?: number;
+  } | null;
 };
 
 export type LivingMomentsViewResponse = {
@@ -939,7 +980,7 @@ export async function getLivingMomentsView(
    return requestWithRetry<SessionBootstrapResponse>(`/api/v1/group/session/bootstrap`);
  }
 
-// Settlement API
+// Settlement API (generic moments)
 export type SettlementPreview = {
   moment_id: string;
   currency_code: string;
@@ -977,4 +1018,97 @@ export async function markSettlementSettled(momentId: string, settlementId: stri
   return requestWithRetry<SettlementRecord>(`/api/v1/group/moments/${momentId}/settlements/${settlementId}/mark-settled`, {
     method: "POST",
   });
+}
+
+// Trip settlement (Pulse widget + details)
+export type TripSettlementMemberContribution = {
+  user_id: string;
+  member_id?: string;
+  display_name: string;
+  photo_url?: string | null;
+  paid_minor: number;
+  expected_minor?: number;
+  owed_minor?: number;
+  net_minor: number;
+  currency_code?: string;
+  status: string;
+};
+
+export type TripSettlementTransferSuggestion = {
+  from_user_id: string;
+  to_user_id: string;
+  from_member_id?: string;
+  to_member_id?: string;
+  from_display_name: string;
+  to_display_name: string;
+  from_photo_url?: string | null;
+  to_photo_url?: string | null;
+  amount_minor: number;
+  currency_code: string;
+  reason?: string;
+};
+
+export type TripSettlementPendingBalance = {
+  user_id: string;
+  display_name: string;
+  photo_url?: string | null;
+  subtitle: string;
+  amount_minor: number;
+  currency_code: string;
+  status: string;
+};
+
+export type TripSettlementContext = {
+  moment_id: string;
+  trip_name: string;
+  status_line: string;
+  balance_sync_percent: number;
+  balance_insight: string;
+  harmony_label: string;
+  cover_image_url?: string | null;
+  currency_code?: string;
+  total_expenses_minor?: number;
+  total_paid_minor?: number;
+  pending_settlement_minor?: number;
+  unsettled_minor?: number;
+  members_needing_settlement?: number;
+  split_method?: string;
+  members_count?: number;
+  member_contributions?: TripSettlementMemberContribution[];
+  suggested_transfer?: TripSettlementTransferSuggestion | null;
+  suggestions?: TripSettlementTransferSuggestion[];
+  pending_balances?: TripSettlementPendingBalance[];
+  settlement_widget?: TripSettlementWidget | null;
+  restored_count?: number;
+};
+
+export type TripSettlementMarkPaidRequest = {
+  from_user_id: string;
+  to_user_id: string;
+  amount_minor: number;
+  currency_code: string;
+  client_request_id?: string;
+};
+
+export async function getTripSettlementContext(momentId: string): Promise<TripSettlementContext> {
+  return requestWithRetry<TripSettlementContext>(
+    `/api/v1/group/trips/${momentId}/settlements/context`,
+  );
+}
+
+export async function markTripSettlementPaid(
+  momentId: string,
+  body: TripSettlementMarkPaidRequest,
+): Promise<TripSettlementContext> {
+  return requestWithRetry<TripSettlementContext>(
+    `/api/v1/group/trips/${momentId}/settlements/mark-paid`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+export async function restoreTripSettlement(momentId: string): Promise<TripSettlementContext> {
+  return requestWithRetry<TripSettlementContext>(
+    `/api/v1/group/trips/${momentId}/settlements/restore`,
+    { method: "POST" },
+  );
 }

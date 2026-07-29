@@ -9,6 +9,7 @@ type SharedLivingPulseProps = {
   reloadKey?: number;
   onViewAllActivity?: () => void;
   onEditActivity?: (id: string, eventType: string) => void;
+  onViewSettlement?: () => void;
 };
 
 /** Live Shared Living pulse from `/shared-living/.../pulse` with Stitch tokens. */
@@ -19,6 +20,7 @@ export function SharedLivingPulse({
   reloadKey,
   onViewAllActivity,
   onEditActivity,
+  onViewSettlement,
 }: SharedLivingPulseProps) {
   return (
     <ExperiencePulse
@@ -29,6 +31,7 @@ export function SharedLivingPulse({
       template="living"
       onViewAllActivity={onViewAllActivity}
       onEditActivity={onEditActivity}
+      onViewSettlement={onViewSettlement}
     />
   );
 }

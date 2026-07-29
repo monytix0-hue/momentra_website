@@ -14,7 +14,18 @@
     "total_spent_minor": 0,
     "harmony_label": "In harmony",
     "balance_insight": "Nobody owes anything yet — log an expense to get started.",
-    "pending_count": 0
+    "pending_count": 0,
+    "total_paid_minor": 0,
+    "pending_settlement_minor": 0
+  },
+  "settlement_widget": {
+    "currency_code": "INR",
+    "total_paid_minor": 0,
+    "pending_settlement_minor": 0,
+    "members_needing_settlement": 0,
+    "preview_members": [],
+    "status_line": "All balances are settled.",
+    "harmony_label": "In harmony"
   },
   "stats": {
     "contributors_joined": 0,

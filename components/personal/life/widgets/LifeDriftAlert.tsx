@@ -6,6 +6,7 @@ import { personalLifeCopy } from "@/lib/personal/life/personalLifeCopy";
 import type { PersonalLifeMetrics } from "@/lib/api/personal";
 import { AlertTriangle } from "lucide-react";
 import { LifeCard } from "./LifeCard";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type LifeDriftAlertProps = {
   alert: NonNullable<PersonalLifeMetrics["drift_alert"]>;
@@ -27,6 +28,7 @@ export function LifeDriftAlert({ alert, onQuickAdd }: LifeDriftAlertProps) {
         <span style={{ ...personalTypography.labelSm, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           {personalLifeCopy.sections.driftAlert}
         </span>
+        <WidgetInfoButton explainerId="LIFE-007" />
       </div>
       <h4 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{alert.title}</h4>
       <p className="mt-2" style={{ ...personalTypography.labelSm, opacity: 0.85, color: colors.textSecondary }}>

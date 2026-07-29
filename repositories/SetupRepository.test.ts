@@ -10,6 +10,7 @@ vi.mock("@/lib/api/client", () => ({
 
 vi.mock("@/stores/bootstrapStore", () => ({
   invalidateBootstrapAfterMutation: vi.fn(),
+  notifyMomentMutation: vi.fn(),
 }));
 
 import {
@@ -18,7 +19,10 @@ import {
   savePersonalSetupDraft,
   submitPersonalSetup,
 } from "@/lib/api/client";
-import { invalidateBootstrapAfterMutation } from "@/stores/bootstrapStore";
+import {
+  invalidateBootstrapAfterMutation,
+  notifyMomentMutation,
+} from "@/stores/bootstrapStore";
 
 import { SetupRepository } from "./SetupRepository";
 
@@ -35,15 +39,25 @@ describe("SetupRepository", () => {
     await SetupRepository.preview("moment-1", {});
 
     expect(invalidateBootstrapAfterMutation).not.toHaveBeenCalled();
+    expect(notifyMomentMutation).not.toHaveBeenCalled();
   });
 
-  it("createDraft and activate still invalidate bootstrap", async () => {
+  it("createDraft and activate soft-refresh sessions instead of full bootstrap", async () => {
     vi.mocked(createPersonalMoment).mockResolvedValue({} as never);
     vi.mocked(submitPersonalSetup).mockResolvedValue({} as never);
 
     await SetupRepository.createDraft({ moment_type_code: "FUTURE_BUILDING" });
     await SetupRepository.activate("moment-1", {});
 
-    expect(invalidateBootstrapAfterMutation).toHaveBeenCalledTimes(2);
+    expect(invalidateBootstrapAfterMutation).not.toHaveBeenCalled();
+    expect(notifyMomentMutation).toHaveBeenCalledTimes(2);
+    expect(notifyMomentMutation).toHaveBeenCalledWith(
+      "PERSONAL",
+      expect.objectContaining({ contextState: "SETUP" }),
+    );
+    expect(notifyMomentMutation).toHaveBeenCalledWith(
+      "PERSONAL",
+      expect.objectContaining({ contextState: "ACTIVE" }),
+    );
   });
 });

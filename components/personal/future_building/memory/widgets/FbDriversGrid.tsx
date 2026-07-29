@@ -4,6 +4,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalLifeOpsDriver } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type Props = {
   bestDrivers: PersonalLifeOpsDriver[];
@@ -17,9 +18,12 @@ export function FbDriversGrid({ bestDrivers, lowestDrivers }: Props) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-        <p style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7, marginBottom: 16 }}>
-          {fbMemoryCopy.sections.bestDrivers}
-        </p>
+        <div className="mb-4 flex items-center gap-0.5">
+          <p style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+            {fbMemoryCopy.sections.bestDrivers}
+          </p>
+          <WidgetInfoButton explainerId="MEMORY-003" momentTypeCode="FUTURE_BUILDING" />
+        </div>
         <div className="space-y-3">
           {bestDrivers.map((driver) => (
             <div key={driver.rank}>
@@ -38,9 +42,12 @@ export function FbDriversGrid({ bestDrivers, lowestDrivers }: Props) {
         </div>
       </section>
       <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-        <p style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7, marginBottom: 16 }}>
-          {fbMemoryCopy.sections.lowestDrivers}
-        </p>
+        <div className="mb-4 flex items-center gap-0.5">
+          <p style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+            {fbMemoryCopy.sections.lowestDrivers}
+          </p>
+          <WidgetInfoButton explainerId="MEMORY-004" momentTypeCode="FUTURE_BUILDING" />
+        </div>
         <div className="space-y-2">
           {lowestDrivers.map((driver) => (
             <div

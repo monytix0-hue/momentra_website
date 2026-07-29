@@ -7,6 +7,7 @@ import { fbMomentsCopy } from "@/lib/personal/future_building/moments/fbMomentsC
 import { fbActivityCategoryLabel, fbTimelineImpactLine } from "@/lib/personal/future_building/pulse/fbPulseUtils";
 import { FbSectionBadge } from "@/components/personal/future_building/moments/widgets/FbSectionBadge";
 import { Flag, GraduationCap, Rocket, Star } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const NODE_STYLES: Record<string, { bg: string; Icon: typeof GraduationCap }> = {
   LEARNING: { bg: "#4f46e5", Icon: GraduationCap },
@@ -29,6 +30,7 @@ export function FbJourneyTimeline({ items }: Props) {
           <h2 style={{ ...personalTypography.labelSm, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6 }}>
             {fbMomentsCopy.journeyTimelineTitle}
           </h2>
+          <WidgetInfoButton explainerId="MOMENT-004" momentTypeCode="FUTURE_BUILDING" />
         </div>
         <button type="button" style={{ fontSize: 12, color: colors.brandPrimary, background: "none", border: "none" }}>
           {fbMomentsCopy.viewAll}

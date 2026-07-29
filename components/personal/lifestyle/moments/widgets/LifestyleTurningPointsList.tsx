@@ -32,7 +32,7 @@ export function LifestyleTurningPointsList({ points }: Props) {
   return (
     <section className="pb-6">
       <div className="mb-3 flex items-center justify-between">
-        <LifestyleSectionBadge index={5} label="Turning Points" />
+        <LifestyleSectionBadge index={5} label="Turning Points" explainerId="MOMENT-TP" />
         <button type="button" className="text-xs" style={{ color: "#60a5fa", background: "none", border: "none" }}>
           View all
         </button>

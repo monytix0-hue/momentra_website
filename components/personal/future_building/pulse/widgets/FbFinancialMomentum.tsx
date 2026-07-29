@@ -2,11 +2,14 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 import { DonutChart } from "@/components/personal/life_operations/pulse/widgets/DonutChart";
 import { SegmentShareBar } from "@/components/personal/life_operations/pulse/widgets/SegmentShareBar";
 import type { PersonalFutureBuildingPulseMetrics } from "@/lib/api/personalDomainTypes";
 import { fbPulseCopy } from "@/lib/personal/future_building/pulse/fbPulseCopy";
 import { FB_SEGMENT_COLORS } from "@/lib/personal/future_building/pulse/fbPulseUtils";
+
+const MOMENT_TYPE = "FUTURE_BUILDING";
 
 type Props = {
   segments: PersonalFutureBuildingPulseMetrics["financial_segments"];
@@ -19,7 +22,7 @@ export function FbFinancialMomentum({ segments, fallbackTotalMinor }: Props) {
 
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 20, padding: 16 }}>
-      <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginBottom: 12 }}>{fbPulseCopy.financialTitle}</h3>
+      <PersonalWidgetSectionHeader title={fbPulseCopy.financialTitle} explainerId="PULSE-006" momentTypeCode={MOMENT_TYPE} className="mb-3" />
       <div className="flex gap-6">
         <DonutChart segments={segments} fallbackTotalMinor={fallbackTotalMinor} />
         <div className="min-w-0 flex-1 pt-2">

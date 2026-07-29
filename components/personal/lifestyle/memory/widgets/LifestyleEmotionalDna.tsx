@@ -19,7 +19,7 @@ export function LifestyleEmotionalDna({ dna }: Props) {
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
       <div className="mb-4 flex items-center gap-2">
-        <LifestyleSectionBadge index={6} label="Emotional DNA" />
+        <LifestyleSectionBadge index={6} label="Emotional DNA" explainerId="MEMORY-007" />
       </div>
       <div className="flex items-center gap-8">
         <div className="relative size-32">

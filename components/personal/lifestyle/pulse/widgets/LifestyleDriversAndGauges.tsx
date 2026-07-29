@@ -2,9 +2,12 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalLifestylePulseMetrics } from "@/lib/api/personal";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
 import { LIFESTYLE_GAUGE_COLORS, resolveLifestyleActivityIcon } from "@/lib/personal/lifestyle/pulse/lifestylePulseIcons";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Props = {
   drivers: PersonalLifestylePulseMetrics["score_drivers"];
@@ -37,7 +40,10 @@ export function LifestyleDriversAndGauges({ drivers, gauges }: Props) {
   return (
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-        <h3 className="mb-3 text-[10px] font-bold uppercase tracking-wider opacity-60">{lifestylePulseCopy.scoreDriversTitle}</h3>
+        <div className="mb-3 flex items-center gap-0.5">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-60">{lifestylePulseCopy.scoreDriversTitle}</h3>
+          <WidgetInfoButton explainerId="PULSE-002" momentTypeCode={MOMENT_TYPE} />
+        </div>
         <div className="space-y-2">
           {drivers.map((driver) => {
             const Icon = resolveLifestyleActivityIcon(driver.driver_id, driver.driver_id);
@@ -66,7 +72,10 @@ export function LifestyleDriversAndGauges({ drivers, gauges }: Props) {
         </div>
       </div>
       <div style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-        <h3 className="mb-3 text-[10px] font-bold uppercase tracking-wider opacity-60">{lifestylePulseCopy.stateGaugesTitle}</h3>
+        <div className="mb-3 flex items-center gap-0.5">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-60">{lifestylePulseCopy.stateGaugesTitle}</h3>
+          <WidgetInfoButton explainerId="PULSE-008" momentTypeCode={MOMENT_TYPE} />
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {gauges.map((gauge) => (
             <MiniRing

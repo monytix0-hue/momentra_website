@@ -14,8 +14,9 @@ import {
   SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
 } from "@/lib/cache/snapshotRebuilding";
 import {
-  persistMoments,
   ensurePersonalSessionBootstrap,
+  loadMomentsFromDisk,
+  persistMoments,
   usePersonalSessionStore,
 } from "@/stores/personalSessionStore";
 
@@ -45,13 +46,27 @@ export function getPersonalMomentsCache(
   return cache.get(typeCode)?.data ?? null;
 }
 
+function getInitialPersonalMoments(typeCode: PersonalMomentTypeCode): CacheEntry | null {
+  const memoryValue = cache.get(typeCode);
+  if (memoryValue) return memoryValue;
+  const diskValue = loadMomentsFromDisk(typeCode);
+  if (diskValue) {
+    const entry = { data: diskValue, at: Date.now() };
+    cache.set(typeCode, entry);
+    return entry;
+  }
+  return null;
+}
+
 export function usePersonalMoments(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
   const generation = usePersonalSessionStore().generation;
-  const cached = cache.get(momentTypeCode);
-  const [moments, setMoments] = useState<PersonalMomentsHomeResponse | null>(cached?.data ?? null);
-  const [loading, setLoading] = useState(!cached);
+  const initialCache = getInitialPersonalMoments(momentTypeCode);
+  const [moments, setMoments] = useState<PersonalMomentsHomeResponse | null>(
+    () => initialCache?.data ?? null,
+  );
+  const [loading, setLoading] = useState(() => !initialCache?.data);
   const [refreshing, setRefreshing] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +75,10 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
   const load = useCallback(
     async (force = false) => {
       const gen = ++loadGeneration.current;
-      const entry = cache.get(momentTypeCode);
+      let entry = cache.get(momentTypeCode);
+      if (!entry && !force) {
+        entry = getInitialPersonalMoments(momentTypeCode) ?? undefined;
+      }
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
       const staleUsable = !force && entry && age < STALE_TTL_MS;
@@ -71,14 +89,10 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
         setRebuilding(false);
         return;
       }
-      if (staleUsable && entry) {
-        setMoments(entry.data);
-        setRefreshing(true);
-        setLoading(false);
-      } else if (entry && !force) {
+      if (entry) {
         setMoments(entry.data);
         setLoading(false);
-        setRefreshing(false);
+        setRefreshing(Boolean(staleUsable) || age >= TTL_MS);
       } else {
         setLoading(true);
         setRefreshing(false);
@@ -127,7 +141,9 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
             continue;
           }
           setRebuilding(false);
-          setError(err instanceof Error ? err.message : "Failed to load moments");
+          if (!entry) {
+            setError(err instanceof Error ? err.message : "Failed to load moments");
+          }
           break;
         }
       }
@@ -147,9 +163,9 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
       setRebuilding(false);
       return;
     }
-    const entry = cache.get(momentTypeCode);
+    const entry = getInitialPersonalMoments(momentTypeCode);
     setMoments(entry?.data ?? null);
-    setLoading(!entry);
+    setLoading(!entry?.data);
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
@@ -157,7 +173,7 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalMomentsCache(momentTypeCode);
-    return load(true);
+    return load(false);
   }, [load, momentTypeCode]);
 
   return {
@@ -168,6 +184,7 @@ export function usePersonalMoments(options?: { enabled?: boolean }) {
     error,
     momentTypeCode,
     reload: () => load(true),
+    revalidate: () => load(false),
     refreshAfterSetup,
   };
 }

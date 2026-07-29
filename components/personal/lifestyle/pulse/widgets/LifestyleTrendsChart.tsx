@@ -1,9 +1,12 @@
 "use client";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
-import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
+import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalLifestylePulseMetrics } from "@/lib/api/personal";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Props = { trends: PersonalLifestylePulseMetrics["trends_30d"] };
 
@@ -60,7 +63,7 @@ export function LifestyleTrendsChart({ trends }: Props) {
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
       <div className="mb-4 flex items-center justify-between">
-        <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{lifestylePulseCopy.trendsTitle}</h3>
+        <PersonalWidgetSectionHeader title={lifestylePulseCopy.trendsTitle} explainerId="PULSE-007" momentTypeCode={MOMENT_TYPE} />
         <div className="flex gap-2">
           <div className="flex items-center gap-1">
             <div className="size-1.5 rounded-full" style={{ background: colors.brandPrimary }} />

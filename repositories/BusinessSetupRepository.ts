@@ -13,7 +13,7 @@ import type {
   BusinessSetupPreview,
   BusinessSetupState,
 } from "@/lib/api/business";
-import { invalidateBootstrapAfterMutation } from "@/stores/bootstrapStore";
+import { notifyMomentMutation } from "@/stores/bootstrapStore";
 import { getBusinessSessionSnapshot } from "@/stores/businessSessionStore";
 
 const TEMPLATE_ID_BY_TYPE: Record<string, string> = {
@@ -44,8 +44,8 @@ export const BusinessSetupRepository = {
       template_version: "1",
       workspace_id: workspaceId,
     });
-    // Fire-and-forget — does not return a Promise / does not block create.
-    invalidateBootstrapAfterMutation();
+    // Soft session refresh — does not force full app bootstrap.
+    notifyMomentMutation("BUSINESS", { contextState: "SETUP" });
     return created;
   },
 
@@ -71,7 +71,7 @@ export const BusinessSetupRepository = {
 
   async activate(momentId: string): Promise<BusinessActivateResponse> {
     const result = await activateBusinessSetup(momentId);
-    invalidateBootstrapAfterMutation();
+    notifyMomentMutation("BUSINESS", { contextState: "ACTIVE" });
     return result;
   },
 

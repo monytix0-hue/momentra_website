@@ -21,7 +21,7 @@ export function LifestyleBestMomentsCarousel({ cards }: Props) {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <LifestyleSectionBadge index={4} label="Best Moments" />
+        <LifestyleSectionBadge index={4} label="Best Moments" explainerId="MOMENT-008" />
         <button type="button" className="text-xs" style={{ color: "#60a5fa", background: "none", border: "none" }}>
           View all
         </button>

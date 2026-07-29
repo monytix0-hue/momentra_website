@@ -6,6 +6,7 @@ import { personalLifeCopy, quickActionColor } from "@/lib/personal/life/personal
 import type { PersonalLifeMetrics } from "@/lib/api/personal";
 import { BarChart3, Clock, Plus, Sparkles, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type LifeQuickActionsBarProps = {
   quote: string;
@@ -45,13 +46,16 @@ export function LifeQuickActionsBar({
         background: `color-mix(in srgb, ${colors.surfaceContainer} 90%, transparent)`,
       }}
     >
-      <p
-        className="flex shrink-0 items-center gap-2 italic"
-        style={{ ...personalTypography.microLabel, opacity: 0.6, color: colors.textSecondary }}
-      >
-        <Sparkles className="size-3.5" style={{ color: colors.brandPrimary }} />
-        {quote}
-      </p>
+      <div className="flex shrink-0 items-center gap-0.5">
+        <p
+          className="flex items-center gap-2 italic"
+          style={{ ...personalTypography.microLabel, opacity: 0.6, color: colors.textSecondary }}
+        >
+          <Sparkles className="size-3.5" style={{ color: colors.brandPrimary }} />
+          {quote}
+        </p>
+        <WidgetInfoButton explainerId="LIFE-012" />
+      </div>
       <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {actions.map((action) => {
           const isPrimary = action.action_code === "CREATE_MOMENT";

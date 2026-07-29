@@ -244,7 +244,7 @@ function useTemplateCache<T extends { projection_version?: number }>(
 
   const refreshAfterSetup = useCallback(() => {
     cache.delete(momentTypeCode);
-    return load(true);
+    return load(false);
   }, [cache, load, momentTypeCode]);
 
   return {
@@ -254,6 +254,7 @@ function useTemplateCache<T extends { projection_version?: number }>(
     rebuilding,
     error,
     reload: () => load(true),
+    revalidate: () => load(false),
     refreshAfterSetup,
   };
 }

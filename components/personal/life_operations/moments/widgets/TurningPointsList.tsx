@@ -6,6 +6,7 @@ import { personalTypography } from "@/components/personal/empty/shared/emptyStyl
 import type { PersonalLifeOpsTurningPoint } from "@/lib/api/personal";
 import { lifeOpsMomentsCopy } from "@/lib/personal/life_operations/moments/lifeOpsMomentsCopy";
 import { Flag } from "lucide-react";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 
 type TurningPointsListProps = {
   points: PersonalLifeOpsTurningPoint[];
@@ -17,9 +18,7 @@ export function TurningPointsList({ points }: TurningPointsListProps) {
 
   return (
     <section>
-      <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginBottom: 12 }}>
-        {lifeOpsMomentsCopy.turningPointsTitle}
-      </h3>
+      <PersonalWidgetSectionHeader title={lifeOpsMomentsCopy.turningPointsTitle} explainerId="MOMENT-TP" momentTypeCode="LIFE_OPERATIONS" className="mb-3" />
       {points.length === 0 ? (
         <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary, opacity: 0.7 }}>
           {lifeOpsMomentsCopy.turningPointsEmpty}

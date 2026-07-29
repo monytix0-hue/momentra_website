@@ -8,6 +8,7 @@ import { lifeOpsMomentsCopy } from "@/lib/personal/life_operations/moments/lifeO
 import { PULSE_LINE_PROPS } from "@/lib/personal/life_operations/pulse/pulseChartTheme";
 import { SEGMENT_COLORS } from "@/lib/personal/life_operations/pulse/pulseIcons";
 import { LineChart } from "react-gifted-charts";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type MoneyJourneyChartProps = {
   money: PersonalLifeOpsMoneyJourney;
@@ -70,9 +71,12 @@ export function MoneyJourneyChart({ money }: MoneyJourneyChartProps) {
     <section>
       <div className="mb-2 flex items-end justify-between gap-2">
         <div>
-          <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>
-            {money.title}
-          </h3>
+          <div className="flex items-center gap-0.5">
+            <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>
+              {money.title}
+            </h3>
+            <WidgetInfoButton explainerId="MOMENT-005" momentTypeCode="LIFE_OPERATIONS" />
+          </div>
           <p className="text-xs opacity-60">{money.period_label}</p>
         </div>
       </div>
@@ -91,7 +95,9 @@ export function MoneyJourneyChart({ money }: MoneyJourneyChartProps) {
                 </span>
               ))}
             </div>
-            <LineChart {...chartProps} isAnimated={false} />
+            <div className="pointer-events-none">
+              <LineChart {...chartProps} isAnimated={false} pointerConfig={undefined} />
+            </div>
             <div className="mt-2 flex justify-between px-1 text-[10px] font-bold uppercase tracking-widest opacity-40">
               {monthLabels.map((m) => (
                 <span key={m}>{m}</span>

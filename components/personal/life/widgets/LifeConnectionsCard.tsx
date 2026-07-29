@@ -16,7 +16,7 @@ export function LifeConnectionsCard({ connections }: LifeConnectionsCardProps) {
 
   return (
     <LifeCard>
-      <LifeSectionLabel>{personalLifeCopy.sections.lifeConnections}</LifeSectionLabel>
+      <LifeSectionLabel explainerId="LIFE-006">{personalLifeCopy.sections.lifeConnections}</LifeSectionLabel>
       <p className="mb-4" style={{ ...personalTypography.microLabel, opacity: 0.5, color: colors.textSecondary }}>
         {personalLifeCopy.sections.lifeConnectionsSubtitle}
       </p>

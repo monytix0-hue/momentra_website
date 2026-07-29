@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalGlassGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalTypography,
@@ -10,9 +11,9 @@ import {
 import type { PersonalLifeOpsCorePattern } from "@/lib/api/personal";
 import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_operations/memory/lifeOpsMemoryCopy";
 
-type Props = { copy?: PersonalMemoryCopy;  pattern: PersonalLifeOpsCorePattern };
+type Props = {copy?: PersonalMemoryCopy;  pattern: PersonalLifeOpsCorePattern; momentTypeCode?: string | null };
 
-export function CorePatternSection({ pattern, copy }: Props) {
+export function CorePatternSection({ pattern, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -35,7 +36,10 @@ export function CorePatternSection({ pattern, copy }: Props) {
       >
         {memoryCopy.patternConfidence(pattern.pattern_confidence_percent)}
       </span>
-      <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.corePattern}</p>
+      <div className="flex items-center gap-0.5">
+        <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.corePattern}</p>
+        <WidgetInfoButton explainerId="MEMORY-002" momentTypeCode={momentTypeCode} />
+      </div>
       <div className="mt-4 flex items-center justify-between">
         {pattern.nodes.map((node, i) => (
           <Fragment key={node.node_id}>

@@ -55,7 +55,7 @@ export function LifestyleSpendJourney({ money }: Props) {
 
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 20, padding: 16 }}>
-      <LifestyleSectionBadge index={3} label="Money Journey" />
+      <LifestyleSectionBadge index={3} label="Money Journey" explainerId="MOMENT-005" />
 
       <div className="mb-6 grid grid-cols-1 gap-2">
         <div className="flex items-end justify-between">
@@ -95,8 +95,9 @@ export function LifestyleSpendJourney({ money }: Props) {
         </div>
       )}
 
-      <LineChart {...chartProps} />
-
+      <div className="pointer-events-none">
+        <LineChart {...chartProps} pointerConfig={undefined} />
+      </div>
       <div className="mt-2 flex justify-between px-1 text-[10px] font-bold uppercase tracking-widest opacity-40">
         {monthLabels.map((m) => (
           <span key={m}>{m}</span>

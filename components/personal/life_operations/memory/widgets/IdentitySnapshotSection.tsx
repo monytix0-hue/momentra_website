@@ -1,6 +1,7 @@
 "use client";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   neuralLineBackground,
@@ -11,9 +12,9 @@ import {
 import type { PersonalLifeOpsIdentitySnapshot } from "@/lib/api/personal";
 import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_operations/memory/lifeOpsMemoryCopy";
 
-type Props = { copy?: PersonalMemoryCopy;  snapshot: PersonalLifeOpsIdentitySnapshot };
+type Props = {copy?: PersonalMemoryCopy;  snapshot: PersonalLifeOpsIdentitySnapshot; momentTypeCode?: string | null };
 
-export function IdentitySnapshotSection({ snapshot, copy }: Props) {
+export function IdentitySnapshotSection({ snapshot, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -38,7 +39,10 @@ export function IdentitySnapshotSection({ snapshot, copy }: Props) {
         <div style={{ position: "relative", padding: tokens.spacing.lg }}>
           <div className="flex items-start justify-between gap-3">
             <div>
+              <div className="flex items-center gap-0.5">
               <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.identity}</p>
+              <WidgetInfoButton explainerId="MEMORY-001" momentTypeCode={momentTypeCode} />
+            </div>
               <h2 style={{ ...personalTypography.screenTitle, color: colors.textPrimary, marginTop: 4 }}>
                 {snapshot.title}
               </h2>

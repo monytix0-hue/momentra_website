@@ -64,7 +64,7 @@ export function RelationshipsTrendLineChart({ trust, connection }: Relationships
       </div>
       {showChart && chartData.length >= 2 && chartData2.length >= 2 ? (
         <div>
-          <div className="relative h-56 w-full">
+          <div className="relative h-56 w-full pointer-events-none">
             <LineChart
               data={chartData}
               data2={chartData2}
@@ -87,6 +87,7 @@ export function RelationshipsTrendLineChart({ trust, connection }: Relationships
               curved
               {...PULSE_LINE_PROPS}
               isAnimated={false}
+              pointerConfig={undefined}
             />
           </div>
           <div className="mt-4 flex justify-between px-2 text-[10px] font-bold uppercase tracking-widest opacity-40">

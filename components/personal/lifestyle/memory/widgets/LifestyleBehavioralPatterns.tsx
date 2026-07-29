@@ -15,7 +15,7 @@ export function LifestyleBehavioralPatterns({ patterns }: Props) {
 
   return (
     <section className="space-y-2">
-      <LifestyleSectionBadge index={7} label="Behavioral Patterns" />
+      <LifestyleSectionBadge index={7} label="Behavioral Patterns" explainerId="MEMORY-005" />
       {patterns.map((pattern, i) => {
         const Icon = icons[i % icons.length];
         return (

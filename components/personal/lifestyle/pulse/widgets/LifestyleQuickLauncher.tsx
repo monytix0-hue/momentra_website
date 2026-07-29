@@ -1,8 +1,11 @@
 "use client";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
 import { lifestyleQuickAddIcon } from "@/lib/personal/lifestyle/pulse/lifestylePulseIcons";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Props = { onQuickAdd?: (action: string) => void };
 
@@ -21,7 +24,10 @@ export function LifestyleQuickLauncher({ onQuickAdd }: Props) {
 
   return (
     <section className="space-y-3 pt-3">
-      <h3 className="px-1 text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{lifestylePulseCopy.quickAddTitle}</h3>
+      <div className="flex items-center gap-0.5 px-1">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{lifestylePulseCopy.quickAddTitle}</h3>
+        <WidgetInfoButton explainerId="PULSE-010" momentTypeCode={MOMENT_TYPE} />
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-between sm:gap-2 sm:overflow-x-auto sm:pb-3">
         {lifestylePulseCopy.quickAddActions.map((label, index) => {
           const Icon = lifestyleQuickAddIcon(index);

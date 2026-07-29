@@ -2,6 +2,7 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalGlassGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalTypography,
@@ -9,9 +10,9 @@ import {
 import type { PersonalLifeOpsBehavioralPattern } from "@/lib/api/personal";
 import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_operations/memory/lifeOpsMemoryCopy";
 
-type Props = { copy?: PersonalMemoryCopy;  patterns: PersonalLifeOpsBehavioralPattern[] };
+type Props = {copy?: PersonalMemoryCopy;  patterns: PersonalLifeOpsBehavioralPattern[]; momentTypeCode?: string | null };
 
-export function BehavioralPatternsSection({ patterns, copy }: Props) {
+export function BehavioralPatternsSection({ patterns, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -20,7 +21,10 @@ export function BehavioralPatternsSection({ patterns, copy }: Props) {
 
   return (
     <PersonalGlassGlowSection tokens={tokens} cornerRadius={16} innerStyle={{ padding: tokens.spacing.lg }}>
-      <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.behavioralPatterns}</p>
+      <div className="flex items-center gap-0.5">
+        <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.behavioralPatterns}</p>
+        <WidgetInfoButton explainerId="MEMORY-005" momentTypeCode={momentTypeCode} />
+      </div>
       <div className="mt-3 space-y-2">
         {patterns.map((p) => (
           <div

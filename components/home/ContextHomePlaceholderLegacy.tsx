@@ -269,7 +269,11 @@ export function ContextHomePlaceholderLegacy({
   const [opsActivityEventId, setOpsActivityEventId] = useState<string | null>(null);
   const [showLifeOpsActivity, setShowLifeOpsActivity] = useState(false);
   const [showMasterExpense, setShowMasterExpense] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<{ id: string; eventType: string } | null>(null);
+  const [editingActivity, setEditingActivity] = useState<{
+    id: string;
+    eventType: string;
+    momentTypeCode?: string;
+  } | null>(null);
   const [activityReloadToken, setActivityReloadToken] = useState(0);
   const tokens = useThemeTokens();
   const selectedMomentTypeCode = usePersonalMomentSession();
@@ -278,8 +282,7 @@ export function ContextHomePlaceholderLegacy({
     selectedMomentTypeCode,
   );
   const hasActiveMoment = isActiveMoment(preliminaryActiveCard);
-  const createOptionsHydrating =
-    variant === "personal" && (!shellCreateOptions || loadingShellCreateOptions);
+  const createOptionsHydrating = variant === "personal" && loadingShellCreateOptions;
   const sessionCacheHint =
     variant === "personal" &&
     (hasTypeSessionCacheHint(selectedMomentTypeCode, {
@@ -321,6 +324,7 @@ export function ContextHomePlaceholderLegacy({
     rebuilding: pulseRebuilding,
     error: pulseError,
     reload: reloadPulse,
+    revalidate: revalidatePulse,
     refreshAfterSetup,
   } = usePersonalPulse({ enabled: pulseEnabled });
   const {
@@ -330,6 +334,7 @@ export function ContextHomePlaceholderLegacy({
     rebuilding: momentsRebuilding,
     error: momentsError,
     reload: reloadMoments,
+    revalidate: revalidateMoments,
     refreshAfterSetup: refreshMomentsAfterSetup,
   } = usePersonalMoments({ enabled: momentsEnabled });
   const legacyMemoryEnabled =
@@ -341,6 +346,7 @@ export function ContextHomePlaceholderLegacy({
     rebuilding: memoryRebuilding,
     error: memoryError,
     reload: reloadMemory,
+    revalidate: revalidateMemory,
     refreshAfterSetup: refreshMemoryAfterSetup,
   } = usePersonalMemory({ enabled: legacyMemoryEnabled });
   const {
@@ -350,12 +356,14 @@ export function ContextHomePlaceholderLegacy({
     rebuilding: lifeRebuilding,
     error: lifeError,
     reload: reloadLife,
+    revalidate: revalidateLife,
     refreshAfterSetup: refreshLifeAfterSetup,
   } = usePersonalLife({ enabled: lifeEnabled });
   const loTemplateEnabled = templateMomentsEnabled(selectedMomentTypeCode);
   const isMyMoneyTemplate = isMyMoneyTemplateCode(selectedMomentTypeCode);
   const templateLifeEnabled = false;
-  const templateMemoryEnabled = variant === "personal" && isMyMoneyTemplate;
+  const templateMemoryEnabled =
+    variant === "personal" && isMyMoneyTemplate && visibleTab === "memory";
   const {
     data: templateMoments,
     loading: templateMomentsLoading,
@@ -363,6 +371,7 @@ export function ContextHomePlaceholderLegacy({
     rebuilding: templateMomentsRebuilding,
     error: templateMomentsError,
     reload: reloadTemplateMoments,
+    revalidate: revalidateTemplateMoments,
     refreshAfterSetup: refreshTemplateMomentsAfterSetup,
   } = useTemplateMoments(selectedMomentTypeCode, {
     enabled: momentsEnabled && loTemplateEnabled,
@@ -378,6 +387,7 @@ export function ContextHomePlaceholderLegacy({
     rebuilding: templateMemoryRebuilding,
     error: templateMemoryError,
     reload: reloadTemplateMemory,
+    revalidate: revalidateTemplateMemory,
     refreshAfterSetup: refreshTemplateMemoryAfterSetup,
   } = useTemplateMemory(selectedMomentTypeCode, {
     enabled: templateMemoryEnabled,
@@ -427,16 +437,6 @@ export function ContextHomePlaceholderLegacy({
     if (disk.templateMoments) seedTemplateMomentsCache(selectedMomentTypeCode, disk.templateMoments);
     if (disk.templateMemory) seedTemplateMemoryCache(selectedMomentTypeCode, disk.templateMemory);
   }, [variant, selectedMomentTypeCode]);
-
-  useEffect(() => {
-    if (variant !== "personal") return;
-    if (shellCreateOptions || loadingShellCreateOptions) return;
-    setLoadingShellCreateOptions(true);
-    void fetchPersonalCreateOptions()
-      .then(setShellCreateOptions)
-      .catch(() => setShellCreateOptions(null))
-      .finally(() => setLoadingShellCreateOptions(false));
-  }, [variant, shellCreateOptions, loadingShellCreateOptions]);
 
   const tabTitles: Record<BottomNavTabId, string> = {
     pulse: "Pulse",
@@ -559,11 +559,7 @@ export function ContextHomePlaceholderLegacy({
     if (variant !== "personal") return;
     if (showMomentSetup) return;
     const screen = resolveScreen("personal", visibleTab, bootstrap);
-    const needsCreateOptions =
-      isSetupScreen(screen) ||
-      showCreateOverlay ||
-      (isMyMoneyTemplateCode(selectedMomentTypeCode) &&
-        (visibleTab === "memory" || visibleTab === "life"));
+    const needsCreateOptions = isSetupScreen(screen) || showCreateOverlay;
     if (!needsCreateOptions) {
       return;
     }
@@ -2657,16 +2653,16 @@ export function ContextHomePlaceholderLegacy({
             void beginMomentFromMoments(selectedMomentTypeCode);
           }}
           onSuccess={() => {
-            // submitQuickAdd already called invalidateAfterQuickAdd — only reload visible tab.
-            if (visibleTab === "pulse") void reloadPulse();
+            // submitQuickAdd already called invalidateAfterQuickAdd — soft revalidate visible tab only.
+            if (visibleTab === "pulse") void revalidatePulse();
             else if (visibleTab === "moments") {
-              void reloadMoments();
-              if (loTemplateEnabled) void reloadTemplateMoments();
+              void revalidateMoments();
+              if (loTemplateEnabled) void revalidateTemplateMoments();
             } else if (visibleTab === "memory") {
-              void reloadMemory();
-              void reloadTemplateMemory();
-            } else if (visibleTab === "life") void reloadLife();
-            else void reloadPulse();
+              void revalidateMemory();
+              void revalidateTemplateMemory();
+            } else if (visibleTab === "life") void revalidateLife();
+            else void revalidatePulse();
           }}
         />
       ) : null}
@@ -2745,12 +2741,12 @@ export function ContextHomePlaceholderLegacy({
         <MasterExpenseOrchestrator
           onBack={() => setShowMasterExpense(false)}
           onSuccess={() => {
-            void reloadLife();
-            void reloadPulse();
-            void reloadMoments();
-            void reloadMemory();
-            void reloadTemplateMemory();
-            void reloadTemplateMoments();
+            void revalidateLife();
+            void revalidatePulse();
+            void revalidateMoments();
+            void revalidateMemory();
+            void revalidateTemplateMemory();
+            void revalidateTemplateMoments();
           }}
         />
       ) : null}
@@ -2767,7 +2763,9 @@ export function ContextHomePlaceholderLegacy({
           momentTypeCode={selectedMomentTypeCode}
           momentId={lifeOpsActivityMomentId}
           onBack={() => setShowLifeOpsActivity(false)}
-          onEditActivity={(id, eventType) => setEditingActivity({ id, eventType })}
+          onEditActivity={(id, eventType, momentTypeCode) =>
+            setEditingActivity({ id, eventType, momentTypeCode })
+          }
         />
       ) : null}
 
@@ -2778,28 +2776,31 @@ export function ContextHomePlaceholderLegacy({
         selectedMomentTypeCode === "LIFESTYLE" ||
         selectedMomentTypeCode === "RELATIONSHIPS") ? (
         <TemplateActivityEditSheet
-          momentTypeCode={selectedMomentTypeCode}
+          momentTypeCode={
+            (editingActivity.momentTypeCode as typeof selectedMomentTypeCode) ||
+            selectedMomentTypeCode
+          }
           eventId={editingActivity.id}
           eventType={editingActivity.eventType}
           onClose={() => setEditingActivity(null)}
           onSuccess={() => {
             setActivityReloadToken((t) => t + 1);
             invalidateAfterQuickAdd(selectedMomentTypeCode);
-            if (visibleTab === "pulse") void reloadPulse();
+            if (visibleTab === "pulse") void revalidatePulse();
             else if (visibleTab === "moments") {
-              void reloadMoments();
+              void revalidateMoments();
               if (selectedMomentTypeCode === "FUTURE_BUILDING" || loTemplateEnabled) {
-                void reloadTemplateMoments();
+                void revalidateTemplateMoments();
               }
             } else if (visibleTab === "memory") {
-              void reloadMemory();
-              void reloadTemplateMemory();
-            } else if (visibleTab === "life") void reloadLife();
+              void revalidateMemory();
+              void revalidateTemplateMemory();
+            } else if (visibleTab === "life") void revalidateLife();
             else {
-              void reloadPulse();
-              void reloadTemplateMemory();
+              void revalidatePulse();
+              void revalidateTemplateMemory();
               if (selectedMomentTypeCode === "FUTURE_BUILDING" || loTemplateEnabled) {
-                void reloadTemplateMoments();
+                void revalidateTemplateMoments();
               }
             }
           }}

@@ -22,7 +22,7 @@ export function LifestyleCorePattern({ pattern }: { pattern: PersonalLifeOpsCore
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
       <div className="mb-4 flex items-center gap-2">
-        <LifestyleSectionBadge index={2} label="Core Pattern" />
+        <LifestyleSectionBadge index={2} label="Core Pattern" explainerId="MEMORY-002" />
         {pattern.pattern_confidence_percent != null ? (
           <span
             className="ml-auto rounded-full border px-2 py-0.5 text-[10px] font-bold"

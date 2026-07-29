@@ -17,6 +17,11 @@ import {
 } from "@/lib/personal/life_operations/activity/lifeOpsActivityCopy";
 import type { PersonalLifeOpsActivityItem } from "@/lib/api/personal";
 import { getLifeOpsActivity } from "@/lib/api/client";
+import {
+  recentActivityCategoryLine,
+  recentActivityMetaLine,
+  recentActivityTitle,
+} from "@/lib/personal/life_operations/pulse/recentActivityDisplay";
 import { ArrowLeft, Pencil, Search } from "lucide-react";
 
 type LifeOpsActivityScreenProps = {
@@ -80,7 +85,7 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
       if (!filterMatchesEventType(filter, item.event_type)) return false;
       if (filter === "thisMonth" && new Date(item.captured_at) < monthStart) return false;
       if (!q) return true;
-      const hay = `${item.category_label} ${item.detail_line} ${item.amount_label ?? ""}`.toLowerCase();
+      const hay = `${item.title ?? ""} ${item.category_label} ${item.subcategory_label ?? ""} ${item.detail_line} ${item.mood_label ?? ""} ${item.amount_label ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [items, search, filter]);
@@ -227,6 +232,8 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
                       const catColor =
                         resolveExpenseCategoryColor(item.color, item.category_code, item.subcategory_code) ||
                         colors.brandPrimary;
+                      const categoryLine = recentActivityCategoryLine(item);
+                      const metaLine = recentActivityMetaLine(item);
                       return (
                         <button
                           key={item.id}
@@ -244,20 +251,21 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
                             </div>
                             <div className="min-w-0">
                               <p className="truncate font-semibold" style={{ fontSize: 14 }}>
-                                {item.detail_line}
+                                {recentActivityTitle({
+                                  title: item.title,
+                                  subtitle: item.detail_line,
+                                })}
                               </p>
-                              <p style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
-                                {item.category_label}
-                                {item.amount_label ? ` · ${item.amount_label}` : ""}
-                                {item.account_label ? ` · ${item.account_label}` : ""}
-                              </p>
-                              {item.impact_label ? (
+                              {categoryLine ? (
+                                <p style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{categoryLine}</p>
+                              ) : null}
+                              {item.impact_label || metaLine ? (
                                 <p
                                   className="mt-1 inline-flex items-center gap-1"
-                                  style={{ fontSize: 11, color: colors.error }}
+                                  style={{ fontSize: 11, color: item.impact_label ? colors.error : colors.textSecondary }}
                                 >
-                                  {ImpactIcon ? <ImpactIcon size={12} aria-hidden /> : null}
-                                  {item.impact_label}
+                                  {item.impact_label && ImpactIcon ? <ImpactIcon size={12} aria-hidden /> : null}
+                                  {[item.impact_label, metaLine].filter(Boolean).join(" · ")}
                                 </p>
                               ) : null}
                               <p style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>{item.relative_time}</p>

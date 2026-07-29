@@ -14,6 +14,7 @@ import {
   exchangeFirebaseToken,
   fetchMe,
   logout as apiLogout,
+  refreshAccessToken,
   ApiError,
 } from "@/lib/api/client";
 import type { UserResponse } from "@/lib/api/types";
@@ -24,7 +25,10 @@ import {
 import { clearSessionOnLogout } from "@/stores/sessionStore";
 import {
   clearTokens,
+  getAccessToken,
   hasStoredSession,
+  loadCachedUser,
+  saveCachedUser,
 } from "@/lib/auth/tokens";
 import {
   getFirebaseIdToken,
@@ -35,7 +39,7 @@ import {
   getFirebaseAuth,
 } from "@/lib/firebase";
 import { MomentraAnalytics } from "@/lib/analytics";
-import { startLoginToPulseSpan } from "@/lib/telemetry/performanceTelemetry";
+import { startLoginToPulseSpan, markAuthValidated } from "@/lib/telemetry/performanceTelemetry";
 
 interface AuthContextValue {
   user: UserResponse | null;
@@ -99,9 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!hasStoredSession()) {
         return;
       }
+      const cached = loadCachedUser();
+      if (cached) {
+        setUser(cached);
+      }
       setIsRestoring(true);
       setError(null);
       try {
+        // Memory access tokens die on reload; restore via HttpOnly cookie
+        // (or one-time legacy localStorage refresh migration).
+        if (!getAccessToken()) {
+          await refreshAccessToken();
+        }
         const profile = await Promise.race([
           fetchMe(),
           new Promise<never>((_, reject) => {
@@ -118,10 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ]);
         if (attempt !== restoreAttemptRef.current) return;
         setUser(profile);
+        saveCachedUser(profile);
         startLoginToPulseSpan();
         scheduleProactiveTokenRefresh();
         const firebaseUser = getFirebaseAuth().currentUser;
         void MomentraAnalytics.setUser(profile, firebaseUser);
+        markAuthValidated();
       } catch (err) {
         if (attempt !== restoreAttemptRef.current) return;
         clearTokens();
@@ -146,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const profile = await action();
         setUser(profile);
+        saveCachedUser(profile);
         startLoginToPulseSpan();
         const firebaseUser = getFirebaseAuth().currentUser;
         void MomentraAnalytics.setUser(profile, firebaseUser);
@@ -209,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = useCallback(async () => {
     const profile = await fetchMe();
     setUser(profile);
+    saveCachedUser(profile);
     const firebaseUser = getFirebaseAuth().currentUser;
     void MomentraAnalytics.setUser(profile, firebaseUser);
     scheduleProactiveTokenRefresh();
@@ -216,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setUserDirect = useCallback((profile: UserResponse) => {
     setUser(profile);
+    saveCachedUser(profile);
     const firebaseUser = getFirebaseAuth().currentUser;
     void MomentraAnalytics.setUser(profile, firebaseUser);
   }, []);

@@ -2,8 +2,11 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { fbPulseCopy } from "@/lib/personal/future_building/pulse/fbPulseCopy";
 import { Brain } from "lucide-react";
+
+const MOMENT_TYPE = "FUTURE_BUILDING";
 
 type Props = { insightText: string; confidencePercent: number };
 
@@ -39,6 +42,7 @@ export function FbAiInsightSection({ insightText }: Props) {
             <h5 style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: colors.brandPrimary }}>
               {fbPulseCopy.aiInsightEngineTitle}
             </h5>
+            <WidgetInfoButton explainerId="PULSE-011" momentTypeCode={MOMENT_TYPE} />
             <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.1)" }} />
           </div>
           <p style={{ ...personalTypography.bodyMd, fontSize: 12, fontStyle: "italic", opacity: 0.9 }}>&ldquo;{insightText}&rdquo;</p>

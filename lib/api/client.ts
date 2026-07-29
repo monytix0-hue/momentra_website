@@ -1,8 +1,9 @@
 import {
+  clearLegacyRefreshToken,
   clearTokens,
   getAccessToken,
-  getRefreshToken,
-  saveTokens,
+  getLegacyRefreshToken,
+  saveAccessToken,
 } from "@/lib/auth/tokens";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
 import type {
@@ -51,6 +52,13 @@ const baseUrl = (
 
 /** Match Android/iOS (~30s). Web was 15s and timed out on Business Pulse over ngrok while mobile succeeded. */
 const REQUEST_TIMEOUT_MS = 30_000;
+
+const WEB_CLIENT_HEADER = "X-Momentra-Client";
+const WEB_CLIENT_VALUE = "web";
+
+function applyWebAuthHeaders(headers: Headers): void {
+  headers.set(WEB_CLIENT_HEADER, WEB_CLIENT_VALUE);
+}
 
 export enum ApiErrorCode {
   APP_ERROR = "app_error",
@@ -185,19 +193,41 @@ function joinApiUrl(base: string, path: string): string {
   return `${base}/${normalizedPath}`;
 }
 
+/** Absolute http(s) unchanged; relative stubs (e.g. /local-uploads/...) → API origin. */
+export function resolveMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return joinApiUrl(baseUrl, trimmed);
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & {
     authenticated?: boolean;
     signal?: AbortSignal;
     telemetrySpanId?: string;
+    /** Include cookies (refresh HttpOnly) and web CSRF header. */
+    withCredentials?: boolean;
   } = {},
 ): Promise<T> {
-  const { authenticated = false, signal, telemetrySpanId, ...init } = options;
+  const {
+    authenticated = false,
+    signal,
+    telemetrySpanId,
+    withCredentials = false,
+    ...init
+  } = options;
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
   if (baseUrl.includes("ngrok")) {
     headers.set("ngrok-skip-browser-warning", "true");
+  }
+  if (withCredentials) {
+    applyWebAuthHeaders(headers);
   }
 
   if (authenticated) {
@@ -206,7 +236,15 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetchWithTimeout(joinApiUrl(baseUrl, path), { ...init, headers }, signal);
+  const res = await fetchWithTimeout(
+    joinApiUrl(baseUrl, path),
+    {
+      ...init,
+      headers,
+      credentials: withCredentials ? "include" : init.credentials,
+    },
+    signal,
+  );
   recordResponseHeaders(res, telemetrySpanId);
 
   if (!res.ok) {
@@ -225,7 +263,11 @@ async function request<T>(
 
 async function requestWithRetry<T>(
   path: string,
-  init: RequestInit & { signal?: AbortSignal; telemetrySpanId?: string } = {},
+  init: RequestInit & {
+    signal?: AbortSignal;
+    telemetrySpanId?: string;
+    withCredentials?: boolean;
+  } = {},
 ): Promise<T> {
   try {
     return await request<T>(path, { ...init, authenticated: true });
@@ -259,30 +301,31 @@ export async function exchangeFirebaseToken(
   };
   const response = await request<FirebaseExchangeResponse>(
     API_ENDPOINTS.auth.firebaseExchange,
-    { method: "POST", body: JSON.stringify(body) },
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      withCredentials: true,
+    },
   );
-  saveTokens(
-    response.tokens.access_token,
-    response.tokens.refresh_token,
-    response.tokens.expires_in,
-  );
+  // Access token stays in memory; refresh is Set-Cookie HttpOnly on the API host.
+  saveAccessToken(response.tokens.access_token, response.tokens.expires_in);
+  clearLegacyRefreshToken();
   return response;
 }
 
 export async function refreshAccessToken(): Promise<TokenResponse> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) throw new ApiError("No refresh token", 401);
+  const legacyRefresh = getLegacyRefreshToken();
+  const body: RefreshTokenRequest | Record<string, never> = legacyRefresh
+    ? { refresh_token: legacyRefresh }
+    : {};
 
-  const body: RefreshTokenRequest = { refresh_token: refreshToken };
   const response = await request<TokenResponse>(API_ENDPOINTS.auth.refresh, {
     method: "POST",
     body: JSON.stringify(body),
+    withCredentials: true,
   });
-  saveTokens(
-    response.access_token,
-    response.refresh_token,
-    response.expires_in,
-  );
+  saveAccessToken(response.access_token, response.expires_in);
+  clearLegacyRefreshToken();
   return response;
 }
 
@@ -307,8 +350,25 @@ export async function patchAppPreferences(
 
 export async function logout(): Promise<void> {
   try {
-    await requestWithRetry<{ message: string }>(API_ENDPOINTS.auth.logout, {
+    const legacyRefresh = getLegacyRefreshToken();
+    await request<{ message?: string }>(API_ENDPOINTS.auth.logout, {
       method: "POST",
+      body: JSON.stringify(
+        legacyRefresh ? { refresh_token: legacyRefresh } : {},
+      ),
+      withCredentials: true,
+    });
+  } finally {
+    clearTokens();
+  }
+}
+
+/** Sign out every device (revokes all refresh sessions). */
+export async function logoutAll(): Promise<void> {
+  try {
+    await requestWithRetry<{ revoked: number }>(API_ENDPOINTS.auth.logoutAll, {
+      method: "POST",
+      withCredentials: true,
     });
   } finally {
     clearTokens();
@@ -335,10 +395,7 @@ export async function putToSignedUrl(
   contentType: string,
 ): Promise<void> {
   // Relative stub URLs (/local-uploads/...) must hit the API origin, not Next.js.
-  const resolved =
-    uploadUrl.startsWith("http://") || uploadUrl.startsWith("https://")
-      ? uploadUrl
-      : joinApiUrl(baseUrl, uploadUrl);
+  const resolved = resolveMediaUrl(uploadUrl) ?? uploadUrl;
 
   const headers: Record<string, string> = {
     "Content-Type": contentType,
@@ -354,7 +411,9 @@ export async function putToSignedUrl(
     body: data,
   });
   if (!res.ok) {
-    throw new ApiError(`Upload failed (${res.status})`, res.status);
+    const detail = (await res.text().catch(() => "")).trim().slice(0, 180);
+    const suffix = detail ? `: ${detail}` : "";
+    throw new ApiError(`Upload failed (${res.status})${suffix}`, res.status);
   }
 }
 
@@ -752,10 +811,16 @@ export async function getPersonalSession(): Promise<PersonalSessionResponse> {
   });
 }
 
-export async function getPersonalInventory(): Promise<PersonalInventoryResponse> {
-  return requestWithRetry<PersonalInventoryResponse>(`api/v1/personal/inventory`, {
-    method: "GET",
-  });
+export async function getPersonalInventory(
+  options?: { momentTypeCode?: string },
+): Promise<PersonalInventoryResponse> {
+  const params = new URLSearchParams();
+  if (options?.momentTypeCode) params.set("moment_type_code", options.momentTypeCode);
+  const qs = params.toString();
+  return requestWithRetry<PersonalInventoryResponse>(
+    `api/v1/personal/inventory${qs ? `?${qs}` : ""}`,
+    { method: "GET" },
+  );
 }
 
 export async function getPersonalSessionBootstrap(
@@ -1079,6 +1144,29 @@ export async function getTemplateActivity(
     `api/v1/personal/templates/${momentType}/activity?${params.toString()}`,
     { method: "GET" },
   );
+}
+
+export type UnifiedPersonalActivityParams = {
+  range?: string;
+  domain?: string;
+  kind?: string;
+  q?: string;
+  cursor?: string;
+  limit?: number;
+};
+
+export async function getUnifiedPersonalActivity(
+  params: UnifiedPersonalActivityParams = {},
+): Promise<import("@/lib/personal/template/activity/types").UnifiedPersonalActivityResponse> {
+  const qs = new URLSearchParams();
+  if (params.range) qs.set("range", params.range);
+  if (params.domain) qs.set("domain", params.domain);
+  if (params.kind) qs.set("kind", params.kind);
+  if (params.q) qs.set("q", params.q);
+  if (params.cursor) qs.set("cursor", params.cursor);
+  if (params.limit) qs.set("limit", String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return requestWithRetry(`api/v1/personal/activity${suffix}`, { method: "GET" });
 }
 
 export async function getTemplateActivityDetail(

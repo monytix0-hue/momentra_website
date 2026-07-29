@@ -14,6 +14,10 @@ import { PersonalAtmosphericOrbs } from "@/components/personal/empty/shared/Pers
 import { ArcGauge } from "@/components/personal/life_operations/pulse/widgets/ArcGauge";
 import { DonutChart } from "@/components/personal/life_operations/pulse/widgets/DonutChart";
 import { SegmentShareBar } from "@/components/personal/life_operations/pulse/widgets/SegmentShareBar";
+import {
+  PersonalWidgetSectionHeader,
+  WidgetInfoButton,
+} from "@/components/personal/shared/WidgetInfoButton";
 import { RelationshipRadarChart } from "@/components/personal/emotional_security/pulse/widgets/RelationshipRadarChart";
 import { RelationshipsRecentActivityList } from "@/components/personal/emotional_security/pulse/widgets/RelationshipsRecentActivityList";
 import { RelationshipsTrendLineChart } from "@/components/personal/emotional_security/pulse/widgets/RelationshipsTrendLineChart";
@@ -21,6 +25,8 @@ import type { PersonalEmotionalSecurityPulse } from "@/lib/api/personalDomainTyp
 import { relationshipsPulseCopy } from "@/lib/personal/emotional_security/pulse/relationshipsPulseCopy";
 import { SEGMENT_COLORS } from "@/lib/personal/life_operations/pulse/pulseIcons";
 import { Brain, Link2, TrendingUp } from "lucide-react";
+
+const MOMENT_TYPE = "RELATIONSHIPS";
 
 type RelationshipsPulseProps = {
   pulse: PersonalEmotionalSecurityPulse;
@@ -82,12 +88,15 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
           <div style={heroInnerStyle}>
             <div className="mb-4 flex items-start justify-between">
               <div>
-                <p style={{ fontSize: 48, fontWeight: 800, lineHeight: 1, color: colors.textPrimary }}>
-                  {metrics.bond_index}
-                  <span style={{ fontSize: 20, fontWeight: 500, opacity: 0.4 }}>
-                    {relationshipsPulseCopy.bondIndexSuffix}
-                  </span>
-                </p>
+                <div className="flex items-center gap-0.5">
+                  <p style={{ fontSize: 48, fontWeight: 800, lineHeight: 1, color: colors.textPrimary }}>
+                    {metrics.bond_index}
+                    <span style={{ fontSize: 20, fontWeight: 500, opacity: 0.4 }}>
+                      {relationshipsPulseCopy.bondIndexSuffix}
+                    </span>
+                  </p>
+                  <WidgetInfoButton explainerId="PULSE-001" momentTypeCode={MOMENT_TYPE} />
+                </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span
                     className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
@@ -113,8 +122,15 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
                 </p>
               </div>
             </div>
+            <div className="mb-1 flex justify-end">
+              <WidgetInfoButton explainerId="PULSE-002" momentTypeCode={MOMENT_TYPE} />
+            </div>
             <RelationshipRadarChart bondIndex={metrics.bond_index} axes={metrics.radar_axes} />
             <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4 sm:grid-cols-4" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+              <div className="col-span-2 flex items-center justify-center gap-0.5 sm:col-span-4">
+                <p className="text-[8px] uppercase tracking-tighter opacity-50 sm:text-[10px]">Capacity</p>
+                <WidgetInfoButton explainerId="PULSE-003" momentTypeCode={MOMENT_TYPE} />
+              </div>
               {[
                 { v: metrics.hero_stats.connections, l: relationshipsPulseCopy.statConnections },
                 { v: metrics.hero_stats.support, l: relationshipsPulseCopy.statSupport },
@@ -156,7 +172,7 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
         <RelationshipsRecentActivityList items={metrics.recent_activity} emptyMessage={relationshipsPulseCopy.recentActivityEmpty} onViewAll={onViewAllActivity} onEditActivity={onEditActivity} />
 
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{relationshipsPulseCopy.financialTitle}</h3>
+          <PersonalWidgetSectionHeader title={relationshipsPulseCopy.financialTitle} explainerId="PULSE-006" momentTypeCode={MOMENT_TYPE} />
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <div className="mx-auto sm:mx-0">
               <DonutChart segments={metrics.financial_segments} fallbackTotalMinor={metrics.spend_minor} />
@@ -181,9 +197,7 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
         </section>
 
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>
-            {relationshipsPulseCopy.trendsTitle}
-          </h3>
+          <PersonalWidgetSectionHeader title={relationshipsPulseCopy.trendsTitle} explainerId="PULSE-007" momentTypeCode={MOMENT_TYPE} />
           <RelationshipsTrendLineChart
             trust={metrics.trends_30d?.trust ?? []}
             connection={metrics.trends_30d?.connection ?? []}
@@ -191,9 +205,7 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
         </section>
 
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginBottom: 12 }}>
-            {relationshipsPulseCopy.gaugesTitle}
-          </h3>
+          <PersonalWidgetSectionHeader title={relationshipsPulseCopy.gaugesTitle} explainerId="PULSE-008" momentTypeCode={MOMENT_TYPE} className="mb-3" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {metrics.gauges.map((g) => (
               <ArcGauge
@@ -212,7 +224,10 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
           className="transition-transform hover:scale-[1.02] active:scale-95"
           innerStyle={{ borderColor: "rgba(108, 78, 242, 0.4)" }}
         >
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest opacity-70">{relationshipsPulseCopy.recommendationBadge}</p>
+          <div className="mb-2 flex items-center gap-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">{relationshipsPulseCopy.recommendationBadge}</p>
+            <WidgetInfoButton explainerId="PULSE-009" momentTypeCode={MOMENT_TYPE} />
+          </div>
           <h3 style={{ ...personalTypography.sectionHeader, fontSize: 20 }}>{metrics.opportunity.title}</h3>
           <p style={{ ...personalTypography.bodyMd, opacity: 0.8, marginTop: 8 }}>{metrics.opportunity.body}</p>
           <div className="mt-3 flex gap-2">
@@ -252,17 +267,25 @@ export function RelationshipsPulse({ pulse, bottomPadding = 0, hideScreenHeader 
         <PersonalPremiumGlowSection tokens={tokens} cornerRadius={16}>
           <div className="flex gap-4 p-5">
             <Brain size={28} style={{ color: colors.brandPrimary }} />
-            <p style={{ ...personalTypography.bodyMd, lineHeight: 1.5 }}>
-              <span className="font-bold uppercase tracking-wider opacity-70">{relationshipsPulseCopy.intelligenceTitle}: </span>
-              {metrics.intelligence.body}
-            </p>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-0.5">
+                <span className="font-bold uppercase tracking-wider opacity-70">{relationshipsPulseCopy.intelligenceTitle}</span>
+                <WidgetInfoButton explainerId="PULSE-011" momentTypeCode={MOMENT_TYPE} />
+              </div>
+              <p style={{ ...personalTypography.bodyMd, lineHeight: 1.5 }}>
+                {metrics.intelligence.body}
+              </p>
+            </div>
           </div>
         </PersonalPremiumGlowSection>
 
         <section>
-          <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-widest opacity-60">
-            {relationshipsPulseCopy.quickCaptureTitle}
-          </p>
+          <div className="mb-3 flex items-center justify-center gap-0.5">
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest opacity-60">
+              {relationshipsPulseCopy.quickCaptureTitle}
+            </p>
+            <WidgetInfoButton explainerId="PULSE-010" momentTypeCode={MOMENT_TYPE} />
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-between sm:gap-2">
             {metrics.quick_capture_actions.map((action) => (
               <button

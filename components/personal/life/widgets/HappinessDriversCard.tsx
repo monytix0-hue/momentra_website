@@ -18,7 +18,7 @@ export function HappinessDriversCard({ happiness }: HappinessDriversCardProps) {
 
   return (
     <LifeCard>
-      <LifeSectionLabel>{personalLifeCopy.sections.happiness}</LifeSectionLabel>
+      <LifeSectionLabel explainerId="LIFE-009">{personalLifeCopy.sections.happiness}</LifeSectionLabel>
       <div className="mt-4 grid gap-6 md:grid-cols-2">
         <div>
           <span style={{ ...personalTypography.microLabel, fontWeight: 700, color: colors.success }}>

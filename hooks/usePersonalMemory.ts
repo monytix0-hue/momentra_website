@@ -14,6 +14,7 @@ import {
   SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
 } from "@/lib/cache/snapshotRebuilding";
 import {
+  loadMemoryFromDisk,
   persistMemory,
   usePersonalSessionStore,
 } from "@/stores/personalSessionStore";
@@ -44,13 +45,27 @@ export function getPersonalMemoryCache(
   return cache.get(typeCode)?.data ?? null;
 }
 
+function getInitialPersonalMemory(typeCode: PersonalMomentTypeCode): CacheEntry | null {
+  const memoryValue = cache.get(typeCode);
+  if (memoryValue) return memoryValue;
+  const diskValue = loadMemoryFromDisk(typeCode);
+  if (diskValue) {
+    const entry = { data: diskValue, at: Date.now() };
+    cache.set(typeCode, entry);
+    return entry;
+  }
+  return null;
+}
+
 export function usePersonalMemory(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
   const generation = usePersonalSessionStore().generation;
-  const cached = cache.get(momentTypeCode);
-  const [memory, setMemory] = useState<PersonalMemoryResponse | null>(cached?.data ?? null);
-  const [loading, setLoading] = useState(!cached);
+  const initialCache = getInitialPersonalMemory(momentTypeCode);
+  const [memory, setMemory] = useState<PersonalMemoryResponse | null>(
+    () => initialCache?.data ?? null,
+  );
+  const [loading, setLoading] = useState(() => !initialCache?.data);
   const [refreshing, setRefreshing] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +74,10 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
   const load = useCallback(
     async (force = false) => {
       const gen = ++loadGeneration.current;
-      const entry = cache.get(momentTypeCode);
+      let entry = cache.get(momentTypeCode);
+      if (!entry && !force) {
+        entry = getInitialPersonalMemory(momentTypeCode) ?? undefined;
+      }
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
       const staleUsable = !force && entry && age < STALE_TTL_MS;
@@ -70,14 +88,10 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
         setRebuilding(false);
         return;
       }
-      if (staleUsable && entry) {
-        setMemory(entry.data);
-        setRefreshing(true);
-        setLoading(false);
-      } else if (entry && !force) {
+      if (entry) {
         setMemory(entry.data);
         setLoading(false);
-        setRefreshing(false);
+        setRefreshing(Boolean(staleUsable) || age >= TTL_MS);
       } else {
         setLoading(true);
         setRefreshing(false);
@@ -114,7 +128,9 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
             continue;
           }
           setRebuilding(false);
-          setError(err instanceof Error ? err.message : "Failed to load memory");
+          if (!entry) {
+            setError(err instanceof Error ? err.message : "Failed to load memory");
+          }
           break;
         }
       }
@@ -134,9 +150,9 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
       setRebuilding(false);
       return;
     }
-    const entry = cache.get(momentTypeCode);
+    const entry = getInitialPersonalMemory(momentTypeCode);
     setMemory(entry?.data ?? null);
-    setLoading(!entry);
+    setLoading(!entry?.data);
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
@@ -144,7 +160,7 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalMemoryCache(momentTypeCode);
-    return load(true);
+    return load(false);
   }, [load, momentTypeCode]);
 
   return {
@@ -155,6 +171,7 @@ export function usePersonalMemory(options?: { enabled?: boolean }) {
     error,
     momentTypeCode,
     reload: () => load(true),
+    revalidate: () => load(false),
     refreshAfterSetup,
   };
 }

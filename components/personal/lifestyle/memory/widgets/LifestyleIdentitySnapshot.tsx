@@ -15,7 +15,7 @@ export function LifestyleIdentitySnapshot({ snapshot }: Props) {
   return (
     <section style={personalGlowWrapperStyle(tokens)}>
       <div className="relative overflow-hidden" style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-        <LifestyleSectionBadge index={1} label="Identity Snapshot" accent />
+        <LifestyleSectionBadge index={1} label="Identity Snapshot" accent explainerId="MEMORY-001" />
         <h1 className="mb-1 text-[28px] font-bold leading-tight" style={{ color: colors.brandPrimary }}>
           {snapshot.title}
         </h1>

@@ -6,6 +6,7 @@ import type { PersonalLifeOpsTurningPoint } from "@/lib/api/personal";
 import { fbMomentsCopy } from "@/lib/personal/future_building/moments/fbMomentsCopy";
 import { FbSectionBadge } from "@/components/personal/future_building/moments/widgets/FbSectionBadge";
 import { Award, BookOpen, Flag } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const BORDER_COLORS = ["#a855f7", "#22d3ee"];
 const ICONS = [BookOpen, Award, Flag];
@@ -24,6 +25,7 @@ export function FbTurningPointsList({ points }: Props) {
           <h2 style={{ ...personalTypography.labelSm, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6 }}>
             {fbMomentsCopy.turningPointsTitle}
           </h2>
+          <WidgetInfoButton explainerId="MOMENT-TP" momentTypeCode="FUTURE_BUILDING" />
         </div>
         <button type="button" style={{ fontSize: 12, color: colors.brandPrimary, background: "none", border: "none" }}>
           {fbMomentsCopy.viewAll}

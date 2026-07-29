@@ -48,24 +48,24 @@ export function RelationshipsMemory({ memory, bottomPadding = 0, hideScreenHeade
           <h1 style={{ ...personalTypography.screenTitle, color: colors.brandPrimary }}>{copy.screenTitle}</h1>
         </header>
         ) : null}
-        <IdentitySnapshotSection snapshot={metrics.identity_snapshot} copy={copy} />
-        <CorePatternSection pattern={metrics.core_pattern} copy={copy} />
+        <IdentitySnapshotSection snapshot={metrics.identity_snapshot} copy={copy} momentTypeCode="RELATIONSHIPS" />
+        <CorePatternSection pattern={metrics.core_pattern} copy={copy} momentTypeCode="RELATIONSHIPS" />
         <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: tokens.spacing.gutter }}>
-          <DriversSection drivers={metrics.best_drivers} variant="best" copy={copy} />
-          <DriversSection drivers={metrics.lowest_drivers} variant="lowest" copy={copy} />
+          <DriversSection drivers={metrics.best_drivers} variant="best" copy={copy} momentTypeCode="RELATIONSHIPS" />
+          <DriversSection drivers={metrics.lowest_drivers} variant="lowest" copy={copy} momentTypeCode="RELATIONSHIPS" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-5" style={{ gap: tokens.spacing.gutter }}>
           <div className="sm:col-span-3">
-            <RoiAnalysisSection roi={roiAnalysis} />
+            <RoiAnalysisSection roi={roiAnalysis} momentTypeCode="RELATIONSHIPS" />
           </div>
           <div className="sm:col-span-2">
-            <EmotionalDnaSection dna={metrics.emotional_dna} copy={copy} />
+            <EmotionalDnaSection dna={metrics.emotional_dna} copy={copy} momentTypeCode="RELATIONSHIPS" />
           </div>
         </div>
-        <BehavioralPatternsSection patterns={metrics.behavioral_patterns} copy={copy} />
-        <EvolutionTimelineSection phases={metrics.evolution_timeline} copy={copy} />
-        <AiInterpretationSection interpretation={metrics.ai_interpretation} copy={copy} />
-        <GrowthEdgeSection edge={metrics.next_growth_edge} copy={copy} />
+        <BehavioralPatternsSection patterns={metrics.behavioral_patterns} copy={copy} momentTypeCode="RELATIONSHIPS" />
+        <EvolutionTimelineSection phases={metrics.evolution_timeline} copy={copy} momentTypeCode="RELATIONSHIPS" />
+        <AiInterpretationSection interpretation={metrics.ai_interpretation} copy={copy} momentTypeCode="RELATIONSHIPS" />
+        <GrowthEdgeSection edge={metrics.next_growth_edge} copy={copy} momentTypeCode="RELATIONSHIPS" />
       </div>
     </div>
   );

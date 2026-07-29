@@ -25,7 +25,7 @@ export function LifestyleJourneyHero({ hero }: Props) {
   return (
     <section style={personalGlowWrapperStyle(tokens)}>
       <div style={{ ...personalGlassCardStyle(tokens), borderRadius: 24, padding: 16 }}>
-        <LifestyleSectionBadge index={1} label="Journey Hero" accent />
+        <LifestyleSectionBadge index={1} label="Journey Hero" accent explainerId="MOMENT-001" />
 
         <div className="mb-6 flex flex-col items-center text-center">
           <span className="mb-2 text-xs uppercase tracking-widest opacity-60">{lifestyleMomentsCopy.journeyHeroTitle}</span>

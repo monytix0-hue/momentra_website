@@ -7,11 +7,11 @@ import type { PersonalLifestyleRoiAnalysis } from "@/lib/api/personal";
 import { lifestyleMemoryCopy } from "@/lib/personal/lifestyle/memory/lifestyleMemoryCopy";
 import { TrendingUp } from "lucide-react";
 
-type Props = { roi?: PersonalLifestyleRoiAnalysis | null };
+type Props = { roi?: PersonalLifestyleRoiAnalysis | null; momentTypeCode?: string | null };
 
 const BAR_COLORS = ["primary", "secondary", "tertiary"] as const;
 
-export function RoiAnalysisSection({ roi }: Props) {
+export function RoiAnalysisSection({ roi, momentTypeCode = "LIFESTYLE" }: Props) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   if (!roi) return null;
@@ -19,7 +19,7 @@ export function RoiAnalysisSection({ roi }: Props) {
 
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-      <LifestyleSectionBadge index={5} label={lifestyleMemoryCopy.sectionLabels.roiAnalysis} />
+      <LifestyleSectionBadge index={5} label={lifestyleMemoryCopy.sectionLabels.roiAnalysis} explainerId="MEMORY-ROI" momentTypeCode={momentTypeCode} />
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-lg font-semibold">{roi.title}</h4>

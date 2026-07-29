@@ -4,6 +4,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalLifeOpsEmotionalDna } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type Props = { dna: PersonalLifeOpsEmotionalDna };
 
@@ -14,9 +15,12 @@ export function FbEmotionalDnaSection({ dna }: Props) {
 
   return (
     <section className="flex-1" style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-      <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7, display: "block", marginBottom: 16 }}>
-        {fbMemoryCopy.sections.emotionalDna}
-      </span>
+      <div className="mb-4 flex items-center gap-0.5">
+        <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+          {fbMemoryCopy.sections.emotionalDna}
+        </span>
+        <WidgetInfoButton explainerId="MEMORY-007" momentTypeCode="FUTURE_BUILDING" />
+      </div>
       <div className="flex flex-col items-center">
         <div
           className="relative flex size-24 items-center justify-center rounded-full border-8"

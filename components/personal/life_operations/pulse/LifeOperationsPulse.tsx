@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalAtmosphericOrbs } from "@/components/personal/empty/shared/PersonalAtmosphericOrbs";
 import {
@@ -13,7 +13,6 @@ import {
 } from "@/components/personal/empty/shared/emptyStyles";
 import { PersonalPremiumGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
 import { ArcGauge } from "@/components/personal/life_operations/pulse/widgets/ArcGauge";
-import { RecentActivityList } from "@/components/personal/life_operations/pulse/widgets/RecentActivityList";
 import { DonutChart } from "@/components/personal/life_operations/pulse/widgets/DonutChart";
 import { DriverImpactBar } from "@/components/personal/life_operations/pulse/widgets/DriverImpactBar";
 import { AxisHealthDonut } from "@/components/personal/life_operations/pulse/widgets/AxisHealthDonut";
@@ -33,7 +32,20 @@ import {
   resolveExpenseCategoryIcon,
   resolveImpactIcon,
 } from "@/lib/personal/life_operations/expenseCategoryIcons";
+import {
+  formatRelativeTime,
+  recentActivityContextLine,
+  recentActivityMoodLabel,
+  recentActivityPrimaryMetric,
+  recentActivityTitle,
+} from "@/lib/personal/life_operations/pulse/recentActivityDisplay";
 import { Brain, Sparkles } from "lucide-react";
+import {
+  PersonalWidgetSectionHeader,
+  WidgetInfoButton,
+} from "@/components/personal/shared/WidgetInfoButton";
+
+const MOMENT_TYPE = "LIFE_OPERATIONS";
 
 type LifeOperationsPulseProps = {
   pulse: PersonalLifeOperationsPulse;
@@ -45,23 +57,6 @@ type LifeOperationsPulseProps = {
   /** Called once when metrics are missing so parent can force-refresh. */
   onRetryLoad?: () => void;
 };
-
-function SectionHeader({ title, tokens }: { title: string; tokens: ReturnType<typeof useThemeTokens> }) {
-  return (
-    <h3
-      style={{
-        ...personalTypography.sectionHeader,
-        color: tokens.colors.textPrimary,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        fontSize: 11,
-        opacity: 0.7,
-      }}
-    >
-      {title}
-    </h3>
-  );
-}
 
 function impactColor(direction: string | null | undefined, colors: ReturnType<typeof useThemeTokens>["colors"]) {
   const d = (direction ?? "").toLowerCase();
@@ -110,6 +105,7 @@ export function LifeOperationsPulse({
   const reducedMotion = useReducedMotion();
   const metrics = pulse.metrics;
   const didAutoRetry = useRef(false);
+  const [, setRelativeTick] = useState(0);
 
   useEffect(() => {
     if (metrics || !onRetryLoad || didAutoRetry.current) return;
@@ -117,6 +113,11 @@ export function LifeOperationsPulse({
     const timer = window.setTimeout(() => onRetryLoad(), 400);
     return () => window.clearTimeout(timer);
   }, [metrics, onRetryLoad]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setRelativeTick((n) => n + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   if (!metrics) {
     return (
@@ -183,9 +184,12 @@ export function LifeOperationsPulse({
           <div style={heroInnerStyle}>
             <div className="mb-6 flex items-start justify-between">
               <div>
-                <h2 style={{ ...personalTypography.heroTitle, color: colors.textPrimary, fontSize: 22 }}>
-                  {lifeOpsPulseCopy.opsIndexTitle}
-                </h2>
+                <div className="flex items-center gap-0.5">
+                  <h2 style={{ ...personalTypography.heroTitle, color: colors.textPrimary, fontSize: 22 }}>
+                    {lifeOpsPulseCopy.opsIndexTitle}
+                  </h2>
+                  <WidgetInfoButton explainerId="PULSE-001" momentTypeCode={MOMENT_TYPE} />
+                </div>
                 <p style={{ fontSize: 48, fontWeight: 800, lineHeight: 1, color: colors.textPrimary }}>
                   {dataSufficient && metrics.ops_index != null ? (
                     <>
@@ -224,6 +228,9 @@ export function LifeOperationsPulse({
               </span>
             </div>
 
+            <div className="mb-1 flex justify-end">
+              <WidgetInfoButton explainerId="PULSE-002" momentTypeCode={MOMENT_TYPE} />
+            </div>
             <AxisHealthDonut
               opsIndex={metrics.ops_index}
               axisScores={metrics.axis_scores}
@@ -231,6 +238,10 @@ export function LifeOperationsPulse({
             />
 
             <div className="grid grid-cols-2 gap-3 border-t pt-4 sm:grid-cols-4" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+              <div className="col-span-2 flex items-center gap-0.5 sm:col-span-4">
+                <p style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.5 }}>Capacity</p>
+                <WidgetInfoButton explainerId="PULSE-003" momentTypeCode={MOMENT_TYPE} />
+              </div>
               <div>
                 <p style={{ ...personalTypography.labelSm, textTransform: "uppercase", opacity: 0.5 }}>{lifeOpsPulseCopy.capacityMonthly}</p>
                 <p className="text-lg font-semibold sm:text-xl" style={{ color: colors.textPrimary }}>
@@ -270,16 +281,6 @@ export function LifeOperationsPulse({
         </MotionSection>
 
         <MotionSection>
-        <RecentActivityList
-          items={pulse.dashboard_card?.recent_items ?? []}
-          emptyMessage={pulse.dashboard_card?.empty_recent_message}
-          onViewAll={onViewAllActivity}
-          onEditActivity={onEditActivity}
-        />
-
-        </MotionSection>
-
-        <MotionSection>
         <section
           className="flex flex-wrap justify-evenly gap-2 px-3 py-2"
           style={{ ...personalGlassCardStyle(tokens), borderRadius: 16 }}
@@ -295,12 +296,17 @@ export function LifeOperationsPulse({
 
         <MotionSection>
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{lifeOpsPulseCopy.recentActivityFeedTitle}</h3>
-            <button type="button" onClick={onViewAllActivity} style={{ ...personalTypography.labelSm, fontWeight: 700, color: colors.brandPrimary, background: "none", border: "none" }}>
-              {lifeOpsPulseCopy.viewAll}
-            </button>
-          </div>
+          <PersonalWidgetSectionHeader
+            title={lifeOpsPulseCopy.recentActivityFeedTitle}
+            explainerId="PULSE-004"
+            momentTypeCode={MOMENT_TYPE}
+            className="mb-2"
+            trailing={
+              <button type="button" onClick={onViewAllActivity} style={{ ...personalTypography.labelSm, fontWeight: 700, color: colors.brandPrimary, background: "none", border: "none" }}>
+                {lifeOpsPulseCopy.viewAll}
+              </button>
+            }
+          />
           {(pulse.dashboard_card?.recent_items ?? []).length > 0 ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {(pulse.dashboard_card?.recent_items ?? []).slice(0, 4).map((item) => {
@@ -310,29 +316,43 @@ export function LifeOperationsPulse({
                   item.category_code,
                   item.subcategory_code,
                 );
-                const ImpactIcon = item.impact_label ? resolveImpactIcon(item.impact_label) : null;
-                const accent = impactColor(item.impact_direction, colors);
                 const catColor =
                   resolveExpenseCategoryColor(item.color, item.category_code, item.subcategory_code) ||
-                  accent;
+                  colors.brandPrimary;
+                const context = recentActivityContextLine(item);
+                const mood = recentActivityMoodLabel(item);
+                const metric = recentActivityPrimaryMetric(item);
                 return (
                   <div
                     key={item.id}
-                    className="flex items-start gap-3 rounded-xl border p-2"
+                    className="flex items-center gap-3 rounded-xl border p-2.5"
                     style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.05)" }}
                   >
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${catColor}33` }}>
-                      <Icon size={18} color={catColor} />
+                    <div
+                      className="flex size-9 shrink-0 items-center justify-center rounded-xl"
+                      style={{ background: `linear-gradient(160deg, ${catColor}55 0%, ${catColor}22 100%)` }}
+                    >
+                      <Icon size={16} color={catColor} aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p style={{ ...personalTypography.labelSm, fontSize: 10, opacity: 0.6 }}>{item.relative_time}</p>
-                      <p style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, lineHeight: 1.25 }}>{item.subtitle}</p>
-                      {item.impact_label ? (
-                        <p className="mt-0.5 inline-flex items-center gap-1" style={{ fontSize: 9, color: accent }}>
-                          {ImpactIcon ? <ImpactIcon size={10} aria-hidden /> : null}
-                          {item.impact_label}
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="truncate" style={{ fontSize: 12, fontWeight: 700 }}>
+                          {recentActivityTitle(item)}
                         </p>
-                      ) : null}
+                        {metric ? (
+                          <span className="shrink-0" style={{ fontSize: 12, fontWeight: 700 }}>
+                            {metric}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 flex items-center justify-between gap-2">
+                        <p className="truncate" style={{ fontSize: 10, opacity: 0.65 }}>
+                          {[context, mood].filter(Boolean).join(" · ")}
+                        </p>
+                        <span className="shrink-0" style={{ fontSize: 10, opacity: 0.45 }}>
+                          {formatRelativeTime(item.occurred_at)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -348,7 +368,7 @@ export function LifeOperationsPulse({
 
         <MotionSection>
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <SectionHeader title={lifeOpsPulseCopy.financialTitle} tokens={tokens} />
+          <PersonalWidgetSectionHeader title={lifeOpsPulseCopy.financialTitle} explainerId="PULSE-006" momentTypeCode={MOMENT_TYPE} uppercase />
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <div className="mx-auto sm:mx-0">
               <DonutChart
@@ -397,7 +417,7 @@ export function LifeOperationsPulse({
 
         <MotionSection>
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <SectionHeader title={lifeOpsPulseCopy.trendsTitle} tokens={tokens} />
+          <PersonalWidgetSectionHeader title={lifeOpsPulseCopy.trendsTitle} explainerId="PULSE-007" momentTypeCode={MOMENT_TYPE} uppercase />
           <div className="mt-3">
             <TrendLineChart recovery={metrics.trends_30d.recovery} pressure={metrics.trends_30d.pressure} />
           </div>
@@ -406,7 +426,7 @@ export function LifeOperationsPulse({
 
         <MotionSection>
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <SectionHeader title={lifeOpsPulseCopy.scoreDriversTitle} tokens={tokens} />
+          <PersonalWidgetSectionHeader title={lifeOpsPulseCopy.scoreDriversTitle} explainerId="PULSE-002" momentTypeCode={MOMENT_TYPE} uppercase />
           {metrics.score_drivers.map((driver) => {
             const barColor = driver.impact < 0 ? colors.error : colors.brandPrimary;
             return (
@@ -426,7 +446,7 @@ export function LifeOperationsPulse({
 
         <MotionSection>
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12, textAlign: "center" }}>
-          <SectionHeader title={lifeOpsPulseCopy.stateGaugesTitle} tokens={tokens} />
+          <PersonalWidgetSectionHeader title={lifeOpsPulseCopy.stateGaugesTitle} explainerId="PULSE-008" momentTypeCode={MOMENT_TYPE} uppercase />
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {metrics.gauges.map((gauge) => (
               <ArcGauge
@@ -453,9 +473,12 @@ export function LifeOperationsPulse({
           >
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="min-w-0 flex-1">
-                <p style={{ ...personalTypography.labelSm, color: colors.brandPrimary, fontWeight: 700, textTransform: "uppercase" }}>
-                  {lifeOpsPulseCopy.highPriorityOpportunity}
-                </p>
+                <div className="flex items-center gap-0.5">
+                  <p style={{ ...personalTypography.labelSm, color: colors.brandPrimary, fontWeight: 700, textTransform: "uppercase" }}>
+                    {lifeOpsPulseCopy.highPriorityOpportunity}
+                  </p>
+                  <WidgetInfoButton explainerId="PULSE-009" momentTypeCode={MOMENT_TYPE} />
+                </div>
                 <h3 style={{ fontSize: 24, fontWeight: 900, color: colors.textPrimary }}>
                   {lifeOpsPulseCopy.opportunityTitles[metrics.opportunity.priority_id] ?? metrics.opportunity.priority_id}
                 </h3>
@@ -523,9 +546,12 @@ export function LifeOperationsPulse({
               <Brain size={18} color="#fff" />
             </div>
             <div>
-              <p style={{ ...personalTypography.breadcrumb, color: colors.brandPrimary, opacity: 0.6 }}>
-                {lifeOpsPulseCopy.intelligenceInsightTitle} • {lifeOpsPulseCopy.intelligenceActive}
-              </p>
+              <div className="flex items-center gap-0.5">
+                <p style={{ ...personalTypography.breadcrumb, color: colors.brandPrimary, opacity: 0.6 }}>
+                  {lifeOpsPulseCopy.intelligenceInsightTitle} • {lifeOpsPulseCopy.intelligenceActive}
+                </p>
+                <WidgetInfoButton explainerId="PULSE-011" momentTypeCode={MOMENT_TYPE} />
+              </div>
               <p className="mt-0.5" style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, fontSize: 15 }}>
                 {lifeOpsPulseCopy.intelligencePatterns[metrics.intelligence.pattern_id] ??
                   metrics.intelligence.pattern_id}
@@ -537,7 +563,7 @@ export function LifeOperationsPulse({
 
         <MotionSection>
         <section>
-          <SectionHeader title={lifeOpsPulseCopy.quickAddTitle} tokens={tokens} />
+          <PersonalWidgetSectionHeader title={lifeOpsPulseCopy.quickAddTitle} explainerId="PULSE-010" momentTypeCode={MOMENT_TYPE} uppercase />
           <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
             {lifeOpsPulseCopy.quickAddActions.map((label, index) => {
               const Icon = quickAddIcon(index);

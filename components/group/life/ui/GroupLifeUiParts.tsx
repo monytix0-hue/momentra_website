@@ -5,6 +5,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { GroupLifeGraphVisual } from "@/components/group/shared/GroupLifeGraphVisual";
 import { ExperienceGlassCard } from "@/components/group/active/experience/ui/ExperienceGlassCard";
 import { MaterialIcon } from "@/components/group/active/experience/ui/MaterialIcon";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { groupSectionLabel } from "@/lib/group/groupTypography";
 import type {
   GroupLifeBalanceDimension,
@@ -37,12 +38,26 @@ export function lifeColorToken(tokens: ContextThemeTokens, token: string): strin
   }
 }
 
-function SectionHeading({ children }: { children: ReactNode }) {
+function SectionHeading({
+  children,
+  explainerId,
+}: {
+  children: ReactNode;
+  explainerId?: string;
+}) {
   const tokens = useThemeTokens();
   return (
-    <h3 className="text-[11px] font-bold uppercase tracking-widest opacity-80" style={{ color: tokens.colors.textSecondary }}>
-      {children}
-    </h3>
+    <div className="flex items-center gap-0.5">
+      <h3
+        className="text-[11px] font-bold uppercase tracking-widest opacity-80"
+        style={{ color: tokens.colors.textSecondary }}
+      >
+        {children}
+      </h3>
+      {explainerId ? (
+        <WidgetInfoButton explainerId={explainerId} domain="group" />
+      ) : null}
+    </div>
   );
 }
 
@@ -74,7 +89,7 @@ export function GroupLifeBalanceSection({ dimensions }: { dimensions: GroupLifeB
 
   return (
     <section className="space-y-4">
-      <SectionHeading>Balance Model</SectionHeading>
+      <SectionHeading explainerId="LIFE-002">Balance Model</SectionHeading>
       <ExperienceGlassCard>
         <div className="space-y-4">
           {dimensions.map((dim) => {
@@ -105,7 +120,7 @@ export function GroupLifeDriversSection({ drivers }: { drivers: GroupLifeDriver[
 
   return (
     <section className="space-y-3">
-      <SectionHeading>What Drives Your Group</SectionHeading>
+      <SectionHeading explainerId="LIFE-003">What Drives Your Group</SectionHeading>
       {drivers.map((driver) => {
         const color = lifeColorToken(tokens, driver.accent_token);
         return (
@@ -188,8 +203,9 @@ export function GroupLifeAlertsSection({
           }}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-bold uppercase" style={{ color: tokens.colors.brandPrimary }}>
+            <span className="flex items-center gap-0.5 text-[9px] font-bold uppercase" style={{ color: tokens.colors.brandPrimary }}>
               Highest Group Leverage
+              <WidgetInfoButton explainerId="LIFE-005" domain="group" />
             </span>
             <MaterialIcon name="star" className="text-sm" style={{ color: tokens.colors.brandPrimary }} />
           </div>
@@ -245,7 +261,7 @@ export function GroupLifeEvolutionSection({ series }: { series: GroupLifeEvoluti
 
   return (
     <section className="space-y-3">
-      <SectionHeading>Evolution</SectionHeading>
+      <SectionHeading explainerId="LIFE-006">Evolution</SectionHeading>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {series.map((item) => {
           const color = lifeColorToken(tokens, item.color_token);
@@ -273,7 +289,7 @@ export function GroupLifeMonthlySection({ changes }: { changes: GroupLifeMonthly
 
   return (
     <section className="space-y-3">
-      <SectionHeading>What Changed This Month</SectionHeading>
+      <SectionHeading explainerId="LIFE-007">What Changed This Month</SectionHeading>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {changes.map((change) => {
           const color = lifeColorToken(tokens, change.color_token);
@@ -300,7 +316,7 @@ export function GroupLifeJourneySection({ journey }: { journey: GroupLifeJourney
 
   return (
     <section className="space-y-4">
-      <SectionHeading>Group Journey</SectionHeading>
+      <SectionHeading explainerId="LIFE-008">Group Journey</SectionHeading>
       <div className="relative flex justify-between px-2">
         <div className="absolute left-0 top-4 z-0 h-px w-full bg-white/10" />
         {journey.map((item) => {
@@ -340,7 +356,10 @@ export function GroupLifeIntelligenceSection({ intelligence }: { intelligence: G
           <div className="rounded-xl p-2" style={{ background: `${accent}22`, color: accent }}>
             <MaterialIcon name="psychology" style={{ fontVariationSettings: "'FILL' 1" }} />
           </div>
-          <span style={groupSectionLabel(tokens)}>Momentra Intelligence</span>
+          <span className="flex items-center gap-0.5" style={groupSectionLabel(tokens)}>
+            Momentra Intelligence
+            <WidgetInfoButton explainerId="LIFE-009" domain="group" />
+          </span>
         </div>
         <span className="rounded-full px-2 py-1 text-[9px] font-bold" style={{ background: `${accent}22`, color: accent }}>
           {intelligence.confidence_label}

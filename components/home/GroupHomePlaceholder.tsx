@@ -277,6 +277,23 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
   const visibleTab = selectedTab === "add" ? previousTab : selectedTab;
 
+  // Lazy keep-alive: mount selected tab first; keep after first visit; never auto-mount off-tab.
+  const [mountedTabs, setMountedTabs] = useState(() => new Set([visibleTab]));
+
+  useEffect(() => {
+    setMountedTabs((prev) => {
+      if (prev.has(visibleTab)) return prev;
+      const next = new Set(prev);
+      next.add(visibleTab);
+      return next;
+    });
+    try {
+      performance.mark("selected-tab-visible");
+    } catch {
+      /* ignore */
+    }
+  }, [visibleTab]);
+
   const tabResolved = resolveScreen("group", visibleTab, bootstrap);
 
 
@@ -669,110 +686,155 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
 
 
-  function renderActiveExperience() {
+  function renderKeepAliveTabs(panels: {
+    pulse: ReactNode;
+    moments: ReactNode;
+    memory: ReactNode;
+    life: ReactNode;
+  }) {
+    const tabKeys = ["pulse", "moments", "memory", "life"] as const;
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {tabKeys.map((tab) => {
+          if (!mountedTabs.has(tab)) return null;
+          const active = visibleTab === tab;
+          return (
+            <section
+              key={tab}
+              hidden={!active}
+              aria-hidden={!active}
+              className={active ? "flex min-h-0 flex-1 flex-col" : undefined}
+            >
+              {panels[tab]}
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
 
+  function renderActiveExperience() {
     if (!activeMomentId) return renderActivePlaceholder();
 
     const onQuickAdd = openQuickAdd;
+    const life = (
+      <GroupLifeCommandCenter
+        bottomPadding={bottomPadding}
+        onCreateMomentType={(type) => void handleCreateTypeSelect(type as GroupCreateType)}
+      />
+    );
 
-    switch (visibleTab) {
-
-      case "moments":
-
-        return <ActiveMoments momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-      case "memory":
-
-        return <ActiveMemory momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-      case "life":
-
-        return <GroupLifeCommandCenter bottomPadding={bottomPadding} onCreateMomentType={(type) => void handleCreateTypeSelect(type as GroupCreateType)} />;
-
-      default:
-
-        return (
-          <ExperiencePulse
-            momentId={activeMomentId}
-            onQuickAdd={onQuickAdd}
-            bottomPadding={bottomPadding}
-            reloadKey={tripMomentsReloadKey}
-            onViewAllActivity={() => setShowLivingActivity(true)}
-            onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
-          />
-        );
-
-    }
-
+    return renderKeepAliveTabs({
+      pulse: (
+        <ExperiencePulse
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+          onViewAllActivity={() => setShowLivingActivity(true)}
+          onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
+        />
+      ),
+      moments: (
+        <ActiveMoments
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      memory: (
+        <ActiveMemory
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      life,
+    });
   }
-
-
 
   function renderActivePurchase() {
-
     if (!activeMomentId) return renderActivePlaceholder();
 
     const onQuickAdd = openQuickAdd;
+    const life = (
+      <GroupLifeCommandCenter
+        bottomPadding={bottomPadding}
+        onCreateMomentType={(type) => void handleCreateTypeSelect(type as GroupCreateType)}
+      />
+    );
 
-    switch (visibleTab) {
-
-      case "moments":
-
-        return <SharedPurchaseMoments momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-      case "memory":
-
-        return <SharedPurchaseMemory momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-      case "life":
-
-        return <GroupLifeCommandCenter bottomPadding={bottomPadding} onCreateMomentType={(type) => void handleCreateTypeSelect(type as GroupCreateType)} />;
-
-      default:
-
-        return <SharedPurchasePulse momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-    }
-
+    return renderKeepAliveTabs({
+      pulse: (
+        <SharedPurchasePulse
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      moments: (
+        <SharedPurchaseMoments
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      memory: (
+        <SharedPurchaseMemory
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      life,
+    });
   }
 
-
-
   function renderActiveLiving() {
-
     if (!activeMomentId) return renderActivePlaceholder();
 
     const onQuickAdd = openQuickAdd;
+    const life = (
+      <GroupLifeCommandCenter
+        bottomPadding={bottomPadding}
+        onCreateMomentType={(type) => void handleCreateTypeSelect(type as GroupCreateType)}
+      />
+    );
 
-    switch (visibleTab) {
-
-      case "moments":
-
-        return <SharedLivingMoments momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-      case "memory":
-
-        return <SharedLivingMemory momentId={activeMomentId} onQuickAdd={onQuickAdd} bottomPadding={bottomPadding} reloadKey={tripMomentsReloadKey} />;
-
-      case "life":
-
-        return <GroupLifeCommandCenter bottomPadding={bottomPadding} onCreateMomentType={(type) => void handleCreateTypeSelect(type as GroupCreateType)} />;
-
-      default:
-
-        return (
-          <SharedLivingPulse
-            momentId={activeMomentId}
-            onQuickAdd={onQuickAdd}
-            bottomPadding={bottomPadding}
-            reloadKey={tripMomentsReloadKey}
-            onViewAllActivity={() => setShowLivingActivity(true)}
-            onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
-          />
-        );
-
-    }
-
+    return renderKeepAliveTabs({
+      pulse: (
+        <SharedLivingPulse
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+          onViewAllActivity={() => setShowLivingActivity(true)}
+          onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
+        />
+      ),
+      moments: (
+        <SharedLivingMoments
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      memory: (
+        <SharedLivingMemory
+          momentId={activeMomentId}
+          onQuickAdd={onQuickAdd}
+          bottomPadding={bottomPadding}
+          reloadKey={tripMomentsReloadKey}
+        />
+      ),
+      life,
+    });
   }
 
 

@@ -5,6 +5,7 @@ import { personalGlassCardStyle, personalTypography } from "@/components/persona
 import type { PersonalLifeOpsCorePattern } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
 import { ArrowRight, Brain, Rocket, Star } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const NODE_ICONS: Record<string, typeof Brain> = {
   school: Brain,
@@ -25,6 +26,7 @@ export function FbCorePatternSection({ pattern }: Props) {
         <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", opacity: 0.7 }}>
           {fbMemoryCopy.sections.corePattern}
         </span>
+        <WidgetInfoButton explainerId="MEMORY-002" momentTypeCode="FUTURE_BUILDING" />
         <span
           className="ml-auto rounded border px-2 py-0.5 text-[10px] font-bold"
           style={{ color: colors.brandSecondary, background: `${colors.brandSecondary}1a`, borderColor: `${colors.brandSecondary}33` }}

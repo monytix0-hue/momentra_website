@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
     exchange: "api/v1/auth/exchange",
     refresh: "api/v1/auth/refresh",
     logout: "api/v1/auth/logout",
+    logoutAll: "api/v1/auth/logout-all",
   },
   me: "api/v1/me",
   app: {

@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { Brain, ChevronDown } from "lucide-react";
 import { GroupSkeletonBlocks } from "@/components/group/shared/skeleton/GroupSkeletonBlocks";
 import { useGroupLivingMoments, useGroupMoments, useGroupPurchaseMoments } from "@/hooks/useGroupTabCache";
-import type {
-  LivingMomentsViewResponse,
-  PurchaseMomentsViewResponse,
-  TripMomentsViewResponse,
+import {
+  deleteLivingActivity,
+  deleteTripActivity,
+  type LivingMomentsViewResponse,
+  type PurchaseMomentsViewResponse,
+  type TripMomentsViewResponse,
 } from "@/lib/api/group";
+import { resolveMediaUrl } from "@/lib/api/client";
 import { ExperienceGlassCard } from "./ui/ExperienceGlassCard";
 import { MaterialIcon } from "./ui/MaterialIcon";
 import { SectionLabel, SunsetCta, ExperienceScrollShell } from "./ui/ExperienceUiParts";
@@ -32,6 +35,11 @@ export function ActiveMemory({
   const isPurchase = source === "purchase";
   const isLiving = source === "living";
   const isTrip = !isPurchase && !isLiving;
+  const momentTypeCode = isPurchase
+    ? "SHARED_PURCHASE"
+    : isLiving
+      ? "SHARED_LIVING"
+      : "SHARED_EXPERIENCE";
   const tripHook = useGroupMoments(isTrip ? momentId : null, isTrip);
   const purchaseHook = useGroupPurchaseMoments(isPurchase ? momentId : null, isPurchase);
   const livingHook = useGroupLivingMoments(isLiving ? momentId : null, isLiving);
@@ -45,10 +53,26 @@ export function ActiveMemory({
   const error = isPurchase ? purchaseHook.error : isLiving ? livingHook.error : tripHook.error;
   const reload = isPurchase ? purchaseHook.reload : isLiving ? livingHook.reload : tripHook.reload;
   const [showExtras, setShowExtras] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (reloadKey > 0) void reload();
   }, [reloadKey, reload]);
+
+  async function handleDeleteMemory(memoryId: string) {
+    if (!memoryId) return;
+    if (!window.confirm("Delete this memory photo? This cannot be undone.")) return;
+    setDeletingId(memoryId);
+    try {
+      if (isLiving) await deleteLivingActivity(momentId, memoryId);
+      else await deleteTripActivity(momentId, memoryId);
+      await reload();
+    } catch (err: unknown) {
+      window.alert(err instanceof Error ? err.message : "Could not delete memory photo");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (loading && !moments) {
     return (
@@ -135,7 +159,7 @@ export function ActiveMemory({
       </ExperienceGlassCard>
 
       <div>
-        <SectionLabel action="VIEW ALL">Memory Timeline</SectionLabel>
+        <SectionLabel action="VIEW ALL" explainerId="MEMORY-001" momentTypeCode={momentTypeCode}>Memory Timeline</SectionLabel>
         <ExperienceGlassCard>
           {timeline.length === 0 ? (
             <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
@@ -167,7 +191,7 @@ export function ActiveMemory({
       </div>
 
       <div>
-        <SectionLabel>Milestone Wall</SectionLabel>
+        <SectionLabel explainerId="MEMORY-002" momentTypeCode={momentTypeCode}>Milestone Wall</SectionLabel>
         {milestones.length === 0 ? (
           <ExperienceGlassCard>
             <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
@@ -197,7 +221,7 @@ export function ActiveMemory({
       </div>
 
       <div>
-        <SectionLabel>Memory Highlights</SectionLabel>
+        <SectionLabel explainerId="MEMORY-007" momentTypeCode={momentTypeCode}>Memory Highlights</SectionLabel>
         <ExperienceGlassCard>
           {highlights.length === 0 ? (
             <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
@@ -223,7 +247,7 @@ export function ActiveMemory({
       </div>
 
       <div>
-        <SectionLabel action={galleryOverflow > 0 ? `+${galleryOverflow} More` : undefined}>
+        <SectionLabel action={galleryOverflow > 0 ? `+${galleryOverflow} More` : undefined} explainerId="MEMORY-004" momentTypeCode={momentTypeCode}>
           Moments Captured
         </SectionLabel>
         <ExperienceGlassCard>
@@ -236,16 +260,27 @@ export function ActiveMemory({
               {gallery.slice(0, 3).map((item) => (
                 <div
                   key={item.memory_id ?? item.title}
-                  className="aspect-square overflow-hidden rounded-xl"
+                  className="relative aspect-square overflow-hidden rounded-xl"
                   style={{ background: tripStitchTheme.surfaceContainerHigh }}
                 >
                   {item.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={item.image_url}
+                      src={resolveMediaUrl(item.image_url) ?? item.image_url}
                       alt={item.title || "Memory"}
                       className="h-full w-full object-cover transition-transform duration-500 hover:scale-110"
                     />
+                  ) : null}
+                  {item.memory_id ? (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${item.title || "memory"}`}
+                      disabled={deletingId === item.memory_id}
+                      onClick={() => void handleDeleteMemory(item.memory_id!)}
+                      className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white transition-opacity hover:bg-black/75 disabled:opacity-50"
+                    >
+                      <MaterialIcon name="delete" className="text-[14px]" />
+                    </button>
                   ) : null}
                 </div>
               ))}
@@ -257,7 +292,7 @@ export function ActiveMemory({
                   {gallery[3].image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={gallery[3].image_url}
+                      src={resolveMediaUrl(gallery[3].image_url) ?? gallery[3].image_url}
                       alt={gallery[3].title || "More memories"}
                       className="h-full w-full object-cover"
                     />
@@ -297,7 +332,7 @@ export function ActiveMemory({
             <div className="mt-4 space-y-4">
               {intelligence?.insight ? (
                 <ExperienceGlassCard>
-                  <SectionLabel icon="auto_awesome">Memory Intelligence</SectionLabel>
+                  <SectionLabel icon="auto_awesome" explainerId="MEMORY-010" momentTypeCode={momentTypeCode}>Memory Intelligence</SectionLabel>
                   <p className="text-sm leading-relaxed" style={{ color: tripStitchTheme.onSurface }}>
                     {intelligence.insight}
                   </p>
@@ -321,7 +356,7 @@ export function ActiveMemory({
 
               {people.length > 0 ? (
                 <div>
-                  <SectionLabel>People Impact</SectionLabel>
+                  <SectionLabel explainerId="MEMORY-003" momentTypeCode={momentTypeCode}>People Impact</SectionLabel>
                   <ExperienceGlassCard>
                     <div className="space-y-3">
                       {people.map((person) => (

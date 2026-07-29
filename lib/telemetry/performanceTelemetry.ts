@@ -6,6 +6,7 @@ export type PerformanceSpanName =
   | "context.switch"
   | "quick_add.save"
   | "pulse.refresh"
+  | "pulse.time_to_visible"
   | "template.moments.load"
   | "template.pulse.load"
   | "template.life.load"
@@ -142,6 +143,81 @@ export function endLoginToPulseSpan(): PerformanceSpan | null {
   const spanId = loginToPulseSpanId;
   loginToPulseSpanId = null;
   return endSpan(spanId);
+}
+
+/** Mark first paint of usable pulse data (cached or network). */
+export function markPulseTimeToVisible(metadata?: Record<string, unknown>): void {
+  if (typeof performance === "undefined" || typeof performance.mark !== "function") {
+    return;
+  }
+  try {
+    performance.mark("pulse-visible");
+    const startExists = performance
+      .getEntriesByName("pulse-load-start", "mark")
+      .some((e) => e.entryType === "mark");
+    if (startExists) {
+      performance.measure("pulse-time-to-visible", "pulse-load-start", "pulse-visible");
+    } else {
+      performance.mark("pulse-load-start");
+      performance.measure("pulse-time-to-visible", "pulse-load-start", "pulse-visible");
+    }
+  } catch {
+    /* ignore mark collisions */
+  }
+  const id = startSpan("pulse.time_to_visible", metadata);
+  endSpan(id, { metadata });
+}
+
+export function markPulseLoadStart(): void {
+  if (typeof performance === "undefined" || typeof performance.mark !== "function") {
+    return;
+  }
+  try {
+    performance.mark("pulse-load-start");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Mark shell first paint (cached session path). */
+export function markShellPaint(): void {
+  if (typeof performance === "undefined" || typeof performance.mark !== "function") {
+    return;
+  }
+  try {
+    performance.mark("shell-paint");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Mark selected tab content visible (cached or network). */
+export function markSelectedTabVisible(metadata?: Record<string, unknown>): void {
+  if (typeof performance === "undefined" || typeof performance.mark !== "function") {
+    return;
+  }
+  try {
+    performance.mark("selected-tab-visible");
+  } catch {
+    /* ignore */
+  }
+  const id = startSpan("pulse.time_to_visible", {
+    ...metadata,
+    mark: "selected-tab-visible",
+  });
+  endSpan(id, { metadata });
+}
+
+/** Mark auth /me validation complete. */
+export function markAuthValidated(): void {
+  if (typeof performance === "undefined" || typeof performance.mark !== "function") {
+    return;
+  }
+  try {
+    performance.mark("auth-validated");
+  } catch {
+    /* ignore */
+  }
 }
 
 export function startQuickAddSaveSpan(): void {

@@ -311,6 +311,66 @@ export function clearBootstrapOnLogout(): void {
   });
 }
 
+/**
+ * Soft post-mutation refresh: patch module/context flags and refresh the
+ * context session store. Does NOT clear app bootstrap or force a full reload.
+ * Reserve {@link invalidateBootstrapAfterMutation} for login, workspace switch,
+ * currency/prefs, and cache-version mismatch.
+ */
+export function notifyMomentMutation(
+  context: "PERSONAL" | "GROUP" | "BUSINESS",
+  states?: {
+    contextState?: string;
+    pulse?: string;
+    moments?: string;
+    memory?: string;
+  },
+): void {
+  if (context === "PERSONAL") {
+    if (states?.contextState || states?.pulse || states?.moments || states?.memory) {
+      patchMyMoneyModuleStateInBootstrap({
+        myMoney: states.contextState,
+        pulse: states.pulse,
+        moments: states.moments,
+        memory: states.memory,
+      });
+    }
+    void import("@/stores/personalSessionStore").then((m) => {
+      void m.softRefreshPersonalSession().catch(() => {});
+    });
+    return;
+  }
+  if (context === "GROUP") {
+    if (states?.contextState || states?.pulse || states?.moments) {
+      patchGroupModuleStateInBootstrap({
+        group: states.contextState,
+        pulse: states.pulse,
+        moments: states.moments,
+      });
+    }
+    void import("@/stores/groupSessionStore").then((m) => {
+      void m.softRefreshGroupSession().catch(() => {});
+    });
+    return;
+  }
+  if (states?.contextState) {
+    const current = getBootstrap();
+    if (current) {
+      bootstrapAppliedGen = Math.max(bootstrapAppliedGen, ++bootstrapFetchGen);
+      const contexts = current.contexts.map((c) =>
+        c.key === "BUSINESS" ? { ...c, state: states.contextState! } : c,
+      );
+      const next: BootstrapResponse = { ...current, contexts };
+      cacheSet(CACHE_KEY, next);
+      diskCacheSave(DISK_KEY, next);
+      setSnapshot({ data: next, error: null, hasLoadedOnce: true });
+    }
+  }
+  void import("@/stores/businessSessionStore").then((m) => {
+    void m.softRefreshBusinessSession().catch(() => {});
+  });
+}
+
 export function contextStateFor(key: string): string {
   return snapshot.data?.contexts.find((c) => c.key === key)?.state ?? "EMPTY";
 }

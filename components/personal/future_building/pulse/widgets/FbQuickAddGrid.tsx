@@ -1,8 +1,11 @@
 "use client";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { fbPulseCopy } from "@/lib/personal/future_building/pulse/fbPulseCopy";
 import { Flag, GraduationCap, IndianRupee, Rocket, Star, TrendingUp } from "lucide-react";
+
+const MOMENT_TYPE = "FUTURE_BUILDING";
 
 const QUICK_ADD_ICONS: Record<string, typeof TrendingUp> = {
   CONTRIBUTION: IndianRupee,
@@ -22,12 +25,15 @@ export function FbQuickAddGrid({ onQuickAdd }: Props) {
 
   return (
     <section className="pb-6">
-      <h3
-        className="mb-6 text-center text-[10px] font-bold uppercase tracking-widest"
-        style={{ color: colors.textSecondary, opacity: 0.4 }}
-      >
-        {fbPulseCopy.quickAddTitle}
-      </h3>
+      <div className="mb-6 flex items-center justify-center gap-0.5">
+        <h3
+          className="text-center text-[10px] font-bold uppercase tracking-widest"
+          style={{ color: colors.textSecondary, opacity: 0.4 }}
+        >
+          {fbPulseCopy.quickAddTitle}
+        </h3>
+        <WidgetInfoButton explainerId="PULSE-010" momentTypeCode={MOMENT_TYPE} />
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {fbPulseCopy.quickAddActions.map((action, i) => {
           const Icon = QUICK_ADD_ICONS[action.code] ?? TrendingUp;

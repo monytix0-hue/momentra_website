@@ -2,6 +2,7 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalGlassGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalTypography,
@@ -9,9 +10,9 @@ import {
 import type { PersonalLifeOpsReturnBehaviors } from "@/lib/api/personal";
 import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_operations/memory/lifeOpsMemoryCopy";
 
-type Props = { copy?: PersonalMemoryCopy; behaviors?: PersonalLifeOpsReturnBehaviors | null };
+type Props = {copy?: PersonalMemoryCopy; behaviors?: PersonalLifeOpsReturnBehaviors | null; momentTypeCode?: string | null };
 
-export function ReturnBehaviorsSection({ behaviors, copy }: Props) {
+export function ReturnBehaviorsSection({ behaviors, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -19,7 +20,10 @@ export function ReturnBehaviorsSection({ behaviors, copy }: Props) {
 
   return (
     <PersonalGlassGlowSection tokens={tokens} cornerRadius={16} innerStyle={{ padding: tokens.spacing.md }}>
-      <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.returnBehaviors}</p>
+      <div className="flex items-center gap-0.5">
+        <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.returnBehaviors}</p>
+        <WidgetInfoButton explainerId="MEMORY-ROI" momentTypeCode={momentTypeCode} />
+      </div>
       <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginTop: tokens.spacing.md }}>
         {behaviors.title}
       </h3>

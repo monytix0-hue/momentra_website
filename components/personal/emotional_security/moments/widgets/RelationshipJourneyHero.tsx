@@ -3,6 +3,7 @@
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalEmotionalSecurityJourneyHero } from "@/lib/api/personalDomainTypes";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   relationshipsMomentsAccent,
   relationshipsMomentsCopy,
@@ -31,9 +32,12 @@ export function RelationshipJourneyHero({ hero }: RelationshipJourneyHeroProps) 
       <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">
         {relationshipsMomentsCopy.journeyHeroSection}
       </p>
-      <h2 className="mt-2 text-lg font-bold" style={{ color: colors.textPrimary }}>
-        {relationshipsMomentsCopy.journeyHeroTitle}
-      </h2>
+      <div className="mt-2 flex items-center gap-0.5">
+        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>
+          {relationshipsMomentsCopy.journeyHeroTitle}
+        </h2>
+        <WidgetInfoButton explainerId="MOMENT-001" momentTypeCode="RELATIONSHIPS" />
+      </div>
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <span className="text-6xl font-extrabold leading-none" style={{ color: colors.textPrimary }}>
           {hero.journey_score}

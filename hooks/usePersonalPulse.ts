@@ -11,7 +11,7 @@ import {
   rollbackPatch,
   subscribeOptimisticPulse,
 } from "@/lib/telemetry/optimisticPulse";
-import { endLoginToPulseSpan } from "@/lib/telemetry/performanceTelemetry";
+import { endLoginToPulseSpan, markPulseLoadStart, markPulseTimeToVisible } from "@/lib/telemetry/performanceTelemetry";
 
 import { dedupeFetch, isInflight } from "@/lib/cache/cacheStore";
 import { FRESH_TTL_MS, STALE_TTL_MS } from "@/lib/cache/personalCacheTtl";
@@ -21,8 +21,12 @@ import {
   SNAPSHOT_REBUILDING_DELAY_MS,
   SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
 } from "@/lib/cache/snapshotRebuilding";
-import { persistPulse } from "@/stores/personalSessionStore";
-import { ensurePersonalSessionBootstrap, usePersonalSessionStore } from "@/stores/personalSessionStore";
+import {
+  ensurePersonalSessionBootstrap,
+  loadPulseFromDisk,
+  persistPulse,
+  usePersonalSessionStore,
+} from "@/stores/personalSessionStore";
 
 const TTL_MS = FRESH_TTL_MS;
 
@@ -50,17 +54,47 @@ export function getPersonalPulseCache(
   return cache.get(typeCode)?.data ?? null;
 }
 
+function getInitialPersonalPulse(typeCode: PersonalMomentTypeCode): CacheEntry | null {
+  const memoryValue = cache.get(typeCode);
+  if (memoryValue) return memoryValue;
+  const diskValue = loadPulseFromDisk(typeCode);
+  if (diskValue) {
+    const entry = { data: diskValue, at: Date.now() };
+    cache.set(typeCode, entry);
+    return entry;
+  }
+  return null;
+}
+
 export function usePersonalPulse(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const momentTypeCode = usePersonalMomentSession();
   const generation = usePersonalSessionStore().generation;
-  const cached = cache.get(momentTypeCode);
-  const [pulse, setPulse] = useState<PersonalPulseResponse | null>(cached?.data ?? null);
-  const [loading, setLoading] = useState(!cached);
+  const initialCache = getInitialPersonalPulse(momentTypeCode);
+  const [pulse, setPulse] = useState<PersonalPulseResponse | null>(
+    () => initialCache?.data ?? null,
+  );
+  const [loading, setLoading] = useState(() => !initialCache?.data);
   const [refreshing, setRefreshing] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadGeneration = useRef(0);
+  const paintedVisible = useRef(false);
+
+  useEffect(() => {
+    markPulseLoadStart();
+    paintedVisible.current = false;
+  }, [momentTypeCode]);
+
+  useEffect(() => {
+    if (pulse && !loading && !paintedVisible.current) {
+      paintedVisible.current = true;
+      markPulseTimeToVisible({
+        source: refreshing ? "stale-while-revalidate" : "ready",
+        momentTypeCode,
+      });
+    }
+  }, [pulse, loading, refreshing, momentTypeCode]);
 
   useEffect(() => {
     return subscribeOptimisticPulse((typeCode, nextPulse) => {
@@ -75,7 +109,10 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
   const load = useCallback(
     async (force = false) => {
       const gen = ++loadGeneration.current;
-      const entry = cache.get(momentTypeCode);
+      let entry = cache.get(momentTypeCode);
+      if (!entry && !force) {
+        entry = getInitialPersonalPulse(momentTypeCode) ?? undefined;
+      }
       const age = entry ? Date.now() - entry.at : Infinity;
       const fresh = !force && entry && age < TTL_MS;
       const staleUsable = !force && entry && age < STALE_TTL_MS;
@@ -86,14 +123,10 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
         setRebuilding(false);
         return;
       }
-      if (staleUsable && entry) {
+      if (entry) {
         setPulse(entry.data);
-        setRefreshing(true);
         setLoading(false);
-      } else if (entry) {
-        setPulse(entry.data);
-        setLoading(true);
-        setRefreshing(false);
+        setRefreshing(Boolean(staleUsable) || age >= TTL_MS);
       } else {
         setLoading(true);
         setRefreshing(false);
@@ -163,9 +196,9 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
       setRebuilding(false);
       return;
     }
-    const entry = cache.get(momentTypeCode);
+    const entry = getInitialPersonalPulse(momentTypeCode);
     setPulse(entry?.data ?? null);
-    setLoading(!entry);
+    setLoading(!entry?.data);
     setRefreshing(false);
     setRebuilding(false);
     // Prefer skipping cold bootstrap when cache was just invalidated (no entry):
@@ -175,7 +208,7 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalPulseCache(momentTypeCode);
-    return load(true);
+    return load(false);
   }, [load, momentTypeCode]);
 
   const applyOptimistic = useCallback(
@@ -223,6 +256,7 @@ export function usePersonalPulse(options?: { enabled?: boolean }) {
     error,
     momentTypeCode,
     reload: () => load(true),
+    revalidate: () => load(false),
     refreshAfterSetup,
     applyOptimisticPatch: applyOptimistic,
     reconcilePatch: reconcile,

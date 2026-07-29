@@ -6,6 +6,7 @@ import { personalLifeCopy } from "@/lib/personal/life/personalLifeCopy";
 import type { PersonalLifeMetrics } from "@/lib/api/personal";
 import { TrendingUp } from "lucide-react";
 import { LifeCard } from "./LifeCard";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type LifeLeverageCardProps = {
   leverage: NonNullable<PersonalLifeMetrics["leverage"]>;
@@ -27,6 +28,7 @@ export function LifeLeverageCard({ leverage, onQuickAdd }: LifeLeverageCardProps
         <span style={{ ...personalTypography.labelSm, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           {personalLifeCopy.sections.leverage}
         </span>
+        <WidgetInfoButton explainerId="LIFE-008" />
       </div>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>

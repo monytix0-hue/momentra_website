@@ -4,6 +4,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalLifeOpsIdentitySnapshot } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type Props = { snapshot: PersonalLifeOpsIdentitySnapshot };
 
@@ -23,7 +24,10 @@ export function FbIdentitySnapshotSection({ snapshot }: Props) {
       </div>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 style={{ ...personalTypography.heroTitle, color: colors.brandPrimary, marginBottom: 4 }}>{snapshot.title}</h2>
+          <div className="mb-1 flex items-center gap-0.5">
+            <h2 style={{ ...personalTypography.heroTitle, color: colors.brandPrimary }}>{snapshot.title}</h2>
+            <WidgetInfoButton explainerId="MEMORY-001" momentTypeCode="FUTURE_BUILDING" />
+          </div>
           <p style={{ ...personalTypography.labelSm, color: colors.brandPrimary, fontWeight: 700, marginBottom: 8 }}>{snapshot.trend_label}</p>
           <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary }}>{snapshot.body}</p>
         </div>

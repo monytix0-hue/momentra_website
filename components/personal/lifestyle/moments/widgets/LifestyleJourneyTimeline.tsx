@@ -26,7 +26,7 @@ export function LifestyleJourneyTimeline({ items }: Props) {
     <section>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <LifestyleSectionBadge index={2} label="Journey Timeline" />
+          <LifestyleSectionBadge index={2} label="Journey Timeline" explainerId="MOMENT-004" />
         </div>
         <button type="button" className="text-xs" style={{ color: "#60a5fa", background: "none", border: "none" }}>
           View all

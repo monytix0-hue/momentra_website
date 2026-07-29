@@ -21,7 +21,7 @@ export function LifeIntelligenceCard({ intelligence, onQuickAdd }: LifeIntellige
 
   return (
     <LifeCard className="relative overflow-hidden">
-      <LifeSectionLabel>{personalLifeCopy.sections.intelligence}</LifeSectionLabel>
+      <LifeSectionLabel explainerId="LIFE-010">{personalLifeCopy.sections.intelligence}</LifeSectionLabel>
       <p className="mt-3" style={{ ...personalTypography.labelSm, opacity: 0.7, color: colors.textSecondary }}>
         {intelligence.preamble}
       </p>

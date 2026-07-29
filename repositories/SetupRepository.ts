@@ -26,7 +26,7 @@ import {
   groupCategoryForType,
 } from "@/lib/setup/templates/group";
 import { getTemplateByMomentType } from "@/lib/setup/templates/registry";
-import { invalidateBootstrapAfterMutation } from "@/stores/bootstrapStore";
+import { notifyMomentMutation } from "@/stores/bootstrapStore";
 
 const groupMomentById = new Map<string, string>();
 
@@ -106,7 +106,7 @@ function toPersonalPreview(preview: Record<string, unknown>): PersonalSetupPrevi
 
 /**
  * Shared setup engine — all MomentEngine setup mutations go through here.
- * Bootstrap invalidates only on createDraft and activate (lifecycle changes).
+ * Create/activate soft-refresh session stores; they do not force full app bootstrap.
  * Supports Personal (My Money) and Group shared-* backends via template routing.
  */
 export const SetupRepository = {
@@ -124,7 +124,11 @@ export const SetupRepository = {
         createBodyForType(body.moment_type_code),
       );
       groupMomentById.set(created.moment_id, created.moment_type_code || body.moment_type_code);
-      invalidateBootstrapAfterMutation();
+      notifyMomentMutation("GROUP", {
+        contextState: "SETUP",
+        pulse: "SETUP",
+        moments: "SETUP",
+      });
       return {
         moment_id: created.moment_id,
         moment_type_id: created.moment_id,
@@ -137,7 +141,11 @@ export const SetupRepository = {
       };
     }
     const result = await createPersonalMoment(body);
-    invalidateBootstrapAfterMutation();
+    notifyMomentMutation("PERSONAL", {
+      contextState: "SETUP",
+      pulse: "SETUP",
+      moments: "SETUP",
+    });
     return result;
   },
 
@@ -215,7 +223,11 @@ export const SetupRepository = {
         answers as Record<string, unknown>,
       );
       const result = await activateGroupSharedSetup(categoryForMoment(momentId), momentId);
-      invalidateBootstrapAfterMutation();
+      notifyMomentMutation("GROUP", {
+        contextState: "ACTIVE",
+        pulse: "ACTIVE",
+        moments: "ACTIVE",
+      });
       return {
         moment_id: result.moment_id,
         moment_type_id: result.moment_id,
@@ -228,7 +240,11 @@ export const SetupRepository = {
       };
     }
     const result = await submitPersonalSetup(momentId, answers);
-    invalidateBootstrapAfterMutation();
+    notifyMomentMutation("PERSONAL", {
+      contextState: "ACTIVE",
+      pulse: "ACTIVE",
+      moments: "ACTIVE",
+    });
     return result;
   },
 };

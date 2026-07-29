@@ -17,7 +17,7 @@ export function MonthlyChangesCard({ changes }: MonthlyChangesCardProps) {
 
   return (
     <LifeCard>
-      <LifeSectionLabel>{personalLifeCopy.sections.monthlyChanges}</LifeSectionLabel>
+      <LifeSectionLabel explainerId="LIFE-011">{personalLifeCopy.sections.monthlyChanges}</LifeSectionLabel>
       <div className="mt-4 space-y-3">
         {changes.map((ch) => {
           const positive =

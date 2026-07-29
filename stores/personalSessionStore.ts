@@ -46,7 +46,7 @@ import { patchMyMoneyModuleStateInBootstrap } from "@/stores/bootstrapStore";
 export { FRESH_TTL_MS, STALE_TTL_MS };
 
 const LIFE_DISK_KEY = "personal_life:v1";
-const BOOTSTRAP_FRESH_MS = 60_000;
+const BOOTSTRAP_FRESH_MS = 180_000;
 const CREATE_OPTIONS_FRESH_MS = 60_000;
 
 // --------------------------------------------------------------------------- #
@@ -141,7 +141,7 @@ function applySession(
   });
 }
 
-/** Shell entry — single-flight session bootstrap with 60s TTL. */
+/** Shell entry — prefer thin session + inventory; fall back to bootstrap. */
 export async function ensurePersonalSession(
   force = false,
 ): Promise<PersonalSessionBootstrapResponse | null> {
@@ -156,9 +156,20 @@ export async function ensurePersonalSession(
 
   setSnapshot({ loading: true, error: null, selectedMomentType: code });
   try {
-    const session = await dedupeFetch(`personal:session_bootstrap:${code}`, () =>
-      getPersonalSessionBootstrap({ momentTypeCode: code, forceRefresh: force }),
-    );
+    const session = await dedupeFetch(`personal:session_chrome:${code}`, async () => {
+      try {
+        const [inventory] = await Promise.all([
+          getPersonalInventory({ momentTypeCode: code }),
+          getPersonalSession().catch(() => null),
+        ]);
+        return {
+          pulse: inventory.pulse,
+          moments_home: inventory.moments_home,
+        } satisfies PersonalSessionBootstrapResponse;
+      } catch {
+        return getPersonalSessionBootstrap({ momentTypeCode: code, forceRefresh: force });
+      }
+    });
     applySession(session, code);
     setSnapshot({ loading: false });
     return snapshot.session;
@@ -175,7 +186,7 @@ export async function softRefreshPersonalSession(): Promise<void> {
   const code = getSelectedMomentTypeCode();
   try {
     const [inventory] = await Promise.all([
-      getPersonalInventory(),
+      getPersonalInventory({ momentTypeCode: code }),
       getPersonalSession().catch(() => null),
     ]);
     if (gen !== snapshot.generation) return;

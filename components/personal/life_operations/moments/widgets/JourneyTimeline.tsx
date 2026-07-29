@@ -8,6 +8,7 @@ import { lifeOpsMomentsCopy } from "@/lib/personal/life_operations/moments/lifeO
 import { resolveActivityIcon } from "@/lib/personal/life_operations/pulse/pulseIcons";
 import { MOTION_DURATION_S } from "@/lib/motion/tokens";
 import { useReducedMotion } from "@/lib/motion/useReducedMotion";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 
 type JourneyTimelineProps = {
   items: PersonalLiveRecentActivityItem[];
@@ -20,9 +21,7 @@ export function JourneyTimeline({ items }: JourneyTimelineProps) {
 
   return (
     <section>
-      <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginBottom: 12 }}>
-        {lifeOpsMomentsCopy.journeyTimelineTitle}
-      </h3>
+      <PersonalWidgetSectionHeader title={lifeOpsMomentsCopy.journeyTimelineTitle} explainerId="MOMENT-004" momentTypeCode="LIFE_OPERATIONS" className="mb-3" />
       {items.length === 0 ? (
         <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary, opacity: 0.7 }}>
           {lifeOpsMomentsCopy.journeyTimelineEmpty}

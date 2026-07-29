@@ -7,6 +7,7 @@ import { fbMomentsCopy } from "@/lib/personal/future_building/moments/fbMomentsC
 import { FbSectionBadge } from "@/components/personal/future_building/moments/widgets/FbSectionBadge";
 import { PULSE_LINE_PROPS } from "@/lib/personal/life_operations/pulse/pulseChartTheme";
 import { LineChart } from "react-gifted-charts";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type FbMoneyJourneyChartProps = {
   money: PersonalFutureBuildingMoneyJourney;
@@ -43,6 +44,7 @@ export function FbMoneyJourneyChart({ money }: FbMoneyJourneyChartProps) {
             <h2 style={{ ...personalTypography.labelSm, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6 }}>
               {fbMomentsCopy.moneyJourneyTitle}
             </h2>
+            <WidgetInfoButton explainerId="MOMENT-005" momentTypeCode="FUTURE_BUILDING" />
           </div>
           <h3 style={{ fontSize: 20, fontWeight: 700, color: colors.textPrimary }}>{money.title}</h3>
         </div>
@@ -72,7 +74,7 @@ export function FbMoneyJourneyChart({ money }: FbMoneyJourneyChartProps) {
           </p>
         </div>
       </div>
-      <div className="h-32">
+      <div className="pointer-events-none h-32">
         <LineChart
           data={data.length ? data : [{ value: 1 }]}
           data2={data2.length ? data2 : undefined}
@@ -84,6 +86,7 @@ export function FbMoneyJourneyChart({ money }: FbMoneyJourneyChartProps) {
           color3="#ec4899"
           curved
           {...PULSE_LINE_PROPS}
+          pointerConfig={undefined}
         />
       </div>
     </section>

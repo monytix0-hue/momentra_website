@@ -72,7 +72,7 @@ export function FbTrendLineChart({ learning, execution, progress }: FbTrendLineC
         </span>
       </div>
       {showChart && data.length >= 2 && data2.length >= 2 && data3.length >= 2 ? (
-        <div className="relative h-48 w-full">
+        <div className="relative h-48 w-full pointer-events-none">
           <LineChart
             data={data}
             data2={data2}

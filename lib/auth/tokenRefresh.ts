@@ -1,5 +1,9 @@
 import { refreshAccessToken } from "@/lib/api/client";
-import { getExpiresAt, getRefreshToken, hasStoredSession } from "@/lib/auth/tokens";
+import {
+  getAccessToken,
+  getExpiresAt,
+  hasStoredSession,
+} from "@/lib/auth/tokens";
 
 const REFRESH_PADDING_MS = 60_000;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -19,7 +23,8 @@ export function clearProactiveTokenRefresh(): void {
 
 export function scheduleProactiveTokenRefresh(): void {
   clearProactiveTokenRefresh();
-  if (!hasStoredSession() || !getRefreshToken()) return;
+  // Cookie-based refresh: we only need an access token + expiry in memory.
+  if (!hasStoredSession() && !getAccessToken()) return;
 
   const expiresAt = getExpiresAt();
   if (expiresAt === null) return;

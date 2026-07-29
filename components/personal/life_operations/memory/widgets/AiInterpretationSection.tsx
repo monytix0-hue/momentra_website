@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalGlowWrapperStyle,
@@ -12,9 +13,9 @@ import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_
 import { MOTION_STAGGER } from "@/lib/motion/tokens";
 import { useReducedMotion } from "@/lib/motion/useReducedMotion";
 
-type Props = { copy?: PersonalMemoryCopy; interpretation: PersonalLifeOpsAiInterpretation };
+type Props = {copy?: PersonalMemoryCopy; interpretation: PersonalLifeOpsAiInterpretation; momentTypeCode?: string | null };
 
-export function AiInterpretationSection({ interpretation, copy }: Props) {
+export function AiInterpretationSection({ interpretation, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -66,7 +67,10 @@ export function AiInterpretationSection({ interpretation, copy }: Props) {
             </span>
           </div>
           <div className="space-y-2">
-            <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.aiInterpretation}</p>
+            <div className="flex items-center gap-0.5">
+              <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.aiInterpretation}</p>
+              <WidgetInfoButton explainerId="MEMORY-009" momentTypeCode={momentTypeCode} />
+            </div>
             <p style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }} aria-live="polite">
               &ldquo;{displayed}&rdquo;
             </p>

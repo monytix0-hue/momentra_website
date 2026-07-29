@@ -5,6 +5,7 @@ import { personalGlassCardStyle, personalTypography } from "@/components/persona
 import type { PersonalLifeOpsBehavioralPattern } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
 import { Calendar, Sun } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const ICONS = [Calendar, Sun];
 
@@ -17,9 +18,12 @@ export function FbBehavioralPatternsSection({ patterns }: Props) {
 
   return (
     <section className="space-y-2">
-      <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-        {fbMemoryCopy.sections.behavioralPatterns}
-      </span>
+      <div className="mb-2 flex items-center gap-0.5">
+        <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+          {fbMemoryCopy.sections.behavioralPatterns}
+        </span>
+        <WidgetInfoButton explainerId="MEMORY-005" momentTypeCode="FUTURE_BUILDING" />
+      </div>
       <div className="grid grid-cols-1 gap-2">
         {patterns.map((pattern, i) => {
           const Icon = ICONS[i % ICONS.length];

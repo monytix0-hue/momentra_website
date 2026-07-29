@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Image } from "lucide-react";
 import { GroupSkeletonBlocks } from "@/components/group/shared/skeleton/GroupSkeletonBlocks";
-import { useGroupLivingMoments, useGroupMoments, useGroupPurchaseMoments, useGroupTripPulse } from "@/hooks/useGroupTabCache";
-import type {
-  GroupMomentsStatTile,
-  LivingMomentsViewResponse,
-  PurchaseMomentsViewResponse,
-  TripMomentsViewResponse,
-  TripPulseResponse,
+import { useGroupLivingMoments, useGroupMoments, useGroupPurchaseMoments } from "@/hooks/useGroupTabCache";
+import {
+  deleteLivingActivity,
+  deleteTripActivity,
+  type GroupMomentsStatTile,
+  type LivingMomentsViewResponse,
+  type PurchaseMomentsViewResponse,
+  type TripMomentsViewResponse,
+  type TripPulseResponse,
 } from "@/lib/api/group";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
+import { resolveMediaUrl } from "@/lib/api/client";
 import { ExperienceGlassCard } from "./ui/ExperienceGlassCard";
 import { MaterialIcon } from "./ui/MaterialIcon";
 import { MetricTile, SectionLabel, ExperienceScrollShell } from "./ui/ExperienceUiParts";
@@ -56,10 +60,14 @@ export function ActiveMoments({
   const isPurchase = source === "purchase";
   const isLiving = source === "living";
   const isTrip = !isPurchase && !isLiving;
+  const momentTypeCode = isPurchase
+    ? "SHARED_PURCHASE"
+    : isLiving
+      ? "SHARED_LIVING"
+      : "SHARED_EXPERIENCE";
   const tripHook = useGroupMoments(isTrip ? momentId : null, isTrip);
   const purchaseHook = useGroupPurchaseMoments(isPurchase ? momentId : null, isPurchase);
   const livingHook = useGroupLivingMoments(isLiving ? momentId : null, isLiving);
-  const pulseHook = useGroupTripPulse(isTrip ? momentId : null, isTrip);
   const moments = (isPurchase ? purchaseHook.data : isLiving ? livingHook.data : tripHook.data) as
     | TripMomentsViewResponse
     | PurchaseMomentsViewResponse
@@ -69,14 +77,12 @@ export function ActiveMoments({
   const loading = isPurchase ? purchaseHook.loading : isLiving ? livingHook.loading : tripHook.loading;
   const error = isPurchase ? purchaseHook.error : isLiving ? livingHook.error : tripHook.error;
   const reload = isPurchase ? purchaseHook.reload : isLiving ? livingHook.reload : tripHook.reload;
-  const pulseReload = pulseHook.reload;
 
   useEffect(() => {
     if (reloadKey > 0) {
       void reload();
-      if (isTrip) void pulseReload();
     }
-  }, [reloadKey, reload, isTrip, pulseReload]);
+  }, [reloadKey, reload]);
 
   if (loading && !moments) {
     return (
@@ -105,11 +111,14 @@ export function ActiveMoments({
   if (isTrip) {
     return (
       <TripMomentsMockBody
+        momentId={momentId}
+        source={source}
         moments={moments as TripMomentsViewResponse}
-        pulse={pulseHook.data ?? null}
+        pulse={null}
         onQuickAdd={onQuickAdd}
         bottomPadding={bottomPadding}
         onRefresh={reload}
+        momentTypeCode={momentTypeCode}
       />
     );
   }
@@ -122,22 +131,29 @@ export function ActiveMoments({
       onQuickAdd={onQuickAdd}
       bottomPadding={bottomPadding}
       onRefresh={reload}
+      momentTypeCode={momentTypeCode}
     />
   );
 }
 
 function TripMomentsMockBody({
+  momentId,
+  source = "trip",
   moments,
   pulse,
   onQuickAdd,
   bottomPadding,
   onRefresh,
+  momentTypeCode,
 }: {
+  momentId: string;
+  source?: "trip" | "purchase" | "living";
   moments: TripMomentsViewResponse;
   pulse: TripPulseResponse | null;
   onQuickAdd?: () => void;
   bottomPadding: number;
   onRefresh?: () => void | Promise<void>;
+  momentTypeCode: string;
 }) {
   const hub = moments.operations_hub;
   const displayName = moments.trip_name || hub.core_summary.moment_name || "Untitled moment";
@@ -147,6 +163,22 @@ function TripMomentsMockBody({
   const gallery = useMemo(() => tripGalleryItems(moments), [moments]);
   const events = useMemo(() => tripUpcomingEvents(moments), [moments]);
   const overflowCount = Math.max(0, gallery.length - 3);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDeleteMemory(memoryId: string) {
+    if (!memoryId || memoryId.startsWith("gallery-")) return;
+    if (!window.confirm("Delete this memory photo? This cannot be undone.")) return;
+    setDeletingId(memoryId);
+    try {
+      if (source === "living") await deleteLivingActivity(momentId, memoryId);
+      else await deleteTripActivity(momentId, memoryId);
+      await onRefresh?.();
+    } catch (err: unknown) {
+      window.alert(err instanceof Error ? err.message : "Could not delete memory photo");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <ExperienceScrollShell
@@ -195,7 +227,7 @@ function TripMomentsMockBody({
         </div>
       </ExperienceGlassCard>
 
-      <SectionLabel icon="calendar_month" action={itinerary.length > 0 ? "View all" : undefined}>
+      <SectionLabel icon="calendar_month" action={itinerary.length > 0 ? "View all" : undefined} explainerId="MOMENT-ITINERARY" momentTypeCode={momentTypeCode}>
         Itinerary
       </SectionLabel>
       {itinerary.length === 0 ? (
@@ -246,6 +278,8 @@ function TripMomentsMockBody({
       <SectionLabel
         icon="photo_library"
         action={overflowCount > 0 ? `+${overflowCount} More` : undefined}
+        explainerId="MOMENT-GRID"
+        momentTypeCode={momentTypeCode}
       >
         Moments Grid
       </SectionLabel>
@@ -258,7 +292,11 @@ function TripMomentsMockBody({
           >
             {item.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.imageUrl} alt={item.label} className="h-full w-full object-cover" />
+              <img
+                src={resolveMediaUrl(item.imageUrl) ?? item.imageUrl}
+                alt={item.label}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="flex h-full items-center justify-center">
                 <MaterialIcon
@@ -272,6 +310,17 @@ function TripMomentsMockBody({
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-white">{item.label}</p>
               </div>
+            ) : null}
+            {item.id && !item.id.startsWith("gallery-") ? (
+              <button
+                type="button"
+                aria-label={`Delete ${item.label || "memory"}`}
+                disabled={deletingId === item.id}
+                onClick={() => void handleDeleteMemory(item.id)}
+                className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white transition-opacity hover:bg-black/75 disabled:opacity-50"
+              >
+                <MaterialIcon name="delete" className="text-[16px]" />
+              </button>
             ) : null}
           </div>
         ))}
@@ -288,7 +337,7 @@ function TripMomentsMockBody({
         </button>
       </div>
 
-      <SectionLabel icon="event">Upcoming Events</SectionLabel>
+      <SectionLabel icon="event" explainerId="MOMENT-UPCOMING" momentTypeCode={momentTypeCode}>Upcoming Events</SectionLabel>
       {events.length === 0 ? (
         <EmptyMomentsCard icon="event" message="No upcoming events" />
       ) : (
@@ -389,6 +438,7 @@ function OpsHubBody({
   onQuickAdd,
   bottomPadding,
   onRefresh,
+  momentTypeCode,
 }: {
   moments: PurchaseMomentsViewResponse | LivingMomentsViewResponse | TripMomentsViewResponse;
   isPurchase: boolean;
@@ -396,6 +446,7 @@ function OpsHubBody({
   onQuickAdd?: () => void;
   bottomPadding: number;
   onRefresh?: () => void | Promise<void>;
+  momentTypeCode: string;
 }) {
   const hub = moments.operations_hub;
   const displayName =
@@ -448,7 +499,7 @@ function OpsHubBody({
         </div>
       </ExperienceGlassCard>
 
-      <SectionLabel action="View all">People & Roles</SectionLabel>
+      <SectionLabel action="View all" explainerId="MOMENT-002" momentTypeCode={momentTypeCode}>People & Roles</SectionLabel>
       <ExperienceGlassCard>
         {hub.people_roles?.primary ? (
           <div className="mb-4 flex items-center gap-3">
@@ -492,7 +543,7 @@ function OpsHubBody({
         </div>
       </ExperienceGlassCard>
 
-      <SectionLabel action="View all">Money Status</SectionLabel>
+      <SectionLabel action="View all" explainerId="MOMENT-003" momentTypeCode={momentTypeCode}>Money Status</SectionLabel>
       <ExperienceGlassCard>
         <p className="mb-3 text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
           {hub.money_status?.progress_label}
@@ -523,7 +574,7 @@ function OpsHubBody({
         </div>
       </ExperienceGlassCard>
 
-      <SectionLabel action="View all">Activity & Operations</SectionLabel>
+      <SectionLabel action="View all" explainerId="MOMENT-004" momentTypeCode={momentTypeCode}>Activity & Operations</SectionLabel>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {(hub.activity_ops ?? []).map((tile) => (
           <ExperienceGlassCard key={tile.tile_id ?? tile.label} className="!p-4 text-center">
@@ -543,7 +594,7 @@ function OpsHubBody({
 
       {(hub.assets ?? []).length > 0 ? (
         <>
-          <SectionLabel action="View all">Assets & Resources</SectionLabel>
+          <SectionLabel action="View all" explainerId="MOMENT-005" momentTypeCode={momentTypeCode}>Assets & Resources</SectionLabel>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {hub.assets!.map((asset) => (
               <div key={asset.asset_id ?? asset.label} className="text-center">
@@ -564,7 +615,7 @@ function OpsHubBody({
 
       {(hub.decisions ?? []).length > 0 ? (
         <>
-          <SectionLabel action="VIEW ALL">Decisions & Governance</SectionLabel>
+          <SectionLabel action="VIEW ALL" explainerId="MOMENT-006" momentTypeCode={momentTypeCode}>Decisions & Governance</SectionLabel>
           <div className="space-y-3">
             {hub.decisions!.map((d) => (
               <ExperienceGlassCard key={d.decision_id ?? d.title} className="!p-4">
@@ -594,9 +645,16 @@ function OpsHubBody({
       ) : null}
 
       <ExperienceGlassCard glow accentBorder="left">
-        <h3 className="mb-2 text-lg font-bold" style={{ color: tripStitchTheme.onSurface }}>
-          Current State Snapshot
-        </h3>
+        <div className="mb-2 flex items-center gap-0.5">
+          <h3 className="text-lg font-bold" style={{ color: tripStitchTheme.onSurface }}>
+            Current State Snapshot
+          </h3>
+          <WidgetInfoButton
+            explainerId="MOMENT-007"
+            momentTypeCode={momentTypeCode}
+            domain="group"
+          />
+        </div>
         <p className="mb-4 text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
           Stage: {hub.current_state?.stage_label}
         </p>

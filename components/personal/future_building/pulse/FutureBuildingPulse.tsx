@@ -19,8 +19,11 @@ import { FbSignalPills } from "@/components/personal/future_building/pulse/widge
 import { FbStateSnapshot } from "@/components/personal/future_building/pulse/widgets/FbStateSnapshot";
 import { FbTrendLineChart } from "@/components/personal/future_building/pulse/widgets/FbTrendLineChart";
 import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalFutureBuildingPulse } from "@/lib/api/personalDomainTypes";
 import { fbPulseCopy } from "@/lib/personal/future_building/pulse/fbPulseCopy";
+
+const MOMENT_TYPE = "FUTURE_BUILDING";
 
 type FutureBuildingPulseProps = {
   pulse: PersonalFutureBuildingPulse;
@@ -67,9 +70,12 @@ export function FutureBuildingPulse({ pulse, bottomPadding = 0, hideScreenHeader
         <FbRecentActivityFeed items={metrics.recent_activity} onViewAll={onViewAllActivity} onEditActivity={onEditActivity} />
         <FbFinancialMomentum segments={metrics.financial_segments} fallbackTotalMinor={totalMinor} />
         <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 24, padding: 20 }}>
-          <div className="mb-4 flex items-center justify-between">
-            <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{fbPulseCopy.trendsTitle}</h3>
-          </div>
+          <PersonalWidgetSectionHeader
+            title={fbPulseCopy.trendsTitle}
+            explainerId="PULSE-007"
+            momentTypeCode={MOMENT_TYPE}
+            className="mb-4"
+          />
           <FbTrendLineChart
             learning={metrics.trends_30d?.learning}
             execution={metrics.trends_30d?.execution}

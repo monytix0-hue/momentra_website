@@ -462,7 +462,7 @@ export function MasterExpenseOrchestrator({ onBack, onSuccess }: MasterExpenseOr
     }
   }
 
-  if (loading) {
+  if (loading && !resolvedOptions) {
     return (
       <div
         className="fixed inset-0 z-[120] flex flex-col"

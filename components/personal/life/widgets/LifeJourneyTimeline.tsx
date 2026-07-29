@@ -16,7 +16,7 @@ export function LifeJourneyTimeline({ journey }: LifeJourneyTimelineProps) {
 
   return (
     <LifeCard>
-      <LifeSectionLabel>{personalLifeCopy.sections.journey}</LifeSectionLabel>
+      <LifeSectionLabel explainerId="LIFE-003">{personalLifeCopy.sections.journey}</LifeSectionLabel>
       <div className="relative mt-4 space-y-4 pl-6">
         <div
           className="absolute bottom-0 left-1 top-0 w-px"

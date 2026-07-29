@@ -24,7 +24,7 @@ export function LifestyleDriversCard({ drivers, variant }: Props) {
         borderColor: isBest ? undefined : `${colors.error}33`,
       }}
     >
-      <LifestyleSectionBadge index={isBest ? 3 : 4} label={isBest ? "Best Drivers" : "Lowest Drivers"} accent={isBest} />
+      <LifestyleSectionBadge index={isBest ? 3 : 4} label={isBest ? "Best Drivers" : "Lowest Drivers"} accent={isBest} explainerId={isBest ? "MEMORY-003" : "MEMORY-004"} />
       <div className="space-y-3">
         {drivers.map((driver) =>
           isBest ? (

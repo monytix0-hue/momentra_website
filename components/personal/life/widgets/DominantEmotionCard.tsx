@@ -18,7 +18,7 @@ export function DominantEmotionCard({ dominant, onQuickAdd }: DominantEmotionCar
 
   return (
     <LifeCard>
-      <LifeSectionLabel>{personalLifeCopy.sections.dominantEmotion}</LifeSectionLabel>
+      <LifeSectionLabel explainerId="LIFE-005">{personalLifeCopy.sections.dominantEmotion}</LifeSectionLabel>
       {dominant.is_sparse ? (
         <div className="mt-4 space-y-3">
           <p style={{ ...personalTypography.labelSm, opacity: 0.85, color: colors.textSecondary }}>

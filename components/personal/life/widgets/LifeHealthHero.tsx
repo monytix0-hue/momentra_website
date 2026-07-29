@@ -21,7 +21,7 @@ export function LifeHealthHero({ lifeHealth }: LifeHealthHeroProps) {
     <LifeCard className="relative overflow-hidden p-6 md:p-8" glow>
       <div className="flex flex-col items-center gap-8 md:flex-row md:justify-between">
         <div className="order-2 w-full md:order-1 md:max-w-xs">
-          <LifeSectionLabel>{personalLifeCopy.sections.personalLifeHealth}</LifeSectionLabel>
+          <LifeSectionLabel explainerId="LIFE-001">{personalLifeCopy.sections.personalLifeHealth}</LifeSectionLabel>
           <div className="mt-4 flex items-baseline gap-2">
             <span style={{ ...personalTypography.heroTitle, fontSize: 48, color: colors.textPrimary }}>
               {lifeHealth.life_score}

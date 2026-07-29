@@ -1,14 +1,23 @@
 "use client";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type LifestyleSectionBadgeProps = {
   index: number | string;
   label: string;
   accent?: boolean;
+  explainerId?: string;
+  momentTypeCode?: string | null;
 };
 
-export function LifestyleSectionBadge({ index, label, accent }: LifestyleSectionBadgeProps) {
+export function LifestyleSectionBadge({
+  index,
+  label,
+  accent,
+  explainerId,
+  momentTypeCode = "LIFESTYLE",
+}: LifestyleSectionBadgeProps) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
 
@@ -29,6 +38,7 @@ export function LifestyleSectionBadge({ index, label, accent }: LifestyleSection
       >
         {label}
       </span>
+      {explainerId ? <WidgetInfoButton explainerId={explainerId} momentTypeCode={momentTypeCode} /> : null}
     </div>
   );
 }

@@ -174,10 +174,7 @@ export function ExperiencePulse({
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const labels = metricLabels(template);
-
-  useEffect(() => {
-    if (isTrip && momentId) void reload();
-  }, [isTrip, momentId, reload]);
+  const momentTypeCode = templateToMomentType(template);
 
   useEffect(() => {
     if (reloadKey > 0) void reload();
@@ -267,14 +264,14 @@ export function ExperiencePulse({
           </ExperienceGlassCard>
           {signals.length > 0 ? (
             <div>
-              <SectionLabel icon="warning">Attention Signals</SectionLabel>
+              <SectionLabel icon="warning" explainerId="PULSE-006" momentTypeCode={momentTypeCode}>Attention Signals</SectionLabel>
               {signals.map((s) => (
                 <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} onClick={s.onClick} />
               ))}
             </div>
           ) : null}
           <ExperienceGlassCard>
-            <SectionLabel>{labels.readiness}</SectionLabel>
+            <SectionLabel explainerId="PULSE-004" momentTypeCode={momentTypeCode}>{labels.readiness}</SectionLabel>
             <ProgressBar percent={fundingPct} />
           </ExperienceGlassCard>
           <ExperienceGlassCard>
@@ -287,7 +284,7 @@ export function ExperiencePulse({
           </ExperienceGlassCard>
           {recentActivities.length > 0 ? (
             <div>
-              <SectionLabel action="View All">Recent Activity</SectionLabel>
+              <SectionLabel action="View All" explainerId="PULSE-007" momentTypeCode={momentTypeCode}>Recent Activity</SectionLabel>
               {recentActivities.map((item, index) => (
                 <TimelineRow
                   key={item.id || `activity-${index}`}
@@ -305,11 +302,13 @@ export function ExperiencePulse({
               title={purchaseData.next_best_action.title}
               subtitle={purchaseData.next_best_action.subtitle}
               icon="bolt"
-              onClick={onQuickAdd}
-            />
+              onClick={onQuickAdd} explainerId="PULSE-008" momentTypeCode={momentTypeCode} />
           ) : null}
           {(purchaseData.insights ?? []).length > 0 ? (
             <div className="grid gap-3">
+              <SectionLabel explainerId="PULSE-009" momentTypeCode={momentTypeCode}>
+                AI Insights
+              </SectionLabel>
               {purchaseData.insights!.map((insight) => (
                 <ExperienceGlassCard key={insight.id} className="!p-4">
                   <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>
@@ -402,14 +401,14 @@ export function ExperiencePulse({
           </ExperienceGlassCard>
           {signals.length > 0 ? (
             <div>
-              <SectionLabel icon="warning">Attention Signals</SectionLabel>
+              <SectionLabel icon="warning" explainerId="PULSE-006" momentTypeCode={momentTypeCode}>Attention Signals</SectionLabel>
               {signals.map((s) => (
                 <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} onClick={s.onClick} />
               ))}
             </div>
           ) : null}
           <ExperienceGlassCard>
-            <SectionLabel>{labels.readiness}</SectionLabel>
+            <SectionLabel explainerId="PULSE-004" momentTypeCode={momentTypeCode}>{labels.readiness}</SectionLabel>
             <ProgressBar percent={Math.min(100, Math.max(0, coveragePct))} />
           </ExperienceGlassCard>
           <ExperienceGlassCard>
@@ -422,7 +421,7 @@ export function ExperiencePulse({
           </ExperienceGlassCard>
           {recentActivities.length > 0 ? (
             <div>
-              <SectionLabel action="View All" onAction={onViewAllActivity}>
+              <SectionLabel action="View All" onAction={onViewAllActivity} explainerId="PULSE-007" momentTypeCode={momentTypeCode}>
                 Recent Activity
               </SectionLabel>
               {recentActivities.map((item, index) => (
@@ -447,11 +446,13 @@ export function ExperiencePulse({
               title={livingData.next_best_action.title}
               subtitle={livingData.next_best_action.subtitle}
               icon="bolt"
-              onClick={onQuickAdd}
-            />
+              onClick={onQuickAdd} explainerId="PULSE-008" momentTypeCode={momentTypeCode} />
           ) : null}
           {(livingData.insights ?? []).length > 0 ? (
             <div className="grid gap-3">
+              <SectionLabel explainerId="PULSE-009" momentTypeCode={momentTypeCode}>
+                AI Insights
+              </SectionLabel>
               {livingData.insights!.map((insight) => (
                 <ExperienceGlassCard key={insight.id} className="!p-4">
                   <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>
@@ -548,7 +549,7 @@ export function ExperiencePulse({
             </div>
           </ExperienceGlassCard>
           <div>
-            <SectionLabel icon="warning">Attention Signals</SectionLabel>
+            <SectionLabel icon="warning" explainerId="PULSE-006" momentTypeCode={momentTypeCode}>Attention Signals</SectionLabel>
             {signals.length > 0 ? (
               signals.map((s) => (
                 <SignalRow key={s.title} icon={s.icon} title={s.title} tone={s.tone} onClick={s.onClick} />
@@ -560,7 +561,7 @@ export function ExperiencePulse({
           <ExperienceGlassCard>
             <div className="mb-4 flex items-end justify-between">
               <div>
-                <SectionLabel>{labels.readiness}</SectionLabel>
+                <SectionLabel explainerId="PULSE-004" momentTypeCode={momentTypeCode}>{labels.readiness}</SectionLabel>
                 <span className="text-2xl font-bold" style={{ color: tripStitchTheme.onSurface }}>{readinessPct}%</span>
               </div>
               <MaterialIcon name="trending_up" style={{ color: tripStitchTheme.primary }} />
@@ -586,7 +587,7 @@ export function ExperiencePulse({
             ) : null}
           </ExperienceGlassCard>
           <ExperienceGlassCard>
-            <SectionLabel>Participation</SectionLabel>
+            <SectionLabel explainerId="PULSE-005" momentTypeCode={momentTypeCode}>Participation</SectionLabel>
             <p className="text-2xl font-bold" style={{ color: tripStitchTheme.primary }}>{participationPct}%</p>
             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
               {(
@@ -606,7 +607,7 @@ export function ExperiencePulse({
             </div>
           </ExperienceGlassCard>
           <ExperienceGlassCard>
-            <SectionLabel action="View All" onAction={onViewAllActivity}>
+            <SectionLabel action="View All" onAction={onViewAllActivity} explainerId="PULSE-007" momentTypeCode={momentTypeCode}>
               Recent Activity
             </SectionLabel>
             {recentActivities.length > 0 ? (
@@ -637,8 +638,7 @@ export function ExperiencePulse({
               subtitle={nba.subtitle}
               impacts={nba.impact_labels ?? []}
               icon="bolt"
-              onClick={onQuickAdd}
-            />
+              onClick={onQuickAdd} explainerId="PULSE-008" momentTypeCode={momentTypeCode} />
           ) : null}
           <ExperienceGlassCard>
             <SectionLabel>Budget</SectionLabel>
@@ -655,6 +655,9 @@ export function ExperiencePulse({
           </ExperienceGlassCard>
           {(tripData.insights ?? []).length > 0 ? (
             <div className="grid gap-3">
+              <SectionLabel explainerId="PULSE-009" momentTypeCode={momentTypeCode}>
+                AI Insights
+              </SectionLabel>
               {tripData.insights!.map((insight) => (
                 <ExperienceGlassCard key={insight.id} className="!p-4">
                   <p className="font-semibold" style={{ color: tripStitchTheme.onSurface }}>{insight.title}</p>
@@ -768,7 +771,7 @@ export function ExperiencePulse({
         </ExperienceGlassCard>
 
         <ExperienceGlassCard>
-          <SectionLabel>{labels.health}</SectionLabel>
+          <SectionLabel explainerId="PULSE-001" momentTypeCode={momentTypeCode}>{labels.health}</SectionLabel>
           <div className="flex flex-col items-center">
             <HealthRing
               value={healthScore}
@@ -778,7 +781,7 @@ export function ExperiencePulse({
         </ExperienceGlassCard>
 
         <div className="space-y-3">
-          <SectionLabel icon="warning">Attention Signals</SectionLabel>
+          <SectionLabel icon="warning" explainerId="PULSE-006" momentTypeCode={momentTypeCode}>Attention Signals</SectionLabel>
           {signals.length === 0 ? (
             <EmptySection label="No attention signals right now." />
           ) : (
@@ -791,7 +794,7 @@ export function ExperiencePulse({
         <ExperienceGlassCard>
           <div className="mb-4 flex items-end justify-between">
             <div>
-              <SectionLabel>{labels.readiness}</SectionLabel>
+              <SectionLabel explainerId="PULSE-004" momentTypeCode={momentTypeCode}>{labels.readiness}</SectionLabel>
               <span className="text-2xl font-bold" style={{ color: colors.textPrimary }}>
                 {readinessPct}%
               </span>
@@ -803,7 +806,7 @@ export function ExperiencePulse({
 
         {hasParticipation ? (
           <ExperienceGlassCard>
-            <SectionLabel>Participation</SectionLabel>
+            <SectionLabel explainerId="PULSE-005" momentTypeCode={momentTypeCode}>Participation</SectionLabel>
             <div className="mb-4 flex items-center justify-between">
               <span className="text-2xl font-bold" style={{ color: colors.textPrimary }}>
                 {participationPct}%
@@ -831,7 +834,7 @@ export function ExperiencePulse({
         ) : null}
 
         <ExperienceGlassCard>
-          <SectionLabel>Recent Activity</SectionLabel>
+          <SectionLabel explainerId="PULSE-007" momentTypeCode={momentTypeCode}>Recent Activity</SectionLabel>
           {recentActivities.length === 0 ? (
             <EmptySection label="No recent activity yet." />
           ) : (
@@ -844,7 +847,7 @@ export function ExperiencePulse({
         </ExperienceGlassCard>
 
         {nextTitle ? (
-          <SunsetCta eyebrow="Next Best Action" title={nextTitle} impacts={[]} onClick={onQuickAdd} />
+          <SunsetCta eyebrow="Next Best Action" title={nextTitle} impacts={[]} onClick={onQuickAdd} explainerId="PULSE-008" momentTypeCode={momentTypeCode} />
         ) : (
           <SunsetCta eyebrow="Quick action" title="Add something to this moment" impacts={[]} onClick={onQuickAdd} />
         )}

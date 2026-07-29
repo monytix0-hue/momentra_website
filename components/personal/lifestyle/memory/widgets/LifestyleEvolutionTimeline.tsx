@@ -13,7 +13,7 @@ export function LifestyleEvolutionTimeline({ phases }: Props) {
 
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-      <LifestyleSectionBadge index={8} label="Evolution Timeline" />
+      <LifestyleSectionBadge index={8} label="Evolution Timeline" explainerId="MEMORY-008" />
       <div className="mt-4 flex flex-wrap gap-2">
         {phases.map((phase) => (
           <div

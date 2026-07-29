@@ -4,6 +4,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalLifeOpsReturnBehaviors } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type Props = { behaviors?: PersonalLifeOpsReturnBehaviors | null };
 
@@ -17,9 +18,12 @@ export function FbReturnBehaviorsSection({ behaviors }: Props) {
 
   return (
     <section className="group flex-1" style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-      <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", opacity: 0.7, display: "block", marginBottom: 16 }}>
-        {fbMemoryCopy.sections.returnBehaviors}
-      </span>
+      <div className="mb-4 flex items-center gap-0.5">
+        <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", opacity: 0.7 }}>
+          {fbMemoryCopy.sections.returnBehaviors}
+        </span>
+        <WidgetInfoButton explainerId="MEMORY-ROI" momentTypeCode="FUTURE_BUILDING" />
+      </div>
       <div className="mb-2 flex items-center justify-between">
         <div>
           <p style={{ fontSize: 14, fontWeight: 700, color: colors.textPrimary }}>{behaviors.title}</p>

@@ -36,6 +36,7 @@ vi.mock("@/repositories/BusinessRepository", () => ({
 
 vi.mock("@/stores/bootstrapStore", () => ({
   invalidateBootstrapAfterMutation: vi.fn(),
+  notifyMomentMutation: vi.fn(),
 }));
 
 describe("MomentLifecycleCoordinator", () => {

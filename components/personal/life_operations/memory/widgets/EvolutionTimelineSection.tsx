@@ -2,6 +2,7 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalGlassGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalTypography,
@@ -9,16 +10,19 @@ import {
 import type { PersonalLifeOpsEvolutionPhase } from "@/lib/api/personal";
 import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_operations/memory/lifeOpsMemoryCopy";
 
-type Props = { copy?: PersonalMemoryCopy;  phases: PersonalLifeOpsEvolutionPhase[] };
+type Props = {copy?: PersonalMemoryCopy;  phases: PersonalLifeOpsEvolutionPhase[]; momentTypeCode?: string | null };
 
-export function EvolutionTimelineSection({ phases, copy }: Props) {
+export function EvolutionTimelineSection({ phases, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
 
   return (
     <PersonalGlassGlowSection tokens={tokens} cornerRadius={16} innerStyle={{ padding: tokens.spacing.lg }}>
-      <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.evolution}</p>
+      <div className="flex items-center gap-0.5">
+        <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.evolution}</p>
+        <WidgetInfoButton explainerId="MEMORY-008" momentTypeCode={momentTypeCode} />
+      </div>
       <div className="relative mt-8 flex items-center justify-between px-4">
         <div className="absolute left-0 top-1/2 -z-10 h-px w-full" style={{ background: `${colors.textSecondary}22` }} />
         {phases.map((phase) => (

@@ -5,6 +5,7 @@ import { personalGlassCardStyle, personalTypography } from "@/components/persona
 import type { PersonalLifeOpsEvolutionPhase } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
 import { Compass, Construction, Gauge } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const PHASE_ICONS = [Compass, Construction, Gauge];
 
@@ -17,9 +18,12 @@ export function FbEvolutionTimelineSection({ phases }: Props) {
 
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 16 }}>
-      <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7, display: "block", marginBottom: 24 }}>
-        {fbMemoryCopy.sections.evolutionTimeline}
-      </span>
+      <div className="mb-6 flex items-center gap-0.5">
+        <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+          {fbMemoryCopy.sections.evolutionTimeline}
+        </span>
+        <WidgetInfoButton explainerId="MEMORY-008" momentTypeCode="FUTURE_BUILDING" />
+      </div>
       <div className="flex items-center justify-between px-2 pb-2">
         {phases.map((phase, i) => {
           const Icon = PHASE_ICONS[i % PHASE_ICONS.length];

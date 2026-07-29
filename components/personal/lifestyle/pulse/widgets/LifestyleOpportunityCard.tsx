@@ -2,9 +2,12 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlowWrapperStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalLifestylePulseMetrics } from "@/lib/api/personal";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
 import { ArrowRight, Mountain } from "lucide-react";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Props = {
   opportunity: PersonalLifestylePulseMetrics["opportunity"];
@@ -29,7 +32,10 @@ export function LifestyleOpportunityCard({ opportunity, onCta }: Props) {
         </div>
         <div className="relative z-10 flex flex-col gap-4">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{lifestylePulseCopy.highPriorityOpportunity}</span>
+            <div className="flex items-center gap-0.5">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{lifestylePulseCopy.highPriorityOpportunity}</span>
+              <WidgetInfoButton explainerId="PULSE-009" momentTypeCode={MOMENT_TYPE} />
+            </div>
             <h3 className="mt-1 text-2xl font-bold text-white">{opportunity.title}</h3>
             <p className="mt-2 max-w-[85%] text-sm leading-relaxed opacity-80">{opportunity.body}</p>
           </div>

@@ -6,6 +6,7 @@ import type { PersonalFutureBuildingJourneyHero } from "@/lib/api/personalDomain
 import { fbMomentsCopy } from "@/lib/personal/future_building/moments/fbMomentsCopy";
 import { FbSectionBadge } from "@/components/personal/future_building/moments/widgets/FbSectionBadge";
 import { TrendingUp } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type FbJourneyHeroProps = {
   hero: PersonalFutureBuildingJourneyHero;
@@ -31,9 +32,12 @@ export function FbJourneyHero({ hero }: FbJourneyHeroProps) {
             {fbMomentsCopy.journeyHeroSection}
           </p>
         </div>
-        <h2 style={{ fontSize: 30, fontWeight: 800, color: colors.textPrimary, letterSpacing: "-0.02em" }}>
-          {fbMomentsCopy.journeyHeroTitle}
-        </h2>
+        <div className="flex items-center gap-0.5">
+          <h2 style={{ fontSize: 30, fontWeight: 800, color: colors.textPrimary, letterSpacing: "-0.02em" }}>
+            {fbMomentsCopy.journeyHeroTitle}
+          </h2>
+          <WidgetInfoButton explainerId="MOMENT-001" momentTypeCode="FUTURE_BUILDING" />
+        </div>
         <div className="mt-3 flex items-baseline gap-2">
           <span style={{ fontSize: 60, fontWeight: 900, lineHeight: 1, color: colors.textPrimary }}>{hero.journey_score}</span>
           <span className="flex items-center gap-1 text-lg font-bold" style={{ color: "#4ade80" }}>

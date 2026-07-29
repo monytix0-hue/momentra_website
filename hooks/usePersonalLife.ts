@@ -11,12 +11,23 @@ import {
   SNAPSHOT_REBUILDING_DELAY_MS,
   SNAPSHOT_REBUILDING_MAX_ATTEMPTS,
 } from "@/lib/cache/snapshotRebuilding";
-import { persistLife, usePersonalSessionStore } from "@/stores/personalSessionStore";
+import { loadLifeFromDisk, persistLife, usePersonalSessionStore } from "@/stores/personalSessionStore";
 
 let cachedLife: PersonalLifeResponse | null = null;
 let cachedAt = 0;
 let cachedProjectionVersion: number | undefined;
 const TTL_MS = FRESH_TTL_MS;
+
+function ensureLifeMemoryFromDisk(): PersonalLifeResponse | null {
+  if (cachedLife) return cachedLife;
+  const disk = loadLifeFromDisk();
+  if (disk) {
+    cachedLife = disk;
+    cachedAt = Date.now();
+    cachedProjectionVersion = disk.projection_version;
+  }
+  return cachedLife;
+}
 
 export function invalidatePersonalLifeCache() {
   cachedLife = null;
@@ -31,14 +42,15 @@ export function seedPersonalLifeCache(data: PersonalLifeResponse) {
 }
 
 export function getPersonalLifeCache(): PersonalLifeResponse | null {
-  return cachedLife;
+  return cachedLife ?? loadLifeFromDisk();
 }
 
 export function usePersonalLife(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const generation = usePersonalSessionStore().generation;
-  const [life, setLife] = useState<PersonalLifeResponse | null>(cachedLife);
-  const [loading, setLoading] = useState(!cachedLife);
+  const initial = ensureLifeMemoryFromDisk();
+  const [life, setLife] = useState<PersonalLifeResponse | null>(() => initial);
+  const [loading, setLoading] = useState(() => !initial);
   const [refreshing, setRefreshing] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +58,9 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
 
   const load = useCallback(async (force = false) => {
     const gen = ++loadGeneration.current;
+    if (!cachedLife && !force) {
+      ensureLifeMemoryFromDisk();
+    }
     const age = cachedLife ? Date.now() - cachedAt : Infinity;
     const fresh = !force && cachedLife && age < TTL_MS;
     const staleUsable = !force && cachedLife && age < STALE_TTL_MS;
@@ -56,14 +71,10 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
       setRebuilding(false);
       return;
     }
-    if (staleUsable && cachedLife) {
-      setLife(cachedLife);
-      setRefreshing(true);
-      setLoading(false);
-    } else if (cachedLife && !force) {
+    if (cachedLife) {
       setLife(cachedLife);
       setLoading(false);
-      setRefreshing(false);
+      setRefreshing(Boolean(staleUsable) || age >= TTL_MS);
     } else {
       setLoading(true);
       setRefreshing(false);
@@ -110,12 +121,14 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
           continue;
         }
         setRebuilding(false);
-        const message = err instanceof Error ? err.message : "Failed to load life";
-        setError(
-          message.includes("timed out") || message.includes("CORS") || message.includes("Failed to fetch")
-            ? `${message} — check that the API (ngrok) is up and restarted after recent backend changes.`
-            : message,
-        );
+        if (!cachedLife) {
+          const message = err instanceof Error ? err.message : "Failed to load life";
+          setError(
+            message.includes("timed out") || message.includes("CORS") || message.includes("Failed to fetch")
+              ? `${message} — check that the API (ngrok) is up and restarted after recent backend changes.`
+              : message,
+          );
+        }
         break;
       }
     }
@@ -133,8 +146,9 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
       setRebuilding(false);
       return;
     }
-    setLife(cachedLife);
-    setLoading(!cachedLife);
+    const current = ensureLifeMemoryFromDisk();
+    setLife(current);
+    setLoading(!current);
     setRefreshing(false);
     setRebuilding(false);
     void load(false);
@@ -142,7 +156,7 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
 
   const refreshAfterSetup = useCallback(() => {
     invalidatePersonalLifeCache();
-    return load(true);
+    return load(false);
   }, [load]);
 
   return {
@@ -152,6 +166,7 @@ export function usePersonalLife(options?: { enabled?: boolean }) {
     rebuilding,
     error,
     reload: () => load(true),
+    revalidate: () => load(false),
     refreshAfterSetup,
   };
 }

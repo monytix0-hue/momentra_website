@@ -7,6 +7,7 @@ import type { PersonalLifeOpsJourneyHero } from "@/lib/api/personal";
 import { lifeOpsMomentsCopy } from "@/lib/personal/life_operations/moments/lifeOpsMomentsCopy";
 import { MOTION_DURATION_S } from "@/lib/motion/tokens";
 import { useReducedMotion } from "@/lib/motion/useReducedMotion";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type JourneyHeroProps = {
   hero: PersonalLifeOpsJourneyHero;
@@ -37,9 +38,12 @@ export function JourneyHero({ hero }: JourneyHeroProps) {
         <p style={{ ...personalTypography.labelSm, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
           {lifeOpsMomentsCopy.journeyHeroSection}
         </p>
-        <h2 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginTop: 6 }}>
-          {lifeOpsMomentsCopy.journeyHeroTitle}
-        </h2>
+        <div className="mt-1.5 flex items-center gap-0.5">
+          <h2 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>
+            {lifeOpsMomentsCopy.journeyHeroTitle}
+          </h2>
+          <WidgetInfoButton explainerId="MOMENT-001" momentTypeCode="LIFE_OPERATIONS" />
+        </div>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <span style={{ fontSize: 56, fontWeight: 700, lineHeight: 1, color: colors.textPrimary }}>
             {hero.journey_score}

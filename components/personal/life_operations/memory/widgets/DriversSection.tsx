@@ -2,6 +2,7 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalGlassGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalTypography,
@@ -9,9 +10,9 @@ import {
 import type { PersonalLifeOpsDriver } from "@/lib/api/personal";
 import { lifeOpsMemoryCopy, type PersonalMemoryCopy } from "@/lib/personal/life_operations/memory/lifeOpsMemoryCopy";
 
-type Props = { copy?: PersonalMemoryCopy;  drivers: PersonalLifeOpsDriver[]; variant: "best" | "lowest" };
+type Props = {copy?: PersonalMemoryCopy;  drivers: PersonalLifeOpsDriver[]; variant: "best" | "lowest"; momentTypeCode?: string | null };
 
-export function DriversSection({ drivers, variant, copy }: Props) {
+export function DriversSection({ drivers, variant, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -21,7 +22,10 @@ export function DriversSection({ drivers, variant, copy }: Props) {
 
   return (
     <PersonalGlassGlowSection tokens={tokens} cornerRadius={16} innerStyle={{ padding: tokens.spacing.md }}>
-      <p style={memoryMicroLabelStyle(tokens, accent)}>{label}</p>
+      <div className="flex items-center gap-0.5">
+        <p style={memoryMicroLabelStyle(tokens, accent)}>{label}</p>
+        <WidgetInfoButton explainerId={isLowest ? "MEMORY-004" : "MEMORY-003"} momentTypeCode={momentTypeCode} />
+      </div>
       <div className="mt-3 space-y-3">
         {drivers.map((driver, index) => {
           const key = `${variant}-${driver.label}-${driver.rank}-${index}`;

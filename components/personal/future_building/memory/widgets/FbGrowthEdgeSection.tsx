@@ -5,6 +5,7 @@ import { personalGlassCardStyle, personalTypography } from "@/components/persona
 import type { PersonalLifeOpsGrowthEdge } from "@/lib/api/personal";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
 import { TrendingUp } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type Props = { edge: PersonalLifeOpsGrowthEdge };
 
@@ -21,9 +22,12 @@ export function FbGrowthEdgeSection({ edge }: Props) {
         background: `linear-gradient(135deg, ${colors.brandPrimary}0d, transparent)`,
       }}
     >
-      <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7, display: "block", marginBottom: 16 }}>
-        {fbMemoryCopy.sections.growthEdge}
-      </span>
+      <div className="mb-4 flex items-center gap-0.5">
+        <span style={{ ...personalTypography.labelSm, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+          {fbMemoryCopy.sections.growthEdge}
+        </span>
+        <WidgetInfoButton explainerId="MEMORY-010" momentTypeCode="FUTURE_BUILDING" />
+      </div>
       <div className="flex items-start gap-5">
         <div
           className="flex size-14 shrink-0 items-center justify-center rounded-full shadow-lg"

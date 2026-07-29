@@ -47,7 +47,7 @@ function SmoothTrendChart({ recovery, pressure }: TrendLineChartProps) {
 
   return (
     <div>
-      <div className="relative h-56 w-full">
+      <div className="relative h-56 w-full pointer-events-none">
         <LineChart
           data={toTrendLineData(recoveryValues)}
           data2={toTrendLineData(pressureValues)}
@@ -69,6 +69,7 @@ function SmoothTrendChart({ recovery, pressure }: TrendLineChartProps) {
           strokeDashArray2={[6, 4]}
           curved
           {...PULSE_LINE_PROPS}
+          pointerConfig={undefined}
         />
       </div>
       <div className="mt-4 flex justify-between px-2 text-[10px] font-bold uppercase tracking-widest opacity-40">

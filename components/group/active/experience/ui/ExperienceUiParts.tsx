@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PullToRefresh } from "@/components/shared/PullToRefresh";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { groupSectionLabel } from "@/lib/group/groupTypography";
 import { MaterialIcon } from "./MaterialIcon";
 
@@ -11,11 +12,15 @@ export function SectionLabel({
   icon,
   action,
   onAction,
+  explainerId,
+  momentTypeCode,
 }: {
   children: ReactNode;
   icon?: string;
   action?: string;
   onAction?: () => void;
+  explainerId?: string;
+  momentTypeCode?: string | null;
 }) {
   const tokens = useThemeTokens();
   return (
@@ -23,6 +28,13 @@ export function SectionLabel({
       <div className="flex items-center gap-2">
         {icon && <MaterialIcon name={icon} className="text-[18px]" style={{ color: tokens.colors.brandPrimary }} />}
         <span style={groupSectionLabel(tokens)}>{children}</span>
+        {explainerId ? (
+          <WidgetInfoButton
+            explainerId={explainerId}
+            momentTypeCode={momentTypeCode}
+            domain="group"
+          />
+        ) : null}
       </div>
       {action && (
         <button
@@ -265,6 +277,8 @@ export function SunsetCta({
   onClick,
   impacts,
   icon = "bolt",
+  explainerId,
+  momentTypeCode,
 }: {
   eyebrow: string;
   title: string;
@@ -272,46 +286,55 @@ export function SunsetCta({
   onClick?: () => void;
   impacts?: string[];
   icon?: string;
+  explainerId?: string;
+  momentTypeCode?: string | null;
 }) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group w-full rounded-[24px] p-5 text-left transition-all hover:-translate-y-0.5"
+    <div
+      className="group w-full rounded-[24px] transition-all hover:-translate-y-0.5"
       style={{
         background: `linear-gradient(135deg, ${colors.primaryContainer} 0%, ${colors.brandPrimary} 100%)`,
         boxShadow: "0 10px 40px rgba(255,122,61,0.20)",
         color: colors.brandOnPrimary,
       }}
     >
-      <div className="mb-4 flex items-center gap-3">
+      <div className="flex items-center gap-3 px-5 pt-5">
         <div className="rounded-lg bg-white/20 p-2">
           <MaterialIcon name={icon} className="text-[20px]" />
         </div>
-        <span className="text-xs font-semibold uppercase tracking-wider">{eyebrow}</span>
+        <span className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wider">{eyebrow}</span>
+        {explainerId ? (
+          <WidgetInfoButton
+            explainerId={explainerId}
+            momentTypeCode={momentTypeCode}
+            domain="group"
+          />
+        ) : null}
       </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-2xl font-bold leading-tight">{title}</p>
-          {subtitle ? <p className="mt-1 text-sm opacity-90">{subtitle}</p> : null}
-        </div>
-        <MaterialIcon name="arrow_forward" className="transition-transform group-hover:translate-x-1" />
-      </div>
-      {impacts && impacts.length > 0 && (
-        <div className="mt-6 border-t border-white/20 pt-4">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider opacity-80">Expected Impact</p>
-          <div className="flex flex-wrap gap-2">
-            {impacts.map((impact) => (
-              <span key={impact} className="rounded-lg bg-white/20 px-2 py-1 text-[10px] font-bold uppercase tracking-tighter">
-                {impact}
-              </span>
-            ))}
+      <button type="button" onClick={onClick} className="w-full p-5 pt-4 text-left">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold leading-tight">{title}</p>
+            {subtitle ? <p className="mt-1 text-sm opacity-90">{subtitle}</p> : null}
           </div>
+          <MaterialIcon name="arrow_forward" className="transition-transform group-hover:translate-x-1" />
         </div>
-      )}
-    </button>
+        {impacts && impacts.length > 0 && (
+          <div className="mt-6 border-t border-white/20 pt-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider opacity-80">Expected Impact</p>
+            <div className="flex flex-wrap gap-2">
+              {impacts.map((impact) => (
+                <span key={impact} className="rounded-lg bg-white/20 px-2 py-1 text-[10px] font-bold uppercase tracking-tighter">
+                  {impact}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </button>
+    </div>
   );
 }
 

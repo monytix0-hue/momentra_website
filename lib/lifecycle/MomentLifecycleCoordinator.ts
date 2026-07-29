@@ -8,7 +8,7 @@ import { ApiError } from "@/lib/api/client";
 import { PersonalRepository } from "@/repositories/PersonalRepository";
 import { GroupRepository } from "@/repositories/GroupRepository";
 import { BusinessRepository } from "@/repositories/BusinessRepository";
-import { invalidateBootstrapAfterMutation } from "@/stores/bootstrapStore";
+import { notifyMomentMutation } from "@/stores/bootstrapStore";
 
 export type LifecycleContextType = "PERSONAL" | "GROUP" | "BUSINESS";
 export type LifecycleAction = "pause" | "resume" | "complete" | "archive";
@@ -302,11 +302,11 @@ export async function runMomentLifecycle(
     );
 
     if (req.refreshBootstrap !== false) {
-      // Personal pause/resume already invalidate inside PersonalRepository.patchMoment.
-      const alreadyInvalidated =
+      // Personal pause/resume already soft-refresh inside PersonalRepository.patchMoment.
+      const alreadyRefreshed =
         req.contextType === "PERSONAL" && (req.action === "pause" || req.action === "resume");
-      if (!alreadyInvalidated) {
-        invalidateBootstrapAfterMutation();
+      if (!alreadyRefreshed) {
+        notifyMomentMutation(req.contextType);
         bootstrapRefreshCount = 1;
       } else {
         bootstrapRefreshCount = 1; // counted as the repo's single refresh

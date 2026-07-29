@@ -98,34 +98,43 @@ function useGroupTabCache<T>(
   const load = useCallback(
     async (force = false) => {
       if (!enabled || !id) return;
+
+      // Stale-while-revalidate: paint cached data immediately; never blank usable data
+      // before refresh completes. Force clears storage only for explicit reload paths.
+      let entry = cache.get(id);
+      if (!entry && !force) {
+        const fromDisk = diskCacheLoad<T>(diskKey(tab, id), STALE_TTL_MS);
+        if (fromDisk) {
+          entry = { data: fromDisk, at: Date.now() };
+          cache.set(id, entry);
+        }
+      }
+      const cachedValue = entry?.data ?? null;
+      const hadUsable = Boolean(cachedValue) || hasDataRef.current;
+
+      if (cachedValue) {
+        setData(cachedValue);
+        setLoading(false);
+      }
+
+      const age = entry ? Date.now() - entry.at : Infinity;
+      if (!force && entry && age < FRESH_TTL_MS) {
+        setRefreshing(false);
+        return;
+      }
+
+      if (hadUsable) {
+        setRefreshing(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
       if (force) {
         cache.delete(id);
         diskCacheRemove(diskKey(tab, id));
       }
-      const entry = force ? undefined : cache.get(id);
-      const age = entry ? Date.now() - entry.at : Infinity;
-      const fresh = !force && entry && age < FRESH_TTL_MS;
-      const staleUsable = !force && entry && age < STALE_TTL_MS;
-      if (fresh && entry) {
-        setData(entry.data);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-      if ((staleUsable && entry) || (!force && diskCacheLoad<T>(diskKey(tab, id), STALE_TTL_MS))) {
-        const stale = entry?.data ?? diskCacheLoad<T>(diskKey(tab, id), STALE_TTL_MS);
-        if (stale) {
-          setData(stale);
-          setLoading(false);
-          setRefreshing(true);
-        } else {
-          setLoading(true);
-        }
-      } else if (force && hasDataRef.current) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+
       setError(null);
       const key = `group:${tab}:${id}${force ? ":force" : ""}`;
       trackDedupe(tab, key);
@@ -135,9 +144,10 @@ function useGroupTabCache<T>(
         diskCacheSave(diskKey(tab, id), result);
         if (mounted.current) {
           setData(result);
+          setError(null);
         }
       } catch (err) {
-        if (mounted.current) {
+        if (mounted.current && !hadUsable) {
           setError(err instanceof Error ? err.message : "Unable to load this section.");
         }
       } finally {
@@ -152,9 +162,8 @@ function useGroupTabCache<T>(
 
   useEffect(() => {
     if (!enabled || !id) return;
-    // Pulse KPIs (bookings/spent) can stick at 0 after a backend deploy if we
-    // serve fresh client/Redis cache without force_refresh. Always force pulse.
-    void load(tab === "pulse");
+    // Mount always uses SWR. Force only via reload() (pull-to-refresh / retry / mutation).
+    void load(false);
   }, [enabled, id, load, generation, tab]);
 
   return { data, loading, refreshing, error, reload: () => load(true) };
@@ -272,25 +281,33 @@ export function useGroupLife(enabled = true) {
   const load = useCallback(
     async (force = false) => {
       if (!enabled) return;
-      if (force) {
-        lifeCache.delete(cacheKey);
-        diskCacheRemove(diskKey("life", "aggregate"));
+      let entry = lifeCache.get(cacheKey);
+      if (!entry && !force) {
+        const fromDisk = diskCacheLoad<GroupLifeResponse>(diskKey("life", "aggregate"), STALE_TTL_MS);
+        if (fromDisk) {
+          entry = { data: fromDisk, at: Date.now() };
+          lifeCache.set(cacheKey, entry);
+        }
       }
-      const entry = force ? undefined : lifeCache.get(cacheKey);
+      const cachedValue = entry?.data ?? null;
+      const hadUsable = Boolean(cachedValue) || hasDataRef.current;
+      if (cachedValue) {
+        setData(cachedValue);
+        setLoading(false);
+      }
       const age = entry ? Date.now() - entry.at : Infinity;
       if (!force && entry && age < FRESH_TTL_MS) {
-        setData(entry.data);
-        setLoading(false);
+        setRefreshing(false);
         return;
       }
-      if (!force && (entry || disk)) {
-        setData(entry?.data ?? disk);
+      if (hadUsable) {
+        setRefreshing(true);
         setLoading(false);
-        setRefreshing(true);
-      } else if (force && hasDataRef.current) {
-        setRefreshing(true);
       } else {
         setLoading(true);
+      }
+      if (force) {
+        lifeCache.delete(cacheKey);
       }
       const key = force ? "group:life:aggregate:force" : "group:life:aggregate";
       trackDedupe("life", key);
@@ -300,13 +317,15 @@ export function useGroupLife(enabled = true) {
         diskCacheSave(diskKey("life", "aggregate"), result);
         setData(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to load this section.");
+        if (!hadUsable) {
+          setError(err instanceof Error ? err.message : "Unable to load this section.");
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [disk, enabled],
+    [enabled],
   );
 
   useEffect(() => {

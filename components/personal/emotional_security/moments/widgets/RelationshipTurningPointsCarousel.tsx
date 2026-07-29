@@ -2,6 +2,7 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import type { PersonalEmotionalSecurityTurningPoint } from "@/lib/api/personalDomainTypes";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   relationshipsMomentsAccent,
   relationshipsMomentsCopy,
@@ -30,9 +31,12 @@ export function RelationshipTurningPointsCarousel({ points }: RelationshipTurnin
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-50">
-          {relationshipsMomentsCopy.turningPointsTitle}
-        </h3>
+        <div className="flex items-center gap-0.5">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+            {relationshipsMomentsCopy.turningPointsTitle}
+          </h3>
+          <WidgetInfoButton explainerId="MOMENT-TP" momentTypeCode="RELATIONSHIPS" />
+        </div>
         <button type="button" className="text-[10px] font-bold" style={{ color: "#818cf8" }}>
           {relationshipsMomentsCopy.viewAll}
         </button>

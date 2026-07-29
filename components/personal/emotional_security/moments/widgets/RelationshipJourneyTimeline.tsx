@@ -3,6 +3,7 @@
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import type { PersonalEmotionalSecurityJourneyTimelineItem } from "@/lib/api/personalDomainTypes";
 import { relationshipsMomentsCopy } from "@/lib/personal/emotional_security/moments/relationshipsMomentsCopy";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type RelationshipJourneyTimelineProps = {
   items: PersonalEmotionalSecurityJourneyTimelineItem[];
@@ -14,9 +15,12 @@ export function RelationshipJourneyTimeline({ items }: RelationshipJourneyTimeli
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-50">
-          {relationshipsMomentsCopy.journeyTimelineTitle}
-        </h3>
+        <div className="flex items-center gap-0.5">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+            {relationshipsMomentsCopy.journeyTimelineTitle}
+          </h3>
+          <WidgetInfoButton explainerId="MOMENT-004" momentTypeCode="RELATIONSHIPS" />
+        </div>
         <button type="button" className="text-[10px] font-bold" style={{ color: "#818cf8" }}>
           {relationshipsMomentsCopy.viewAll}
         </button>

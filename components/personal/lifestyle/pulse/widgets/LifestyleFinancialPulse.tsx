@@ -2,9 +2,12 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalLifestylePulseMetrics } from "@/lib/api/personal";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
 import { LIFESTYLE_SEGMENT_COLORS } from "@/lib/personal/lifestyle/pulse/lifestylePulseIcons";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Segment = PersonalLifestylePulseMetrics["financial_segments"][number];
 
@@ -64,7 +67,7 @@ export function LifestyleFinancialPulse({ segments, totalSpendMinor }: Props) {
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
       <div className="mb-4 flex items-center justify-between">
-        <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{lifestylePulseCopy.financialTitle}</h3>
+        <PersonalWidgetSectionHeader title={lifestylePulseCopy.financialTitle} explainerId="PULSE-006" momentTypeCode={MOMENT_TYPE} />
         <div className="text-right">
           <div className="text-[9px] font-bold uppercase tracking-wider opacity-40">Total Spend</div>
           <div className="text-sm font-bold">{lifestylePulseCopy.formatInrMinor(totalSpendMinor)}</div>

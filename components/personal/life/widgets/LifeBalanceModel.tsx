@@ -17,7 +17,7 @@ export function LifeBalanceModel({ balance }: LifeBalanceModelProps) {
   return (
     <LifeCard>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <LifeSectionLabel>{personalLifeCopy.sections.lifeBalance}</LifeSectionLabel>
+        <LifeSectionLabel explainerId="LIFE-002">{personalLifeCopy.sections.lifeBalance}</LifeSectionLabel>
         <span
           className="uppercase tracking-wide"
           style={{ ...personalTypography.microLabel, opacity: 0.5, color: colors.textSecondary }}

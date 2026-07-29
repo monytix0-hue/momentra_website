@@ -6,6 +6,7 @@ import type { PersonalLifeOpsBestMomentCard } from "@/lib/api/personal";
 import { fbMomentsCopy } from "@/lib/personal/future_building/moments/fbMomentsCopy";
 import { FbSectionBadge } from "@/components/personal/future_building/moments/widgets/FbSectionBadge";
 import { Award, BookOpen, Flag } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const CARD_ACCENTS = ["#8b5cf6", "#3b82f6", "#ec4899"];
 
@@ -25,6 +26,7 @@ export function FbBestMomentsCarousel({ cards }: Props) {
           <h2 style={{ ...personalTypography.labelSm, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6 }}>
             {fbMomentsCopy.bestMomentsTitle}
           </h2>
+          <WidgetInfoButton explainerId="MOMENT-008" momentTypeCode="FUTURE_BUILDING" />
         </div>
         <button type="button" style={{ fontSize: 12, color: colors.brandPrimary, background: "none", border: "none" }}>
           {fbMomentsCopy.viewAll}

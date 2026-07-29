@@ -5,11 +5,13 @@ import {
   neuralLineBackground,
   personalGlassCardStyle,
   personalGlowWrapperStyle,
-  personalTypography,
 } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalLifestylePulseMetrics } from "@/lib/api/personal";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
 import { Activity, TrendingUp } from "lucide-react";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Props = {
   metrics: PersonalLifestylePulseMetrics;
@@ -67,9 +69,12 @@ export function LifestyleVitalityHero({ metrics }: Props) {
       >
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <h2 className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
-              {lifestylePulseCopy.vitalityTitle}
-            </h2>
+            <div className="mb-1 flex items-center gap-0.5">
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
+                {lifestylePulseCopy.vitalityTitle}
+              </h2>
+              <WidgetInfoButton explainerId="PULSE-001" momentTypeCode={MOMENT_TYPE} />
+            </div>
             <div className="flex items-baseline gap-1">
               <span className="text-[42px] font-bold leading-none">{metrics.vitality_index}</span>
               <span className="text-lg font-semibold opacity-40">{lifestylePulseCopy.vitalitySuffix}</span>
@@ -91,13 +96,22 @@ export function LifestyleVitalityHero({ metrics }: Props) {
         </div>
 
         <div className="flex flex-1 items-center justify-center py-4">
-          <VitalityArc percent={metrics.vitality_index} />
+          <div className="relative">
+            <div className="absolute -right-2 -top-2 z-10">
+              <WidgetInfoButton explainerId="PULSE-002" momentTypeCode={MOMENT_TYPE} />
+            </div>
+            <VitalityArc percent={metrics.vitality_index} />
+          </div>
         </div>
 
         <div
           className="mt-6 grid grid-cols-2 gap-4 border-t pt-6"
           style={{ borderColor: "rgba(255,255,255,0.05)" }}
         >
+          <div className="col-span-2 flex items-center gap-0.5">
+            <span className="text-[9px] font-bold uppercase tracking-wider opacity-40">Capacity</span>
+            <WidgetInfoButton explainerId="PULSE-003" momentTypeCode={MOMENT_TYPE} />
+          </div>
           {[
             { label: lifestylePulseCopy.statSpend, value: lifestylePulseCopy.formatInrMinor(metrics.capacity.lifestyle_spend_minor) },
             { label: lifestylePulseCopy.statExperiences, value: metrics.capacity.experience_count },

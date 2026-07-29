@@ -24,6 +24,7 @@ export interface PersonalMomentResponse {
   status: string;
   current_runtime_state: string | null;
   activated_at: string | null;
+  projection_status?: "READY" | "REFRESHING";
 }
 
 export type PersonalMomentManageStatus =
@@ -156,8 +157,29 @@ export interface PulseDashboardRecentItem {
   edit_event_type?: string;
   can_edit?: boolean;
   can_delete?: boolean;
+  editable?: boolean;
   category_code?: string | null;
   subcategory_code?: string | null;
+  category_label?: string | null;
+  subcategory_label?: string | null;
+  mood_label?: string | null;
+  mood?: {
+    code?: string | null;
+    label?: string | null;
+    intensity?: string | null;
+    source?: string | null;
+  } | null;
+  domain?: string | null;
+  domain_label?: string | null;
+  type_label?: string | null;
+  domain_type_subtitle?: string | null;
+  primary_metric?: {
+    kind?: string | null;
+    display?: string | null;
+    amount_minor?: number | null;
+    currency_code?: string | null;
+  } | null;
+  chips?: Array<{ code?: string | null; label?: string | null }> | null;
 }
 
 export type TemplateActivityListResponse = {
@@ -176,6 +198,7 @@ export interface PersonalLifeOpsActivitySummary {
 export interface PersonalLifeOpsActivityItem {
   id: string;
   event_type: string;
+  title?: string | null;
   category_label: string;
   detail_line: string;
   relative_time: string;
@@ -191,6 +214,8 @@ export interface PersonalLifeOpsActivityItem {
   impact_direction?: string | null;
   category_code?: string | null;
   subcategory_code?: string | null;
+  subcategory_label?: string | null;
+  mood_label?: string | null;
 }
 
 export interface PersonalLifeOpsActivityResponse {
@@ -309,7 +334,35 @@ export interface PersonalLiveRecentActivityItem {
   edit_event_type: string;
   can_edit?: boolean;
   can_delete?: boolean;
+  editable?: boolean;
+  title?: string | null;
+  subtitle?: string | null;
   amount_label?: string | null;
+  activity_type?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  impact_label?: string | null;
+  impact_direction?: string | null;
+  category_code?: string | null;
+  subcategory_code?: string | null;
+  subcategory_label?: string | null;
+  mood_label?: string | null;
+  mood?: {
+    code?: string | null;
+    label?: string | null;
+    intensity?: string | null;
+    source?: string | null;
+  } | null;
+  domain_label?: string | null;
+  type_label?: string | null;
+  domain_type_subtitle?: string | null;
+  primary_metric?: {
+    kind?: string | null;
+    display?: string | null;
+    amount_minor?: number | null;
+    currency_code?: string | null;
+  } | null;
+  chips?: Array<{ code?: string | null; label?: string | null }> | null;
 }
 
 export interface PersonalLifeOpsJourneyPhase {

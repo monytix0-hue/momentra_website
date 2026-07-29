@@ -2,8 +2,11 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalGlowWrapperStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { fbPulseCopy } from "@/lib/personal/future_building/pulse/fbPulseCopy";
 import { Rocket } from "lucide-react";
+
+const MOMENT_TYPE = "FUTURE_BUILDING";
 
 type Opportunity = {
   title: string;
@@ -38,9 +41,12 @@ export function FbOpportunityCard({ opportunity, onQuickAdd }: Props) {
       >
         <div className="relative z-10 flex items-start justify-between gap-4">
           <div className="max-w-[65%] space-y-1">
-            <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase", color: colors.brandPrimary }}>
-              {fbPulseCopy.highPriorityOpportunity}
-            </p>
+            <div className="flex items-center gap-0.5">
+              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase", color: colors.brandPrimary }}>
+                {fbPulseCopy.highPriorityOpportunity}
+              </p>
+              <WidgetInfoButton explainerId="PULSE-009" momentTypeCode={MOMENT_TYPE} />
+            </div>
             <h4 style={{ fontSize: 16, fontWeight: 700, color: colors.textPrimary }}>{opportunity.title}</h4>
             <p style={{ ...personalTypography.bodyMd, fontSize: 12, opacity: 0.8, marginTop: 8 }}>{opportunity.body}</p>
           </div>

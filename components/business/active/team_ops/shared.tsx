@@ -157,13 +157,16 @@ export function TeamOpsStatusBanner({
   refreshing,
   error,
   onRetry,
+  hasData,
 }: {
   loading: boolean;
   refreshing?: boolean;
   error: string | null;
   onRetry: () => void;
+  /** When true, never show full skeleton — usable data is on screen. */
+  hasData?: boolean;
 }) {
-  if (loading) {
+  if (loading && !hasData) {
     return <TeamOpsSkeleton />;
   }
   if (error) {

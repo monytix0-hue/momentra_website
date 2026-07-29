@@ -9,6 +9,7 @@ import { HomeShell } from "@/components/home/HomeShell";
 import { AppContextProvider } from "@/components/theme/AppContextProvider";
 import { BootstrapGate } from "@/components/shell/BootstrapGate";
 import { MomentraAnalytics } from "@/lib/analytics";
+import { markShellPaint } from "@/lib/telemetry/performanceTelemetry";
 
 const RESTORE_ESCAPE_MS = 12_000;
 
@@ -33,7 +34,12 @@ export function AuthGate({ children: _children }: { children: React.ReactNode })
     return () => window.clearTimeout(timer);
   }, [isRestoring]);
 
-  if (isRestoring) {
+  useEffect(() => {
+    if (user) markShellPaint();
+  }, [user]);
+
+  // Paint shell from disk when tokens + cached user exist; validate /me in background.
+  if (isRestoring && !user) {
     return (
       <div className="auth-screen flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
         <Loader2 className="size-8 animate-spin opacity-80" aria-hidden />

@@ -2,9 +2,12 @@
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import type { PersonalLifestylePulseMetrics } from "@/lib/api/personal";
 import { lifestylePulseCopy } from "@/lib/personal/lifestyle/pulse/lifestylePulseCopy";
 import { Brain } from "lucide-react";
+
+const MOMENT_TYPE = "LIFESTYLE";
 
 type Props = { intelligence: PersonalLifestylePulseMetrics["intelligence"] };
 
@@ -42,6 +45,7 @@ export function LifestyleIntelligenceCard({ intelligence }: Props) {
             <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: colors.brandPrimary }}>
               Intelligence Insight
             </span>
+            <WidgetInfoButton explainerId="PULSE-011" momentTypeCode={MOMENT_TYPE} />
             <div className="h-px flex-1" style={{ background: `${colors.brandPrimary}33` }} />
           </div>
           <p className="mt-2 text-sm font-medium italic leading-relaxed">&ldquo;{intelligence.quote}&rdquo;</p>

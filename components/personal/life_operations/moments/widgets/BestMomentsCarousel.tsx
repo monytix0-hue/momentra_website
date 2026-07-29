@@ -6,6 +6,7 @@ import { personalTypography } from "@/components/personal/empty/shared/emptyStyl
 import type { PersonalLifeOpsBestMomentCard } from "@/lib/api/personal";
 import { lifeOpsMomentsCopy } from "@/lib/personal/life_operations/moments/lifeOpsMomentsCopy";
 import { ImageIcon, Sparkles } from "lucide-react";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 
 type BestMomentsCarouselProps = {
   cards: PersonalLifeOpsBestMomentCard[];
@@ -17,9 +18,7 @@ export function BestMomentsCarousel({ cards }: BestMomentsCarouselProps) {
 
   return (
     <section>
-      <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginBottom: 12 }}>
-        {lifeOpsMomentsCopy.bestMomentsTitle}
-      </h3>
+      <PersonalWidgetSectionHeader title={lifeOpsMomentsCopy.bestMomentsTitle} explainerId="MOMENT-008" momentTypeCode="LIFE_OPERATIONS" className="mb-3" />
       {cards.length === 0 ? (
         <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary, opacity: 0.7 }}>
           {lifeOpsMomentsCopy.bestMomentsEmpty}

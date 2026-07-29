@@ -1,10 +1,13 @@
 "use client";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
-import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
+import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { PersonalWidgetSectionHeader } from "@/components/personal/shared/WidgetInfoButton";
 import { fbPulseCopy } from "@/lib/personal/future_building/pulse/fbPulseCopy";
 import { FB_SEGMENT_COLORS } from "@/lib/personal/future_building/pulse/fbPulseUtils";
 import { Brain, Flag, Zap } from "lucide-react";
+
+const MOMENT_TYPE = "FUTURE_BUILDING";
 
 type Driver = { driver_id: string; label: string; impact: number; fill_percent: number };
 
@@ -22,7 +25,7 @@ export function FbScoreDriverGrid({ drivers }: Props) {
 
   return (
     <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 20, padding: 16 }}>
-      <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary, marginBottom: 12 }}>{fbPulseCopy.scoreDriversTitle}</h3>
+      <PersonalWidgetSectionHeader title={fbPulseCopy.scoreDriversTitle} explainerId="PULSE-002" momentTypeCode={MOMENT_TYPE} className="mb-3" />
       <div className="grid grid-cols-3 gap-3">
         {drivers.map((driver, i) => {
           const Icon = DRIVER_ICONS[driver.driver_id] ?? Zap;

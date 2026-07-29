@@ -4,6 +4,7 @@ import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle, personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import { fbMemoryCopy } from "@/lib/personal/future_building/memory/fbMemoryCopy";
 import { Brain, Sparkles } from "lucide-react";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 type Props = { quote: string };
 
@@ -28,6 +29,7 @@ export function FbAiInterpretationSection({ quote }: Props) {
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: colors.brandPrimary }}>
               {fbMemoryCopy.sections.aiInterpretation}
             </span>
+            <WidgetInfoButton explainerId="MEMORY-009" momentTypeCode="FUTURE_BUILDING" />
           </div>
           <p style={{ ...personalTypography.bodyMd, fontStyle: "italic", color: colors.textPrimary }}>&ldquo;{quote}&rdquo;</p>
         </div>

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalGlassCardStyle } from "@/components/personal/empty/shared/emptyStyles";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 export function DomainGlassSection({
   children,
@@ -19,13 +20,26 @@ export function DomainGlassSection({
   );
 }
 
-export function DomainSectionHeader({ title }: { title: string }) {
+export function DomainSectionHeader({
+  title,
+  explainerId,
+  momentTypeCode,
+}: {
+  title: string;
+  explainerId?: string;
+  momentTypeCode?: string | null;
+}) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   return (
-    <h4 className="text-sm font-semibold tracking-wide" style={{ color: colors.textPrimary }}>
-      {title}
-    </h4>
+    <div className="flex items-center gap-0.5">
+      <h4 className="text-sm font-semibold tracking-wide" style={{ color: colors.textPrimary }}>
+        {title}
+      </h4>
+      {explainerId ? (
+        <WidgetInfoButton explainerId={explainerId} momentTypeCode={momentTypeCode} />
+      ) : null}
+    </div>
   );
 }
 

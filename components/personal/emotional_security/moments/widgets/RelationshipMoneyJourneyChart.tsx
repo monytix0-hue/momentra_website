@@ -3,6 +3,7 @@
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { personalTypography } from "@/components/personal/empty/shared/emptyStyles";
 import type { PersonalLifeOpsMoneyJourney } from "@/lib/api/personal";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   relationshipsMomentsAccent,
   relationshipsMomentsCopy,
@@ -62,7 +63,10 @@ export function RelationshipMoneyJourneyChart({ money }: RelationshipMoneyJourne
         border: "1px solid rgba(255,255,255,0.1)",
       }}
     >
-      <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{money.title}</h3>
+      <div className="flex items-center gap-0.5">
+        <h3 style={{ ...personalTypography.sectionHeader, color: colors.textPrimary }}>{money.title}</h3>
+        <WidgetInfoButton explainerId="MOMENT-005" momentTypeCode="RELATIONSHIPS" />
+      </div>
       <p className="text-xs opacity-60">{money.period_label}</p>
       {series.length === 0 ? (
         <p className="mt-3 text-sm opacity-70">{relationshipsMomentsCopy.moneyJourneyEmpty}</p>
@@ -79,7 +83,9 @@ export function RelationshipMoneyJourneyChart({ money }: RelationshipMoneyJourne
               </span>
             ))}
           </div>
-          <LineChart {...chartProps} />
+          <div className="pointer-events-none">
+            <LineChart {...chartProps} pointerConfig={undefined} />
+          </div>
           <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
             <div>
               <p className="text-[9px] font-bold uppercase opacity-50">{relationshipsMomentsCopy.totalSpend}</p>

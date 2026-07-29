@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { PieChart } from "react-gifted-charts";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { PersonalGlassGlowSection } from "@/components/personal/empty/shared/PersonalGlassGlowSection";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import {
   memoryMicroLabelStyle,
   personalTypography,
@@ -18,9 +19,9 @@ import {
   PULSE_PIE_PROPS,
 } from "@/lib/personal/life_operations/pulse/pulseChartTheme";
 
-type Props = { copy?: PersonalMemoryCopy;  dna: PersonalLifeOpsEmotionalDna };
+type Props = {copy?: PersonalMemoryCopy;  dna: PersonalLifeOpsEmotionalDna; momentTypeCode?: string | null };
 
-export function EmotionalDnaSection({ dna, copy }: Props) {
+export function EmotionalDnaSection({ dna, copy, momentTypeCode = "LIFE_OPERATIONS" }: Props) {
   const tokens = useThemeTokens();
   const memoryCopy = copy ?? lifeOpsMemoryCopy;
   const { colors } = tokens;
@@ -36,7 +37,10 @@ export function EmotionalDnaSection({ dna, copy }: Props) {
 
   return (
     <PersonalGlassGlowSection tokens={tokens} cornerRadius={16} innerStyle={{ padding: tokens.spacing.md }}>
-      <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.emotionalDna}</p>
+      <div className="flex items-center gap-0.5">
+        <p style={memoryMicroLabelStyle(tokens)}>{memoryCopy.sectionLabels.emotionalDna}</p>
+        <WidgetInfoButton explainerId="MEMORY-007" momentTypeCode={momentTypeCode} />
+      </div>
       <div className="mt-3 flex flex-col items-center">
         <div className="relative" style={{ width: MEMORY_DONUT_SIZE, height: MEMORY_DONUT_SIZE }}>
           <PieChart

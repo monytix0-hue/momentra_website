@@ -167,6 +167,7 @@ export type BusinessActivateResponse = {
   status: string;
   activated_at?: string | null;
   membership?: BusinessSetupState["membership"];
+  projection_status?: "READY" | "REFRESHING";
 };
 
 export type BusinessSetupInviteDraft = {

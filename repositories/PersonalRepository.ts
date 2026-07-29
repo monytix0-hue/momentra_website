@@ -16,6 +16,7 @@ import {
   getPersonalSession,
   getTemplateActivity,
   getTemplateActivityDetail,
+  getUnifiedPersonalActivity,
   getTemplateLife,
   getTemplateMemory,
   getTemplateMoments,
@@ -59,7 +60,7 @@ import { invalidatePersonalMomentsCache } from "@/hooks/usePersonalMoments";
 import {
   invalidateTemplateProjectionCaches,
 } from "@/hooks/useTemplateProjection";
-import { invalidateBootstrapAfterMutation } from "@/stores/bootstrapStore";
+import { notifyMomentMutation } from "@/stores/bootstrapStore";
 import {
   clearQuickAddDraft,
   createClientRequestId,
@@ -132,7 +133,11 @@ export function invalidateAfterMasterExpense(includeRelationships: boolean) {
 export function invalidateAfterTemplateLifecycle(
   momentTypeCode: PersonalMomentTypeCode = "LIFE_OPERATIONS",
 ) {
-  invalidateBootstrapAfterMutation();
+  notifyMomentMutation("PERSONAL", {
+    contextState: "ACTIVE",
+    pulse: "ACTIVE",
+    moments: "ACTIVE",
+  });
   invalidateTemplateProjectionCaches(momentTypeCode);
   invalidatePersonalPulseCache(momentTypeCode);
   invalidatePersonalMomentsCache(momentTypeCode);
@@ -168,7 +173,11 @@ export const PersonalRepository = {
     body: PersonalMomentCreateRequest,
   ): Promise<PersonalMomentResponse> {
     const result = await createPersonalMoment(body);
-    invalidateBootstrapAfterMutation();
+    notifyMomentMutation("PERSONAL", {
+      contextState: "SETUP",
+      pulse: "SETUP",
+      moments: "SETUP",
+    });
     return result;
   },
 
@@ -177,7 +186,7 @@ export const PersonalRepository = {
     body: PersonalMomentUpdateRequest,
   ): Promise<PersonalMomentResponse> {
     const result = await patchPersonalMoment(momentId, body);
-    invalidateBootstrapAfterMutation();
+    notifyMomentMutation("PERSONAL");
     return result;
   },
 
@@ -255,6 +264,17 @@ export const PersonalRepository = {
     momentId: string,
   ): Promise<TemplateActivityListResponse> {
     return getTemplateActivity(momentTypeCode, momentId);
+  },
+
+  async listUnifiedActivity(params?: {
+    range?: string;
+    domain?: string;
+    kind?: string;
+    q?: string;
+    cursor?: string;
+    limit?: number;
+  }) {
+    return getUnifiedPersonalActivity(params);
   },
 
   async getTemplateActivityDetail(

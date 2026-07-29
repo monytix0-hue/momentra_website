@@ -57,7 +57,7 @@ export function EmotionalTrendChart({
   return (
     <LifeCard>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <LifeSectionLabel>{personalLifeCopy.sections.emotionalTrend}</LifeSectionLabel>
+        <LifeSectionLabel explainerId="LIFE-004">{personalLifeCopy.sections.emotionalTrend}</LifeSectionLabel>
         <span style={{ ...personalTypography.microLabel, opacity: 0.5, color: colors.textSecondary }}>
           {windowLabel}
         </span>
@@ -86,7 +86,7 @@ export function EmotionalTrendChart({
         </div>
       ) : (
         <>
-          <div className="relative w-full" style={{ height: LIFE_TREND_CHART_HEIGHT }}>
+          <div className="relative w-full pointer-events-none" style={{ height: LIFE_TREND_CHART_HEIGHT }}>
             {count > 0 ? (
               <LineChart
                 data={toLineData(connection)}
@@ -108,6 +108,7 @@ export function EmotionalTrendChart({
                 color4={seriesColors.fulfillment}
                 curved
                 {...PULSE_LINE_PROPS}
+                pointerConfig={undefined}
               />
             ) : null}
           </div>

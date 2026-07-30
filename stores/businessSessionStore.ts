@@ -5,8 +5,14 @@
  * Clients must not keep a separate selected-moment copy.
  */
 import { useSyncExternalStore } from "react";
-import { dedupeFetch } from "@/lib/cache/cacheStore";
+import {
+  dedupeFetch,
+  diskCacheLoad,
+  diskCacheRemove,
+  diskCacheSave,
+} from "@/lib/cache/cacheStore";
 import type {
+  BusinessCreateOptionCard,
   BusinessCreateOptionsResponse,
   BusinessMomentResponse,
   BusinessSessionBootstrapResponse,
@@ -24,9 +30,97 @@ import {
   clearBusinessMomentReseatMarks,
   getBusinessMomentReseatedIds,
 } from "@/lib/business/businessMomentAccess";
+import { businessProjectionSchemaSegment } from "@/lib/business/businessProjectionSchema";
 
 const CREATE_OPTIONS_FRESH_MS = 60_000;
 const BOOTSTRAP_FRESH_MS = 60_000;
+/** Stale-while-revalidate disk window — paint immediately, refresh in background. */
+const BOOTSTRAP_DISK_TTL_MS = 24 * 60 * 60 * 1000;
+
+function bootstrapDiskKey(workspaceId?: string | null): string {
+  const schema = businessProjectionSchemaSegment();
+  return workspaceId
+    ? `business:${schema}:session_bootstrap:${workspaceId}`
+    : `business:${schema}:session_bootstrap`;
+}
+
+function persistBootstrapDisk(bootstrap: BusinessSessionBootstrapResponse): void {
+  const wsId = bootstrap.selected_workspace?.id ?? null;
+  diskCacheSave(bootstrapDiskKey(wsId), bootstrap);
+  if (wsId) diskCacheSave(bootstrapDiskKey(null), bootstrap);
+}
+
+/** Personal-parity link priority: ACTIVE beats newer DRAFT; same status → prefer first seen (inventory order). */
+function latestMomentByTypeCode(
+  moments: BusinessMomentResponse[],
+): Map<string, BusinessMomentResponse> {
+  const rank = (status: string): number => {
+    const s = status.toUpperCase();
+    if (s === "ACTIVE") return 0;
+    if (s === "PAUSED") return 1;
+    if (s === "COMPLETED") return 2;
+    if (s === "SETUP") return 3;
+    if (s === "DRAFT") return 4;
+    return 99;
+  };
+  const best = new Map<string, BusinessMomentResponse>();
+  for (const m of moments) {
+    const code = (m.moment_type_code ?? "").trim();
+    if (!code || !m.moment_id) continue;
+    const existing = best.get(code);
+    if (!existing) {
+      best.set(code, m);
+      continue;
+    }
+    if (rank(m.status ?? "") < rank(existing.status ?? "")) {
+      best.set(code, m);
+    }
+  }
+  return best;
+}
+
+/** Attach inventory links onto catalog-only create/options payload. */
+export function attachCreateOptionLinksFromInventory(
+  options: BusinessCreateOptionsResponse,
+  moments: BusinessMomentResponse[],
+): BusinessCreateOptionsResponse {
+  const latest = latestMomentByTypeCode(moments);
+  const cards: BusinessCreateOptionCard[] = (options.cards ?? []).map((card) => {
+    const linked = latest.get(card.moment_type_code);
+    const status = (linked?.status ?? "").trim();
+    return {
+      ...card,
+      linked_moment_id: linked?.moment_id ?? null,
+      linked_moment_status: linked ? status || null : null,
+      is_active: Boolean(linked && isActiveBusinessMomentStatus(status || "ACTIVE")),
+    };
+  });
+  const activeCount = moments.filter((m) =>
+    isActiveBusinessMomentStatus(m.status ?? ""),
+  ).length;
+  return {
+    ...options,
+    cards,
+    is_empty: activeCount === 0,
+    active_moment_count: activeCount,
+  };
+}
+
+function hydrateBootstrapFromDisk(workspaceId?: string | null): boolean {
+  if (snapshot.bootstrap != null) return false;
+  const cached =
+    diskCacheLoad<BusinessSessionBootstrapResponse>(
+      bootstrapDiskKey(workspaceId),
+      BOOTSTRAP_DISK_TTL_MS,
+    ) ??
+    diskCacheLoad<BusinessSessionBootstrapResponse>(
+      bootstrapDiskKey(null),
+      BOOTSTRAP_DISK_TTL_MS,
+    );
+  if (!cached) return false;
+  applyInventorySelection(cached);
+  return true;
+}
 
 export type BusinessSessionSnapshot = {
   bootstrap: BusinessSessionBootstrapResponse | null;
@@ -266,6 +360,9 @@ export async function ensureBusinessBootstrap(
 ): Promise<BusinessSessionBootstrapResponse | null> {
   const gen = snapshot.generation;
   const targetWs = workspaceId ?? snapshot.selectedWorkspaceId;
+  // Paint disk/session cache immediately — never block chrome on network.
+  const paintedFromDisk = hydrateBootstrapFromDisk(targetWs);
+
   const fresh =
     !force &&
     snapshot.bootstrap != null &&
@@ -277,9 +374,89 @@ export async function ensureBusinessBootstrap(
       snapshot.selectedWorkspaceId === targetWs);
   if (fresh) return snapshot.bootstrap;
 
-  setSnapshot({ loading: true, error: null });
+  // Never block first paint on network — empty shell or disk cache paints immediately.
+  setSnapshot({ loading: false, error: null });
+
   const t0 = performance.now();
   try {
+    const wsHint =
+      targetWs ??
+      snapshot.selectedWorkspaceId ??
+      snapshot.bootstrap?.selected_workspace?.id ??
+      null;
+
+    // Soft path: workspace moments + overview when company is known.
+    if (!force && wsHint) {
+      await softRefreshBusinessSession(wsHint);
+      if (gen === snapshot.generation && snapshot.bootstrap?.workspaces?.length) {
+        persistBootstrapDisk(snapshot.bootstrap);
+        setSnapshot({ loading: false });
+        logBusinessLoad({
+          tab: "session",
+          requestKey: "session_soft",
+          reason: paintedFromDisk ? "disk_revalidate" : "open",
+          cacheSource: paintedFromDisk ? "disk" : "network",
+          durationMs: Math.round(performance.now() - t0),
+          generation: snapshot.generation,
+          success: true,
+          momentId: snapshot.selectedMomentId,
+          momentType: snapshot.selectedMomentType,
+        });
+        return snapshot.bootstrap;
+      }
+    }
+
+    // Cold chrome: thin session then soft inventory (avoid fat bootstrap when possible).
+    if (!force) {
+      try {
+        const session = await dedupeFetch(
+          wsHint ? `business:session_chrome:${wsHint}` : "business:session_chrome",
+          () =>
+            BusinessRepository.getSession(
+              wsHint ? { workspaceId: wsHint } : undefined,
+            ),
+        );
+        if (gen !== snapshot.generation) return snapshot.bootstrap;
+        const prev = snapshot.bootstrap;
+        const chromeBootstrap: BusinessSessionBootstrapResponse = {
+          moments_home: prev?.moments_home ?? {
+            is_empty: true,
+            active_moment_count: 0,
+            cards: [],
+          },
+          moments: prev?.moments ?? [],
+          selected_workspace: session.selected_workspace ?? prev?.selected_workspace ?? null,
+          workspaces: session.workspaces ?? prev?.workspaces ?? [],
+          module_tiles: session.module_tiles ?? prev?.module_tiles ?? [],
+          dashboard: prev?.dashboard,
+        };
+        applyInventorySelection(chromeBootstrap);
+        const selectedId =
+          chromeBootstrap.selected_workspace?.id ??
+          snapshot.selectedWorkspaceId ??
+          null;
+        if (selectedId) {
+          await softRefreshBusinessSession(selectedId);
+        }
+        if (snapshot.bootstrap) persistBootstrapDisk(snapshot.bootstrap);
+        setSnapshot({ loading: false });
+        logBusinessLoad({
+          tab: "session",
+          requestKey: "session_chrome",
+          reason: "open",
+          cacheSource: "network",
+          durationMs: Math.round(performance.now() - t0),
+          generation: snapshot.generation,
+          success: true,
+          momentId: snapshot.selectedMomentId,
+          momentType: snapshot.selectedMomentType,
+        });
+        return snapshot.bootstrap;
+      } catch {
+        // Fall through to full bootstrap.
+      }
+    }
+
     const cacheKey = targetWs
       ? `business:session_bootstrap:${targetWs}`
       : "business:session_bootstrap";
@@ -289,10 +466,10 @@ export async function ensureBusinessBootstrap(
       ),
     );
     if (gen !== snapshot.generation && !force) {
-      applyInventorySelection(bootstrap);
-    } else {
-      applyInventorySelection(bootstrap);
+      // Still apply — recovery/force paths need inventory; gen bump is rare here.
     }
+    applyInventorySelection(bootstrap);
+    persistBootstrapDisk(bootstrap);
     setSnapshot({ loading: false });
     logBusinessLoad({
       tab: "session",
@@ -308,7 +485,11 @@ export async function ensureBusinessBootstrap(
     return snapshot.bootstrap;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load Business";
-    setSnapshot({ loading: false, error: message });
+    // Keep painted shell on refresh failure.
+    setSnapshot({
+      loading: false,
+      error: snapshot.bootstrap != null ? null : message,
+    });
     logBusinessLoad({
       tab: "session",
       requestKey: "session_bootstrap",
@@ -319,7 +500,7 @@ export async function ensureBusinessBootstrap(
       success: false,
       errorCode: "bootstrap_failed",
     });
-    return null;
+    return snapshot.bootstrap;
   }
 }
 
@@ -335,13 +516,40 @@ export async function switchBusinessWorkspace(
   workspaceId: string,
 ): Promise<BusinessSessionBootstrapResponse | null> {
   bumpBusinessSessionGeneration();
-  setSnapshot({ selectedWorkspaceId: workspaceId, selectedMomentId: null });
+  const prev = snapshot.bootstrap;
+  const selected =
+    prev?.workspaces?.find((w) => w.id === workspaceId) ?? null;
+  setSnapshot({
+    selectedWorkspaceId: workspaceId,
+    selectedMomentId: null,
+    selectedMomentType: "",
+    loading: false,
+    error: null,
+    bootstrap: prev
+      ? {
+          ...prev,
+          selected_workspace: selected ?? {
+            id: workspaceId,
+            name: "Company",
+            role: "MEMBER",
+          },
+          moments: [],
+          moments_home: {
+            is_empty: true,
+            active_moment_count: 0,
+            cards: [],
+          },
+        }
+      : null,
+  });
   try {
     await BusinessRepository.selectWorkspace(workspaceId);
   } catch {
-    // Preference persist may fail offline; still reload scoped bootstrap.
+    // Preference persist may fail offline; still soft-reload scoped inventory.
   }
-  return ensureBusinessBootstrap(true, workspaceId);
+  await softRefreshBusinessSession(workspaceId);
+  if (snapshot.bootstrap) persistBootstrapDisk(snapshot.bootstrap);
+  return snapshot.bootstrap;
 }
 
 export async function createAndSelectBusinessWorkspace(name: string): Promise<
@@ -392,7 +600,13 @@ export async function softRefreshBusinessSession(
     snapshot.bootstrap?.selected_workspace?.id ??
     null;
   if (!wsId) {
-    await ensureBusinessBootstrap(false);
+    // Cold open without a company id — fat bootstrap once for chrome + inventory.
+    const cacheKey = "business:session_bootstrap";
+    const bootstrap = await dedupeFetch(cacheKey, () =>
+      BusinessRepository.getSessionBootstrap(),
+    );
+    applyInventorySelection(bootstrap);
+    persistBootstrapDisk(bootstrap);
     return;
   }
   const gen = snapshot.generation;
@@ -403,6 +617,14 @@ export async function softRefreshBusinessSession(
     ]);
     if (gen !== snapshot.generation) return;
     const prev = snapshot.bootstrap;
+    const selectedFromList =
+      prev?.workspaces?.find((w) => w.id === wsId) ?? null;
+    const selectedWorkspace =
+      selectedFromList ??
+      (prev?.selected_workspace?.id === wsId
+        ? prev.selected_workspace
+        : prev?.selected_workspace) ??
+      null;
     const next: BusinessSessionBootstrapResponse = {
       moments_home:
         momentsPayload.moments_home ??
@@ -412,26 +634,42 @@ export async function softRefreshBusinessSession(
           cards: [],
         },
       moments: momentsPayload.moments ?? prev?.moments ?? [],
-      selected_workspace: prev?.selected_workspace ?? null,
+      selected_workspace: selectedWorkspace,
       workspaces: prev?.workspaces ?? [],
       module_tiles: prev?.module_tiles ?? [],
       dashboard: overview.dashboard ?? prev?.dashboard,
     };
-    if (prev?.selected_workspace?.id === wsId || !prev?.selected_workspace) {
-      applyInventorySelection(next);
-    } else {
+    applyInventorySelection(next);
+    if (snapshot.createOptions) {
       setSnapshot({
-        bootstrap: {
-          ...next,
-          selected_workspace: prev.selected_workspace,
-          workspaces: prev.workspaces,
-          module_tiles: prev.module_tiles,
-        },
-        lastLoadedAt: Date.now(),
+        createOptions: attachCreateOptionLinksFromInventory(
+          snapshot.createOptions,
+          next.moments ?? [],
+        ),
       });
     }
+    persistBootstrapDisk(next);
   } catch {
-    await ensureBusinessBootstrap(false, wsId);
+    // Soft failure: try thin chrome + retry once; avoid forced fat bootstrap loops.
+    try {
+      const session = await BusinessRepository.getSession({ workspaceId: wsId });
+      if (gen !== snapshot.generation) return;
+      const prev = snapshot.bootstrap;
+      applyInventorySelection({
+        moments_home: prev?.moments_home ?? {
+          is_empty: true,
+          active_moment_count: 0,
+          cards: [],
+        },
+        moments: prev?.moments ?? [],
+        selected_workspace: session.selected_workspace ?? prev?.selected_workspace ?? null,
+        workspaces: session.workspaces ?? prev?.workspaces ?? [],
+        module_tiles: session.module_tiles ?? prev?.module_tiles ?? [],
+        dashboard: prev?.dashboard,
+      });
+    } catch {
+      /* keep painted shell */
+    }
   }
 }
 
@@ -519,12 +757,21 @@ export function patchBusinessMomentInInventory(
 export async function ensureBusinessCreateOptions(
   force = false,
 ): Promise<BusinessCreateOptionsResponse | null> {
+  const inventory = inventoryMoments();
   const fresh =
     !force &&
     snapshot.createOptions != null &&
     snapshot.createOptionsLastLoadedAt != null &&
     Date.now() - snapshot.createOptionsLastLoadedAt < CREATE_OPTIONS_FRESH_MS;
-  if (fresh) return snapshot.createOptions;
+  if (fresh) {
+    // Re-attach links in case inventory changed while catalog TTL was still fresh.
+    const merged = attachCreateOptionLinksFromInventory(
+      snapshot.createOptions,
+      inventory,
+    );
+    setSnapshot({ createOptions: merged });
+    return merged;
+  }
 
   const gen = snapshot.generation;
   setSnapshot({ createOptionsLoading: true });
@@ -536,8 +783,12 @@ export async function ensureBusinessCreateOptions(
     if (gen !== snapshot.generation) {
       // Still cache catalog; selection is authoritative elsewhere.
     }
+    const merged = attachCreateOptionLinksFromInventory(
+      options,
+      inventoryMoments(),
+    );
     setSnapshot({
-      createOptions: options,
+      createOptions: merged,
       createOptionsLastLoadedAt: Date.now(),
     });
     logBusinessLoad({
@@ -549,8 +800,8 @@ export async function ensureBusinessCreateOptions(
       generation: snapshot.generation,
       success: true,
     });
-    return options;
-  } catch (err) {
+    return merged;
+  } catch {
     logBusinessLoad({
       tab: "create",
       requestKey: "create_options",
@@ -561,13 +812,18 @@ export async function ensureBusinessCreateOptions(
       success: false,
       errorCode: "create_options_failed",
     });
-    return snapshot.createOptions;
+    return snapshot.createOptions
+      ? attachCreateOptionLinksFromInventory(snapshot.createOptions, inventory)
+      : null;
   } finally {
     setSnapshot({ createOptionsLoading: false });
   }
 }
 
 export function clearBusinessSessionStore(): void {
+  const wsId = snapshot.selectedWorkspaceId ?? snapshot.bootstrap?.selected_workspace?.id;
+  diskCacheRemove(bootstrapDiskKey(wsId));
+  diskCacheRemove(bootstrapDiskKey(null));
   snapshot = {
     bootstrap: null,
     createOptions: null,

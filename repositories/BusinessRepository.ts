@@ -4,6 +4,7 @@ import {
   completeBusinessMoment,
   createBusinessWorkspace,
   getBusinessCreateOptions,
+  getBusinessSession,
   getBusinessSessionBootstrap,
   getBusinessWorkspaceMoments,
   getBusinessWorkspaceOverview,
@@ -16,6 +17,7 @@ import {
 
 export const BusinessRepository = {
   getSessionBootstrap: getBusinessSessionBootstrap,
+  getSession: getBusinessSession,
   getWorkspaceOverview: getBusinessWorkspaceOverview,
   getWorkspaceMoments: getBusinessWorkspaceMoments,
   getCreateOptions: getBusinessCreateOptions,

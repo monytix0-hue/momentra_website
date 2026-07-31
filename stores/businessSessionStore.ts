@@ -128,6 +128,8 @@ export type BusinessSessionSnapshot = {
   selectedMomentId: string | null;
   selectedMomentType: string;
   selectedWorkspaceId: string | null;
+  /** After activate: skip empty-inventory wipe until inventory includes this id. */
+  postActivatePinnedMomentId: string | null;
   loading: boolean;
   createOptionsLoading: boolean;
   error: string | null;
@@ -142,6 +144,7 @@ let snapshot: BusinessSessionSnapshot = {
   selectedMomentId: null,
   selectedMomentType: "",
   selectedWorkspaceId: null,
+  postActivatePinnedMomentId: null,
   loading: false,
   createOptionsLoading: false,
   error: null,
@@ -344,6 +347,32 @@ export function setBusinessSelection(
     selectedMomentType: typeCode,
     selectedMomentId: momentId,
   });
+}
+
+/** Pin selection after activate so soft/empty inventory races cannot clear it. */
+export function pinBusinessPostActivateSelection(
+  typeCode: string,
+  momentId: string,
+): void {
+  if (!momentId || !typeCode) return;
+  bumpBusinessSessionGeneration();
+  setSnapshot({
+    selectedMomentType: typeCode,
+    selectedMomentId: momentId,
+    postActivatePinnedMomentId: momentId,
+  });
+}
+
+export function clearBusinessPostActivatePin(momentId?: string | null): void {
+  const pinned = snapshot.postActivatePinnedMomentId;
+  if (!pinned) return;
+  if (momentId == null || momentId === pinned) {
+    setSnapshot({ postActivatePinnedMomentId: null });
+  }
+}
+
+export function hasBusinessPostActivatePin(): boolean {
+  return Boolean(snapshot.postActivatePinnedMomentId);
 }
 
 export function getBusinessSwitcherOptions(): BusinessMomentSwitcherOption[] {
@@ -830,6 +859,7 @@ export function clearBusinessSessionStore(): void {
     selectedMomentId: null,
     selectedMomentType: "",
     selectedWorkspaceId: null,
+    postActivatePinnedMomentId: null,
     loading: false,
     createOptionsLoading: false,
     error: null,

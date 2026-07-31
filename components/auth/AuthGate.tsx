@@ -7,6 +7,7 @@ import { LoginScreen } from "@/components/auth/LoginScreen";
 import { MomentraAppShell } from "@/components/MomentraAppShell";
 import { HomeShell } from "@/components/home/HomeShell";
 import { AppContextProvider } from "@/components/theme/AppContextProvider";
+import { MomentraToastHost } from "@/components/shared/MomentraToastHost";
 import { BootstrapGate } from "@/components/shell/BootstrapGate";
 import { MomentraAnalytics } from "@/lib/analytics";
 import { markShellPaint } from "@/lib/telemetry/performanceTelemetry";
@@ -65,6 +66,7 @@ export function AuthGate({ children: _children }: { children: React.ReactNode })
     <div className="flex min-h-dvh flex-1 flex-col">
       <BootstrapGate>
         <AppContextProvider>
+          <MomentraToastHost />
           <MomentraAppShell>
             {(context) => <HomeShell context={context} />}
           </MomentraAppShell>

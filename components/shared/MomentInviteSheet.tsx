@@ -140,8 +140,14 @@ export function MomentInviteSheet({
             </p>
           ) : bizLink ? (
             <div className="space-y-3">
-              <p className="break-all text-xs" style={{ color: colors.textSecondary }}>
-                {bizLink}
+              <p className="truncate text-xs" style={{ color: colors.textSecondary }}>
+                {(() => {
+                  try {
+                    return `${new URL(bizLink).host} · Invite link`;
+                  } catch {
+                    return "Invite link ready";
+                  }
+                })()}
               </p>
               <button
                 type="button"
@@ -159,7 +165,7 @@ export function MomentInviteSheet({
                 }}
               >
                 <Copy className="h-4 w-4" strokeWidth={2.5} />
-                {copied ? "Copied" : "Copy link"}
+                {copied ? "Copied" : "Copy invite link"}
               </button>
               <div
                 className="mx-auto flex items-center justify-center p-3"

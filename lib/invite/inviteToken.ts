@@ -69,6 +69,14 @@ export function parseInviteInput(raw: string): ParsedInvite | null {
     /* not a URL — treat as raw token */
   }
 
+  const upper = s.toUpperCase();
+  // Opaque platform codes (hashed DB lookup) — not legacy hex display codes.
+  if (/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6,16}$/.test(upper)) {
+    return { token: upper, kind: "moment" };
+  }
+  // Legacy 8-hex display invite_code is not a join secret.
+  if (/^[A-Fa-f0-9]{8}$/.test(s)) return null;
+
   if (s.length >= 8) return { token: s, kind: "moment" };
   return null;
 }

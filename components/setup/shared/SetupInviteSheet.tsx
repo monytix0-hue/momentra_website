@@ -403,7 +403,7 @@ export function SetupInviteSheet({
                 {memberName ? `Invite ${memberName}` : "Invite"}
               </h3>
               <p className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
-                Code {draft.invite_code}
+                Scan to join
               </p>
               <div className="mx-auto mt-4 w-fit rounded-2xl bg-white p-4">
                 <QRCode
@@ -414,13 +414,25 @@ export function SetupInviteSheet({
                   fgColor="#111111"
                 />
               </div>
+              <p
+                className="mt-3 truncate text-center text-xs"
+                style={{ color: colors.textSecondary }}
+              >
+                {(() => {
+                  try {
+                    return `${new URL(draft.invite_link).host} · Invite link`;
+                  } catch {
+                    return "Invite link";
+                  }
+                })()}
+              </p>
               <button
                 type="button"
-                className="mt-4 w-full rounded-xl px-3 py-2.5 text-sm font-medium"
+                className="mt-3 w-full rounded-xl px-3 py-2.5 text-sm font-medium"
                 style={{ background: colors.surfaceContainer }}
                 onClick={() => void handleCopy()}
               >
-                Copy link
+                Copy invite link
               </button>
               <button
                 type="button"

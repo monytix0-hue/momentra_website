@@ -424,6 +424,8 @@ export type GroupDraftCreateResponse = {
   moment_id: string;
   moment_type_code: string;
   lifecycle_status?: string;
+  /** Seeded setup from create — clients paint Step 1 and skip GET. */
+  setup?: GroupSharedSetupState | null;
 };
 
 export type GroupSharedSetupState = {
@@ -588,6 +590,9 @@ export type InviteAcceptResult = {
   moment_type?: string | null;
   already_member?: boolean;
   participant_id?: string | null;
+  result?: string | null;
+  invite_type?: string | null;
+  target_id?: string | null;
 };
 
 export async function acceptInvite(token: string): Promise<InviteAcceptResult> {

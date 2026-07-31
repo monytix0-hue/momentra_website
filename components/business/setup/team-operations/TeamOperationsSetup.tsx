@@ -83,7 +83,7 @@ export function TeamOperationsSetup({
     error,
     updateAnswer,
     updateAnswers,
-    setProgress,
+    setProgress: _setProgress,
     flushPendingSave,
     requestPreview,
     activate,
@@ -192,14 +192,16 @@ export function TeamOperationsSetup({
 
   const go = async (next: number) => {
     if (interactionsDisabled) return;
-    // Continue: cancel debounce → flush → validate → advance
-    const flushed = await flushPendingSave();
-    if (!flushed) return;
+    // Continue: validate → single PUT (answers + progress) → advance
     if (next > step && !validateStep(step)) return;
     const completed = Array.from({ length: Math.max(0, next - 1) }, (_, i) => i + 1);
+    const flushed = await flushPendingSave({
+      current_step: next,
+      completed_steps: completed,
+    });
+    if (!flushed) return;
     setStep(next);
     setFieldErrors({});
-    await setProgress(next, completed);
     if (next === 4) await requestPreview();
   };
 

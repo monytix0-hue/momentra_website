@@ -39,6 +39,8 @@ import { ContextBottomNav } from "@/components/nav/ContextBottomNav";
 import { MomentManageSheet } from "@/components/shared/MomentManageSheet";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
+import { toast } from "@/lib/toast/momentraToastStore";
+import { groupActivationSuccessMessage } from "@/lib/toast/activationToastCopy";
 
 import type { BottomNavTabId } from "@/lib/bottomNavTabs";
 
@@ -62,7 +64,6 @@ import { SharedPurchaseMoments } from "@/components/group/active/purchase/Shared
 import { SharedLivingPulse } from "@/components/group/active/living/SharedLivingPulse";
 import { LivingActivityScreen } from "@/components/group/active/living/activity/LivingActivityScreen";
 import { LivingActivityEditSheet } from "@/components/group/active/living/activity/LivingActivityEditSheet";
-import { GroupSettlementPanel } from "@/components/group/settlement/GroupSettlementPanel";
 import {
   deleteTripActivity,
   getTripActivityDetail,
@@ -196,7 +197,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
   );
   const [quickAddSuccess, setQuickAddSuccess] = useState<string | null>(null);
   const [showLivingActivity, setShowLivingActivity] = useState(false);
-  const [showSettlement, setShowSettlement] = useState(false);
   const [editingLivingActivity, setEditingLivingActivity] = useState<{
     id: string;
     eventType: string;
@@ -592,6 +592,8 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
 
       invalidateGroupTabCaches(activatedId);
 
+      toast.success(groupActivationSuccessMessage(activatedType));
+
     }
 
     void softRefreshGroupSession();
@@ -735,7 +737,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
           reloadKey={tripMomentsReloadKey}
           onViewAllActivity={() => setShowLivingActivity(true)}
           onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
-          onViewSettlement={() => setShowSettlement(true)}
         />
       ),
       moments: (
@@ -776,7 +777,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
           onQuickAdd={onQuickAdd}
           bottomPadding={bottomPadding}
           reloadKey={tripMomentsReloadKey}
-          onViewSettlement={() => setShowSettlement(true)}
         />
       ),
       moments: (
@@ -819,7 +819,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
           reloadKey={tripMomentsReloadKey}
           onViewAllActivity={() => setShowLivingActivity(true)}
           onEditActivity={(id, eventType) => setEditingLivingActivity({ id, eventType })}
-          onViewSettlement={() => setShowSettlement(true)}
         />
       ),
       moments: (
@@ -1278,21 +1277,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
                 listActivity: listTripActivity,
               }
             : {})}
-        />
-      ) : null}
-
-      {showSettlement &&
-      activeMomentId &&
-      (activeMomentType === "SHARED_EXPERIENCE" ||
-        activeMomentType === "SHARED_PURCHASE" ||
-        activeMomentType === "SHARED_LIVING") ? (
-        <GroupSettlementPanel
-          momentId={activeMomentId}
-          onBack={() => setShowSettlement(false)}
-          onChanged={() => {
-            invalidateGroupTabCaches(activeMomentId);
-            setTripMomentsReloadKey((key) => key + 1);
-          }}
         />
       ) : null}
 

@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
-import { Check, Copy, X } from "lucide-react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { Check, Copy, QrCode, X } from "lucide-react";
 import QRCode from "react-qr-code";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { businessCardStyle } from "@/components/business/empty/shared/emptyStyles";
 import type { BusinessWorkspaceSummary } from "@/lib/api/business";
+import { ApiError } from "@/lib/api/client";
+import {
+  canRevokeInvite,
+  formatInviteDate,
+  formatInviteStatusLabel,
+  formatUseCount,
+  recoverableInviteUrl,
+  type CompanyInviteInventoryItem,
+} from "@/lib/invite/companyInviteInventory";
 import { BusinessRepository } from "@/repositories/BusinessRepository";
 
 type Section = "general" | "members" | "roles" | "security";
@@ -47,7 +56,47 @@ export function CompanySettingsSheet({
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
   const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
+  const [lastInviteId, setLastInviteId] = useState<string | null>(null);
+  const [rawLinksById, setRawLinksById] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [qrInviteId, setQrInviteId] = useState<string | null>(null);
+
+  const [invites, setInvites] = useState<CompanyInviteInventoryItem[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [invitesError, setInvitesError] = useState<string | null>(null);
+  const [invitesDenied, setInvitesDenied] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const canManageInvites =
+    workspace?.role === "OWNER" || workspace?.role === "MANAGER";
+
+  const clearRawInviteSession = useCallback(() => {
+    setLastInviteLink(null);
+    setLastInviteId(null);
+    setRawLinksById({});
+    setQrInviteId(null);
+    setCopied(false);
+  }, []);
+
+  const refreshInviteInventory = useCallback(async () => {
+    if (!workspace || !canManageInvites) return;
+    setInvitesLoading(true);
+    setInvitesError(null);
+    setInvitesDenied(false);
+    try {
+      const res = await BusinessRepository.listOpaqueInvites(workspace.id);
+      setInvites((res.invites ?? []) as CompanyInviteInventoryItem[]);
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 403 || e.status === 401)) {
+        setInvitesDenied(true);
+        setInvites([]);
+      } else {
+        setInvitesError(e instanceof Error ? e.message : "Could not load invites");
+      }
+    } finally {
+      setInvitesLoading(false);
+    }
+  }, [workspace, canManageInvites]);
 
   useEffect(() => {
     if (!open || !workspace) return;
@@ -57,12 +106,22 @@ export function CompanySettingsSheet({
     setTimezone(workspace.timezone ?? "Asia/Kolkata");
     setSection("general");
     setError(null);
-    setLastInviteLink(null);
-    setCopied(false);
+    clearRawInviteSession();
     void BusinessRepository.listWorkspaceMembers(workspace.id)
       .then((res) => setMembers(res.members ?? []))
       .catch(() => setMembers([]));
-  }, [open, workspace]);
+  }, [open, workspace, clearRawInviteSession]);
+
+  useEffect(() => {
+    if (!open || !workspace || section !== "members" || !canManageInvites) return;
+    void refreshInviteInventory();
+  }, [open, workspace, section, canManageInvites, refreshInviteInventory]);
+
+  useEffect(() => {
+    if (section !== "members") {
+      clearRawInviteSession();
+    }
+  }, [section, clearRawInviteSession]);
 
   if (!open || !workspace) return null;
 
@@ -75,6 +134,11 @@ export function CompanySettingsSheet({
     padding: "10px 12px",
     fontFamily: "inherit",
   };
+
+  function handleClose() {
+    clearRawInviteSession();
+    onClose();
+  }
 
   async function saveGeneral() {
     setSaving(true);
@@ -94,6 +158,35 @@ export function CompanySettingsSheet({
     }
   }
 
+  async function createLinkInvite() {
+    setSaving(true);
+    setError(null);
+    setCopied(false);
+    try {
+      const result = await BusinessRepository.createOpaqueInvite(workspace!.id, {
+        role_code: inviteRole,
+        expires_in_days: 7,
+        max_uses: 10,
+      });
+      const link =
+        (typeof result.invite_url === "string" && result.invite_url) ||
+        (typeof result.code === "string" && result.code
+          ? `${window.location.origin}/invite/${result.code}`
+          : null);
+      if (link && result.invite_id) {
+        setLastInviteLink(link);
+        setLastInviteId(result.invite_id);
+        setRawLinksById((prev) => ({ ...prev, [result.invite_id]: link }));
+        setQrInviteId(result.invite_id);
+      }
+      await refreshInviteInventory();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create invite");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function sendInvite() {
     setSaving(true);
     setError(null);
@@ -103,16 +196,33 @@ export function CompanySettingsSheet({
         email: inviteEmail,
         role: inviteRole,
       });
+      const inviteId =
+        typeof result.invitation_id === "string"
+          ? result.invitation_id
+          : typeof result.invite_id === "string"
+            ? result.invite_id
+            : null;
       const link =
         (typeof result.invite_link === "string" && result.invite_link) ||
         (typeof result.qr_payload === "string" && result.qr_payload) ||
+        (typeof result.code === "string" && result.code
+          ? `${window.location.origin}/invite/${result.code}`
+          : null) ||
         (typeof result.token === "string" && result.token
-          ? `${window.location.origin}/company-invite/${result.token}`
+          ? `${window.location.origin}/invite/${result.token}`
           : null);
-      setLastInviteLink(link);
+      if (link) {
+        setLastInviteLink(link);
+        if (inviteId) {
+          setLastInviteId(inviteId);
+          setRawLinksById((prev) => ({ ...prev, [inviteId]: link }));
+          setQrInviteId(inviteId);
+        }
+      }
       setInviteEmail("");
       const res = await BusinessRepository.listWorkspaceMembers(workspace!.id);
       setMembers(res.members ?? []);
+      await refreshInviteInventory();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not invite");
     } finally {
@@ -120,13 +230,47 @@ export function CompanySettingsSheet({
     }
   }
 
-  async function copyInviteLink() {
-    if (!lastInviteLink) return;
+  async function copyLink(url: string) {
     try {
-      await navigator.clipboard.writeText(lastInviteLink);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
     } catch {
       setError("Could not copy link");
+    }
+  }
+
+  async function revokeInvite(inviteId: string) {
+    if (
+      !confirm(
+        "Revoke this invite? People with the link will no longer be able to join.",
+      )
+    ) {
+      return;
+    }
+    setRevokingId(inviteId);
+    setError(null);
+    try {
+      await BusinessRepository.revokeOpaqueInvite(inviteId);
+      setInvites((prev) =>
+        prev.map((inv) =>
+          inv.invite_id === inviteId ? { ...inv, status: "REVOKED" } : inv,
+        ),
+      );
+      if (lastInviteId === inviteId) {
+        setLastInviteLink(null);
+        setLastInviteId(null);
+      }
+      setRawLinksById((prev) => {
+        const next = { ...prev };
+        delete next[inviteId];
+        return next;
+      });
+      if (qrInviteId === inviteId) setQrInviteId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not revoke invite");
+      await refreshInviteInventory();
+    } finally {
+      setRevokingId(null);
     }
   }
 
@@ -138,13 +282,14 @@ export function CompanySettingsSheet({
     try {
       await BusinessRepository.updateWorkspace(workspace!.id, { status: "ARCHIVED" });
       onUpdated();
-      onClose();
+      handleClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not archive");
     } finally {
       setSaving(false);
     }
   }
+
 
   return (
     <div
@@ -156,7 +301,7 @@ export function CompanySettingsSheet({
         className="absolute inset-0"
         style={{ background: "rgba(11, 16, 32, 0.72)" }}
         aria-label="Close company settings"
-        onClick={onClose}
+        onClick={handleClose}
       />
       <div
         className="relative z-10 flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden shadow-2xl sm:rounded-2xl"
@@ -183,7 +328,7 @@ export function CompanySettingsSheet({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-full p-2"
             style={{ color: colors.textSecondary }}
             aria-label="Close"
@@ -327,93 +472,275 @@ export function CompanySettingsSheet({
                   </li>
                 ))}
               </ul>
-              {(workspace.role === "OWNER" || workspace.role === "MANAGER") && (
+
+              {canManageInvites ? (
                 <div
-                  className="space-y-2 pt-3"
+                  className="space-y-3 pt-3"
                   style={{
                     borderTop: `1px solid color-mix(in srgb, ${colors.border} 40%, transparent)`,
                   }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
-                    Invite member
-                  </p>
-                  <input
-                    style={fieldStyle}
-                    placeholder="email@company.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                  />
-                  <select
-                    style={fieldStyle}
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value)}
-                  >
-                    <option value="MEMBER">Member</option>
-                    <option value="MANAGER">Manager</option>
-                  </select>
-                  <button
-                    type="button"
-                    disabled={saving || !inviteEmail.includes("@")}
-                    onClick={() => void sendInvite()}
-                    className="w-full py-2.5 text-sm font-semibold disabled:opacity-50"
-                    style={{
-                      background: colors.brandPrimary,
-                      color: colors.brandOnPrimary,
-                      borderRadius: radius.button,
-                    }}
-                  >
-                    Send invite
-                  </button>
-                  {lastInviteLink ? (
-                    <div
-                      className="space-y-3 pt-3"
-                      style={{
-                        borderTop: `1px solid color-mix(in srgb, ${colors.border} 40%, transparent)`,
-                      }}
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
+                      Invites
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void refreshInviteInventory()}
+                      disabled={invitesLoading}
+                      className="text-xs font-semibold disabled:opacity-50"
+                      style={{ color: colors.brandPrimary }}
                     >
-                      <p
-                        className="text-sm font-semibold"
-                        style={{ color: colors.textPrimary }}
-                      >
-                        Invite link ready
-                      </p>
-                      <p
-                        className="break-all text-xs"
-                        style={{ color: colors.textSecondary }}
-                      >
-                        {lastInviteLink}
+                      Refresh
+                    </button>
+                  </div>
+
+                  {invitesLoading ? (
+                    <p className="text-sm" style={{ color: colors.textSecondary }}>
+                      Loading invites…
+                    </p>
+                  ) : null}
+                  {invitesDenied ? (
+                    <p className="text-sm" style={{ color: colors.textSecondary }}>
+                      You do not have permission to manage invites.
+                    </p>
+                  ) : null}
+                  {invitesError ? (
+                    <div className="space-y-2">
+                      <p className="text-sm" style={{ color: "#c45c5c" }}>
+                        {invitesError}
                       </p>
                       <button
                         type="button"
-                        onClick={() => void copyInviteLink()}
-                        className="flex w-full items-center justify-center gap-2 py-2.5 text-sm font-semibold"
-                        style={{
-                          border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
-                          color: colors.textPrimary,
-                          borderRadius: radius.button,
-                        }}
+                        onClick={() => void refreshInviteInventory()}
+                        className="text-sm font-semibold"
+                        style={{ color: colors.brandPrimary }}
                       >
-                        {copied ? (
-                          <Check className="h-4 w-4" strokeWidth={2.5} />
-                        ) : (
-                          <Copy className="h-4 w-4" strokeWidth={2.5} />
-                        )}
-                        {copied ? "Copied" : "Copy link"}
+                        Retry
                       </button>
-                      <div
-                        className="mx-auto flex items-center justify-center p-3"
-                        style={{
-                          background: "#fff",
-                          borderRadius: radius.md,
-                          width: "fit-content",
-                        }}
-                      >
-                        <QRCode value={lastInviteLink} size={148} />
-                      </div>
                     </div>
                   ) : null}
+                  {!invitesLoading &&
+                  !invitesDenied &&
+                  !invitesError &&
+                  invites.length === 0 ? (
+                    <p className="text-sm" style={{ color: colors.textSecondary }}>
+                      No invites yet. Create a link below.
+                    </p>
+                  ) : null}
+
+                  <ul className="space-y-2">
+                    {invites.map((inv) => {
+                      const url = recoverableInviteUrl(inv, rawLinksById);
+                      const showQr = qrInviteId === inv.invite_id && url;
+                      return (
+                        <li
+                          key={inv.invite_id}
+                          className="space-y-2 px-3 py-2.5 text-sm"
+                          style={{
+                            ...businessCardStyle(tokens),
+                            borderRadius: radius.md,
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p
+                                className="font-semibold"
+                                style={{ color: colors.textPrimary }}
+                              >
+                                {inv.role_code || "MEMBER"}
+                                <span
+                                  className="ml-2 text-xs font-medium"
+                                  style={{ color: colors.textSecondary }}
+                                >
+                                  {formatInviteStatusLabel(inv.status)}
+                                </span>
+                              </p>
+                              <p
+                                className="mt-0.5 text-xs"
+                                style={{ color: colors.textSubtle }}
+                              >
+                                …{inv.code_suffix} · {formatUseCount(inv.use_count, inv.max_uses)}
+                              </p>
+                              <p
+                                className="text-xs"
+                                style={{ color: colors.textSubtle }}
+                              >
+                                Created {formatInviteDate(inv.created_at)} · Expires{" "}
+                                {formatInviteDate(inv.expires_at)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {url ? (
+                              <button
+                                type="button"
+                                onClick={() => void copyLink(url)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold"
+                                style={{
+                                  border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+                                  borderRadius: radius.button,
+                                  color: colors.textPrimary,
+                                }}
+                              >
+                                {copied && lastInviteId === inv.invite_id ? (
+                                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                )}
+                                Copy link
+                              </button>
+                            ) : null}
+                            {url ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setQrInviteId((id) =>
+                                    id === inv.invite_id ? null : inv.invite_id,
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold"
+                                style={{
+                                  border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+                                  borderRadius: radius.button,
+                                  color: colors.textPrimary,
+                                }}
+                              >
+                                <QrCode className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                QR
+                              </button>
+                            ) : null}
+                            {canRevokeInvite(inv.status) ? (
+                              <button
+                                type="button"
+                                disabled={revokingId === inv.invite_id}
+                                onClick={() => void revokeInvite(inv.invite_id)}
+                                className="px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50"
+                                style={{
+                                  border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+                                  borderRadius: radius.button,
+                                  color: colors.textPrimary,
+                                }}
+                              >
+                                {revokingId === inv.invite_id ? "Revoking…" : "Revoke"}
+                              </button>
+                            ) : null}
+                          </div>
+                          {showQr && url ? (
+                            <div
+                              className="mx-auto flex items-center justify-center p-3"
+                              style={{
+                                background: "#fff",
+                                borderRadius: radius.md,
+                                width: "fit-content",
+                              }}
+                            >
+                              <QRCode value={url} size={128} />
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <div
+                    className="space-y-2 pt-3"
+                    style={{
+                      borderTop: `1px solid color-mix(in srgb, ${colors.border} 40%, transparent)`,
+                    }}
+                  >
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: colors.textPrimary }}
+                    >
+                      Invite member
+                    </p>
+                    <input
+                      style={fieldStyle}
+                      placeholder="email@company.com (optional for email path)"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                    />
+                    <select
+                      style={fieldStyle}
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                    >
+                      <option value="MEMBER">Member</option>
+                      <option value="MANAGER">Manager</option>
+                    </select>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void createLinkInvite()}
+                      className="w-full py-2.5 text-sm font-semibold disabled:opacity-50"
+                      style={{
+                        background: colors.brandPrimary,
+                        color: colors.brandOnPrimary,
+                        borderRadius: radius.button,
+                      }}
+                    >
+                      Create invite link
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || !inviteEmail.includes("@")}
+                      onClick={() => void sendInvite()}
+                      className="w-full py-2.5 text-sm font-semibold disabled:opacity-50"
+                      style={{
+                        border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+                        color: colors.textPrimary,
+                        borderRadius: radius.button,
+                      }}
+                    >
+                      Send email invite
+                    </button>
+                    {lastInviteLink ? (
+                      <div className="space-y-3 pt-2">
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: colors.textPrimary }}
+                        >
+                          Invite link ready
+                        </p>
+                        <p
+                          className="break-all text-xs"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          {lastInviteLink}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void copyLink(lastInviteLink)}
+                          className="flex w-full items-center justify-center gap-2 py-2.5 text-sm font-semibold"
+                          style={{
+                            border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+                            color: colors.textPrimary,
+                            borderRadius: radius.button,
+                          }}
+                        >
+                          {copied ? (
+                            <Check className="h-4 w-4" strokeWidth={2.5} />
+                          ) : (
+                            <Copy className="h-4 w-4" strokeWidth={2.5} />
+                          )}
+                          {copied ? "Copied" : "Copy link"}
+                        </button>
+                        <div
+                          className="mx-auto flex items-center justify-center p-3"
+                          style={{
+                            background: "#fff",
+                            borderRadius: radius.md,
+                            width: "fit-content",
+                          }}
+                        >
+                          <QRCode value={lastInviteLink} size={148} />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              )}
+              ) : null}
             </div>
           ) : null}
 

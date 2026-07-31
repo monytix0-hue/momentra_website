@@ -14,7 +14,14 @@ import type {
   BootstrapResponse,
   BootstrapVersionFields,
 } from "@/lib/api/bootstrapTypes";
-import { endSpan, startSpan } from "@/lib/telemetry/performanceTelemetry";
+import {
+  completeFlow,
+  endSpan,
+  failFlow,
+  mark,
+  startFlow,
+  startSpan,
+} from "@/lib/telemetry/performanceTelemetry";
 
 const CACHE_KEY = "app:bootstrap";
 const DISK_KEY = "app_bootstrap";
@@ -166,11 +173,18 @@ export async function loadBootstrap(options: { force?: boolean } = {}): Promise<
   const run = async (): Promise<BootstrapResponse> => {
     const cached = staleBootstrap();
     const spanId = startSpan("bootstrap.load", { force });
+    const flowId = startFlow("app.bootstrap", { cold_warm_state: cached && !force ? "cached" : "cold" });
+    mark(flowId, "cache_read_started");
 
     if (cached && !force) {
+      mark(flowId, "cache_read_completed", { cache_hit: true });
+      mark(flowId, "shell_painted");
       setSnapshot({ data: cached, hasLoadedOnce: true, error: null });
       void refreshBootstrapInBackground();
       endSpan(spanId, { metadata: { cacheHit: true } });
+      mark(flowId, "content_rendered");
+      mark(flowId, "screen_interactive");
+      completeFlow(flowId, { cache_hit: true });
       return cached;
     }
 
@@ -195,6 +209,8 @@ export async function loadBootstrap(options: { force?: boolean } = {}): Promise<
           hasLoadedOnce: true,
         });
         endSpan(spanId, { metadata: { cacheHit: false, droppedStale: true } });
+        mark(flowId, "store_updated", { stale: true });
+        completeFlow(flowId, { dropped_stale: true });
         return snapshot.data ?? data;
       }
       setSnapshot({
@@ -205,9 +221,15 @@ export async function loadBootstrap(options: { force?: boolean } = {}): Promise<
         hasLoadedOnce: true,
       });
       endSpan(spanId, { metadata: { cacheHit: false } });
+      mark(flowId, "network_completed");
+      mark(flowId, "store_updated");
+      mark(flowId, "content_rendered");
+      mark(flowId, "screen_interactive");
+      completeFlow(flowId, { cache_hit: false });
       return applied;
     } catch (err) {
       endSpan(spanId, { metadata: { failed: true } });
+      failFlow(flowId, "bootstrap_failed");
       const message = err instanceof Error ? err.message : "Failed to load bootstrap";
       if (cached) {
         setSnapshot({

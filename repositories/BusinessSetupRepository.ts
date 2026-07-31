@@ -37,6 +37,9 @@ export const BusinessSetupRepository = {
     const session = getBusinessSessionSnapshot();
     const workspaceId =
       session.selectedWorkspaceId ?? session.bootstrap?.selected_workspace?.id ?? null;
+    if (!workspaceId) {
+      throw new Error("Select a company before creating a Business moment.");
+    }
     const created = await createBusinessMoment({
       moment_type_code: input.moment_type_code,
       title: input.title,

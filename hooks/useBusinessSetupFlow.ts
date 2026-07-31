@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/client";
 import type { BusinessSetupPreview, BusinessSetupState } from "@/lib/api/business";
 import { BusinessSetupRepository } from "@/repositories/BusinessSetupRepository";
 import { markBusinessSetupGetDone } from "@/lib/telemetry/businessSetupTelemetry";
+import { diskCacheLoad, diskCacheRemove, diskCacheSave } from "@/lib/cache/cacheStore";
 
 export type UseBusinessSetupFlowOptions = {
   /** From createDraft — skip GET /setup on first paint for this moment. */
@@ -12,6 +13,11 @@ export type UseBusinessSetupFlowOptions = {
 };
 
 const ACTIVATED_DRAFT_ERROR = "Cannot save draft for an activated moment";
+const SETUP_DISK_TTL_MS = 1000 * 60 * 60 * 24; // 24h resume cache
+
+function setupDiskKey(momentId: string): string {
+  return `business_setup_${momentId}`;
+}
 
 function isActiveStatus(status?: string | null): boolean {
   return (status ?? "").toUpperCase() === "ACTIVE";
@@ -21,9 +27,17 @@ function isActivatedDraftError(err: unknown): boolean {
   return err instanceof ApiError && err.message.includes(ACTIVATED_DRAFT_ERROR);
 }
 
+function fingerprintAnswers(answers: Record<string, unknown>): string {
+  return Object.keys(answers)
+    .sort()
+    .map((k) => `${k}=${JSON.stringify(answers[k])}`)
+    .join("|");
+}
+
 /**
  * Business setup ViewModel — UI must use this, never API client directly.
  * Draft autosave: 400ms debounce. Preview: on-demand only (Review / Activate).
+ * Continue: single PUT with answers + progress (no double-save).
  */
 export function useBusinessSetupFlow(
   momentId: string | null,
@@ -51,6 +65,9 @@ export function useBusinessSetupFlow(
   const loadedMomentIdRef = useRef<string | null>(seed ? momentId : null);
   const seededRef = useRef(Boolean(seed));
   const statusRef = useRef<string>(seed?.status ?? "DRAFT");
+  const previewFingerprintRef = useRef<string | null>(null);
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
 
   const applySetup = useCallback((state: BusinessSetupState) => {
     loadedMomentIdRef.current = state.moment_id;
@@ -58,6 +75,7 @@ export function useBusinessSetupFlow(
     setSetup(state);
     setAnswers({ ...(state.answers ?? {}) });
     setLoading(false);
+    diskCacheSave(setupDiskKey(state.moment_id), state);
   }, []);
 
   const markLocalActive = useCallback(() => {
@@ -75,6 +93,26 @@ export function useBusinessSetupFlow(
         markBusinessSetupGetDone({ cache: "create_seed" });
         return;
       }
+
+      const cached =
+        !force
+          ? diskCacheLoad<BusinessSetupState>(setupDiskKey(id), SETUP_DISK_TTL_MS)
+          : null;
+      if (cached && cached.moment_id === id) {
+        applySetup(cached);
+        markBusinessSetupGetDone({ cache: "disk" });
+        // Soft reconcile — do not block paint.
+        const seq = ++requestSeq.current;
+        try {
+          const state = await BusinessSetupRepository.getSetupState(id);
+          if (seq !== requestSeq.current) return;
+          applySetup(state);
+        } catch {
+          /* keep painted cache */
+        }
+        return;
+      }
+
       setLoading(true);
       setError(null);
       const seq = ++requestSeq.current;
@@ -97,6 +135,7 @@ export function useBusinessSetupFlow(
     if (!momentId) {
       loadedMomentIdRef.current = null;
       seededRef.current = false;
+      previewFingerprintRef.current = null;
       setSetup(null);
       setPreview(null);
       setAnswers({});
@@ -120,17 +159,21 @@ export function useBusinessSetupFlow(
   }, []);
 
   const persistDraft = useCallback(
-    async (nextAnswers: Record<string, unknown>) => {
+    async (
+      nextAnswers: Record<string, unknown>,
+      progress?: { current_step: number; completed_steps: number[] },
+    ) => {
       if (!momentId) return false;
       if (isActiveStatus(statusRef.current)) return true;
       setSaving(true);
       setSaveStatus("saving");
       try {
-        const state = await BusinessSetupRepository.saveDraft(momentId, nextAnswers);
+        const state = await BusinessSetupRepository.saveDraft(momentId, nextAnswers, progress);
         statusRef.current = state.status;
         setSetup(state);
         pendingAnswersRef.current = null;
         setSaveStatus("saved");
+        diskCacheSave(setupDiskKey(momentId), state);
         return true;
       } catch (err) {
         if (isActivatedDraftError(err)) {
@@ -153,6 +196,7 @@ export function useBusinessSetupFlow(
       if (!momentId) return;
       if (isActiveStatus(statusRef.current)) return;
       pendingAnswersRef.current = nextAnswers;
+      previewFingerprintRef.current = null;
       setSaveStatus("dirty");
       if (draftTimer.current) clearTimeout(draftTimer.current);
 
@@ -165,21 +209,29 @@ export function useBusinessSetupFlow(
     [momentId, persistDraft],
   );
 
-  /** Cancel debounce and save immediately — required before Continue / Review. */
-  const flushPendingSave = useCallback(async () => {
-    if (draftTimer.current) {
-      clearTimeout(draftTimer.current);
-      draftTimer.current = null;
-    }
-    const pending = pendingAnswersRef.current;
-    if (!pending) {
-      if (saveStatus === "dirty") {
-        return persistDraft(answers);
+  /**
+   * Cancel debounce and save immediately — required before Continue / Review.
+   * Pass progress to persist answers + current_step in **one** PUT.
+   */
+  const flushPendingSave = useCallback(
+    async (progress?: { current_step: number; completed_steps: number[] }) => {
+      if (draftTimer.current) {
+        clearTimeout(draftTimer.current);
+        draftTimer.current = null;
       }
-      return saveStatus !== "error";
-    }
-    return persistDraft(pending);
-  }, [answers, persistDraft, saveStatus]);
+      const pending = pendingAnswersRef.current ?? answersRef.current;
+      const needsWrite =
+        Boolean(pendingAnswersRef.current) ||
+        saveStatus === "dirty" ||
+        saveStatus === "error" ||
+        Boolean(progress);
+      if (!needsWrite) {
+        return saveStatus !== "error";
+      }
+      return persistDraft(pending, progress);
+    },
+    [persistDraft, saveStatus],
+  );
 
   const updateAnswer = useCallback(
     (fieldKey: string, value: unknown) => {
@@ -203,40 +255,33 @@ export function useBusinessSetupFlow(
     [scheduleDraftSave],
   );
 
+  /** Single PUT with answers + progress (same path as flushPendingSave with progress). */
   const setProgress = useCallback(
     async (currentStep: number, completedSteps?: number[]) => {
       if (!momentId) return;
       if (isActiveStatus(statusRef.current)) return;
-      setAnswers((prev) => {
-        void BusinessSetupRepository.saveDraft(momentId, prev, {
-          current_step: currentStep,
-          completed_steps: completedSteps ?? [],
-        })
-          .then((state) => {
-            statusRef.current = state.status;
-            setSetup(state);
-          })
-          .catch((err) => {
-            if (isActivatedDraftError(err)) markLocalActive();
-          });
-        return prev;
+      await flushPendingSave({
+        current_step: currentStep,
+        completed_steps: completedSteps ?? [],
       });
     },
-    [momentId, markLocalActive],
+    [momentId, flushPendingSave],
   );
 
   /** Preview on Review / Activate only — not on every keystroke. */
   const requestPreview = useCallback(async () => {
     if (!momentId) return null;
     try {
-      const p = await BusinessSetupRepository.preview(momentId, answers);
+      const p = await BusinessSetupRepository.preview(momentId, answersRef.current);
+      previewFingerprintRef.current = fingerprintAnswers(answersRef.current);
       setPreview(p);
       return p;
     } catch {
+      previewFingerprintRef.current = null;
       setPreview(null);
       return null;
     }
-  }, [momentId, answers]);
+  }, [momentId]);
 
   const activate = useCallback(async () => {
     if (!momentId) return false;
@@ -247,20 +292,25 @@ export function useBusinessSetupFlow(
     setSubmitting(true);
     setError(null);
     try {
-      // Backend rejects draft writes once ACTIVE. Skip (or tolerate) so reopen /
-      // double-submit / post-activate races still complete activate successfully.
+      const currentAnswers = answersRef.current;
       if (!isActiveStatus(statusRef.current)) {
         try {
-          const state = await BusinessSetupRepository.saveDraft(momentId, answers);
+          const state = await BusinessSetupRepository.saveDraft(momentId, currentAnswers);
           statusRef.current = state.status;
           setSetup(state);
+          diskCacheSave(setupDiskKey(momentId), state);
         } catch (err) {
           if (!isActivatedDraftError(err)) throw err;
           markLocalActive();
         }
       }
-      const p = await BusinessSetupRepository.preview(momentId, answers);
-      setPreview(p);
+      const fingerprint = fingerprintAnswers(currentAnswers);
+      let p: BusinessSetupPreview | null = preview;
+      if (!(p && previewFingerprintRef.current === fingerprint)) {
+        p = await BusinessSetupRepository.preview(momentId, currentAnswers);
+        previewFingerprintRef.current = fingerprint;
+        setPreview(p);
+      }
       if (p && p.activation_ready === false && !isActiveStatus(statusRef.current)) {
         const detail = p.blocking_errors?.join("; ") || "Setup is not ready to activate";
         setError(detail);
@@ -269,11 +319,10 @@ export function useBusinessSetupFlow(
       }
       await BusinessSetupRepository.activate(momentId);
       markLocalActive();
+      diskCacheRemove(setupDiskKey(momentId));
       setSubmitting(false);
       return true;
     } catch (err) {
-      // First activate can race past the client timeout after the server already
-      // committed ACTIVE. Retry once — the ACTIVE fast path returns quickly.
       const timedOut =
         err instanceof ApiError &&
         (err.status === 408 || /timed out/i.test(err.message));
@@ -281,15 +330,16 @@ export function useBusinessSetupFlow(
         try {
           await BusinessSetupRepository.activate(momentId);
           markLocalActive();
+          diskCacheRemove(setupDiskKey(momentId));
           setSubmitting(false);
           return true;
         } catch (retryErr) {
-          // Fall through: check status via setup GET
           try {
             const state = await BusinessSetupRepository.getSetupState(momentId);
             if (isActiveStatus(state.status)) {
               applySetup(state);
               markLocalActive();
+              diskCacheRemove(setupDiskKey(momentId));
               setSubmitting(false);
               return true;
             }
@@ -305,7 +355,7 @@ export function useBusinessSetupFlow(
       setSubmitting(false);
       return false;
     }
-  }, [momentId, answers, markLocalActive, applySetup]);
+  }, [momentId, preview, markLocalActive, applySetup]);
 
   return {
     setup,

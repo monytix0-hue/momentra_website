@@ -53,7 +53,12 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
     async (raw: string) => {
       const token = extractInviteToken(raw);
       if (!token) {
-        setError("Could not read an invite from that code or link.");
+        const trimmed = raw.trim();
+        setError(
+          /^[A-Fa-f0-9]{8}$/.test(trimmed)
+            ? "Use the full invite link — short codes cannot join."
+            : "Could not read an invite from that link. Paste the full invite URL.",
+        );
         return;
       }
       setBusy(true);
@@ -227,7 +232,7 @@ export function InviteQrScanModal({ open, onClose, onJoined }: InviteQrScanModal
         ) : null}
 
         <label className="mb-1 block text-xs font-medium" style={{ color: colors.textSecondary }}>
-          Invite link or code
+          Invite link
         </label>
         <div className="flex gap-2">
           <input

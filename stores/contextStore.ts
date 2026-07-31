@@ -5,7 +5,7 @@ import type { AppContext } from "@/lib/appContext";
 import { DEFAULT_APP_CONTEXT } from "@/lib/appContext";
 import { appContextToBackend, backendContextToApp } from "@/lib/contextMapping";
 import { cancelInFlightRequests } from "@/lib/requestScope";
-import { endSpan, startSpan } from "@/lib/telemetry/performanceTelemetry";
+import { completeFlow, endSpan, failFlow, mark, startFlow, startSpan } from "@/lib/telemetry/performanceTelemetry";
 import { AppRepository } from "@/repositories/AppRepository";
 import {
   getBootstrap,
@@ -123,11 +123,17 @@ export async function switchContext(context: AppContext): Promise<void> {
   }
 
   const spanId = startSpan("context.switch", { context });
+  const flowId = startFlow("context.switch", { toContext: context });
+  mark(flowId, "network_started");
   try {
     await AppRepository.updatePreferences({
       selected_context: appContextToBackend(context),
     });
     if (generation !== switchGeneration) return;
+    mark(flowId, "store_updated");
+    mark(flowId, "content_rendered");
+    mark(flowId, "screen_interactive");
+    completeFlow(flowId);
   } catch (err) {
     if (generation !== switchGeneration) return;
     // Only roll back if the failed target is still selected (user has not moved on).
@@ -136,6 +142,7 @@ export async function switchContext(context: AppContext): Promise<void> {
       switchError =
         err instanceof Error ? err.message : "Couldn't save context — check connection";
     }
+    failFlow(flowId, "context_switch_failed");
   } finally {
     endSpan(spanId);
     if (generation === switchGeneration) {

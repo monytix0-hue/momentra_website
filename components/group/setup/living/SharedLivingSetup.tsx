@@ -28,6 +28,7 @@ type Props = {
   momentId: string;
   onClose: () => void;
   onActivated: () => void;
+  initialSetup?: import("@/lib/api/personal").PersonalSetupResponse | null;
 };
 
 const TEMPLATE_ID = "shared_living" as const;
@@ -86,7 +87,7 @@ function minorToMajorString(minor: number | null): string {
  * Phase 2C — Shared Living on GuidedSetupShell.
  * Catalog-driven presentation over useSetupFlow / SetupRepository (no new engine).
  */
-export function SharedLivingSetup({ momentId, onClose, onActivated }: Props) {
+export function SharedLivingSetup({ momentId, onClose, onActivated, initialSetup }: Props) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const {
@@ -102,7 +103,7 @@ export function SharedLivingSetup({ momentId, onClose, onActivated }: Props) {
     flushPendingSave,
     requestPreview,
     submit,
-  } = useSetupFlow(momentId);
+  } = useSetupFlow(momentId, { initialSetup });
 
   const catalog = groupSetupTemplate(TEMPLATE_ID);
   const steps = useMemo(() => groupGuidedSteps(TEMPLATE_ID), []);

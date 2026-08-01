@@ -2,13 +2,36 @@
 
 This Next.js app ships **marketing (`/`)** and the **product (`/app`)** in one Vercel project.
 
+**Canonical source for Vercel:** this folder (`web/`). Mobile (`apk_copy` / `ios_copy`) and monorepo `frontend/` do **not** auto-update the site. See [WEB_DEPLOY_SYNC.md](../docs/platform/WEB_DEPLOY_SYNC.md).
+
+## Sync to production GitHub + Vercel
+
+```powershell
+# from monorepo root
+.\scripts\sync-web-to-momentra-website.ps1
+```
+
+That mirrors `web/` → `_push_momentra_website` and pushes to [`monytix0-hue/momentra_website`](https://github.com/monytix0-hue/momentra_website). Vercel rebuilds from that repo (Root Directory = repo root, not `web`).
+
 ## Prerequisites
 
-- Vercel account linked to this Git repo
+- Vercel account linked to the **momentra_website** Git repo (or this monorepo with Root Directory `web`)
 - Env vars from [`.env.example`](.env.example) set in the Vercel project
 - Public API host for `NEXT_PUBLIC_API_BASE_URL` (not a local ngrok tunnel)
 
 ## Project settings
+
+### A. Dedicated repo `monytix0-hue/momentra_website` (preferred)
+
+| Setting | Value |
+|---|---|
+| Root Directory | *(empty)* — app lives at repo root after sync |
+| Framework | Next.js |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output | Default (do not set OpenNext / Workers) |
+
+### B. Monorepo import with subdirectory
 
 | Setting | Value |
 |---|---|
@@ -17,6 +40,8 @@ This Next.js app ships **marketing (`/`)** and the **product (`/app`)** in one V
 | Install Command | `npm ci` |
 | Build Command | `npm run build` |
 | Output | Default (do not set OpenNext / Workers) |
+
+Prefer **A** so the sync script and Vercel stay aligned.
 
 ## Env vars
 
@@ -67,4 +92,6 @@ npm run build && npm start   # production-like check
 
 ## Note on the marketing-only repo
 
-[`monytix0-hue/momentra_website`](https://github.com/monytix0-hue/momentra_website) was a marketing-only deploy. Point the production domain at **this** Vercel project when you are ready so `/app` works on the same host.
+[`monytix0-hue/momentra_website`](https://github.com/monytix0-hue/momentra_website) is the **production web Git remote** for Vercel (marketing + `/app` after sync). Point the production domain at the Vercel project connected to that repo.
+
+Shipping Android/iOS does not update this site — run [`scripts/sync-web-to-momentra-website.ps1`](../scripts/sync-web-to-momentra-website.ps1) (details: [WEB_DEPLOY_SYNC.md](../docs/platform/WEB_DEPLOY_SYNC.md)).

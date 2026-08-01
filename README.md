@@ -24,6 +24,17 @@ node scripts/bundle-context-empty-assets.mjs
 node scripts/bundle-context-empty-assets.mjs
 ```
 
+## Deploy (Vercel)
+
+Live site tracks [`monytix0-hue/momentra_website`](https://github.com/monytix0-hue/momentra_website), not mobile releases.
+
+```powershell
+# from monorepo root — mirrors this folder and pushes
+.\scripts\sync-web-to-momentra-website.ps1
+```
+
+See [VERCEL.md](./VERCEL.md) and [WEB_DEPLOY_SYNC.md](../docs/platform/WEB_DEPLOY_SYNC.md).
+
 ## Getting Started
 
 First, run the development server:

@@ -11,6 +11,7 @@ import {
   RunwaySignalsGrid,
 } from "../shared/RunwayStitchComponents";
 import { RUNWAY } from "../shared/runwayTheme";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
   data: RunwayPulseResponse | null;
@@ -38,9 +39,7 @@ export function BusinessRunwayPulse({
   if (loading && !data) {
     return (
       <RunwayScrollShell bottomPadding={bottomPadding}>
-        <p className="text-sm" style={{ color: RUNWAY.onVariant }}>
-          Loading runway…
-        </p>
+        <LoadingIndicator label="Loading runway…" className="py-10" />
       </RunwayScrollShell>
     );
   }

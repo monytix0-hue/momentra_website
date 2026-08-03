@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   getMePreferences,
+  isMissingApiEndpoint,
   patchMePreferences,
 } from "@/lib/api/client";
 import type {
@@ -60,6 +61,10 @@ export function PersonalPrefsSection({
       try {
         const prefs = await getMePreferences();
         if (cancelled) return;
+        if (!prefs) {
+          // Missing endpoint / no row — keep bootstrap/defaults already in state.
+          return;
+        }
         setWeekStart(prefs.week_start_day ?? "MONDAY");
         setPrivacy(prefs.privacy_mode_enabled);
         setNotifications(prefs.notification_enabled);
@@ -67,7 +72,7 @@ export function PersonalPrefsSection({
         setDailySummary(prefs.daily_summary_enabled);
         setSummaryTime(prefs.preferred_summary_time?.slice(0, 5) ?? "09:00");
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && !isMissingApiEndpoint(err)) {
           setError(err instanceof Error ? err.message : "Failed to load");
         }
       } finally {

@@ -5,6 +5,7 @@ import type { VendorLedgerResponse } from "@/lib/api/businessActive";
 import { formatMinorCurrency } from "@/lib/business/opsApiMappers";
 import { BusinessActiveRepository } from "@/repositories/BusinessActiveRepository";
 import { BottomSheet } from "@/components/shared/BottomSheet";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 import { OPS } from "./opsTheme";
 import { formatOccurredAt } from "./opsTheme";
 
@@ -98,9 +99,7 @@ export function VendorLedgerSheet({
         </div>
 
         {loading ? (
-          <p className="text-sm" style={{ color: OPS.onVariant }}>
-            Loading purchases…
-          </p>
+          <LoadingIndicator label="Loading purchases…" className="py-6" size="sm" />
         ) : null}
         {error ? (
           <p className="text-sm" style={{ color: OPS.error }}>

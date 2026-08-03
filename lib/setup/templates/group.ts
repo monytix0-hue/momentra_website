@@ -161,7 +161,7 @@ export const groupTripTemplate = groupTemplate(
   "experience",
   "experience_profile",
   "Shared Experience Setup",
-  "Create a shared moment for trips, weddings, celebrations, outings, and more.",
+  "Create a shared moment for trips, celebrations, outings, and more.",
   "SHARED EXPERIENCE",
   tripSections,
   "Activate Shared Experience",

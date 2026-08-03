@@ -126,6 +126,15 @@ export class ApiError extends Error {
   get userMessage(): string {
     return getUserMessage(this.code, this.message);
   }
+
+  /** Route missing or method not allowed on an older API build. */
+  get isMissingEndpoint(): boolean {
+    return this.status === 404 || this.status === 405;
+  }
+}
+
+export function isMissingApiEndpoint(err: unknown): boolean {
+  return err instanceof ApiError && err.isMissingEndpoint;
 }
 
 async function parseError(res: Response): Promise<ParsedApiError> {
@@ -367,24 +376,52 @@ export async function patchAppPreferences(
 }
 
 export async function getMePreferences(): Promise<
-  import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse
+  import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse | null
 > {
-  return requestWithRetry(API_ENDPOINTS.mePreferences, { method: "GET" });
+  try {
+    return await requestWithRetry(API_ENDPOINTS.mePreferences, { method: "GET" });
+  } catch (err) {
+    // Older API builds omit GET /me/preferences — keep settings UI usable.
+    if (isMissingApiEndpoint(err)) return null;
+    throw err;
+  }
 }
 
 export async function patchMePreferences(
   body: import("@/lib/api/bootstrapTypes").PersonalPreferencesUpdateRequest,
 ): Promise<import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse> {
-  return requestWithRetry(API_ENDPOINTS.mePreferences, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
+  try {
+    return await requestWithRetry(API_ENDPOINTS.mePreferences, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    if (isMissingApiEndpoint(err)) {
+      throw new ApiError(
+        "Personal preferences aren't available on this API yet. Try again after the server updates.",
+        err instanceof ApiError ? err.status : 404,
+        err instanceof ApiError ? err.code : ApiErrorCode.NOT_FOUND,
+      );
+    }
+    throw err;
+  }
 }
 
 export async function deleteAccount(): Promise<void> {
-  await requestWithRetry<void>(API_ENDPOINTS.me, {
-    method: "DELETE",
-  });
+  try {
+    await requestWithRetry<void>(API_ENDPOINTS.me, {
+      method: "DELETE",
+    });
+  } catch (err) {
+    if (isMissingApiEndpoint(err)) {
+      throw new ApiError(
+        "Account deletion isn't available on this API yet. Try again after the server updates.",
+        err instanceof ApiError ? err.status : 405,
+        err instanceof ApiError ? err.code : undefined,
+      );
+    }
+    throw err;
+  }
   clearTokens();
 }
 

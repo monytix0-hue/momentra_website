@@ -13,6 +13,7 @@ import {
   ensureCircleSession,
   useCircleSessionStore,
 } from "@/stores/circleSessionStore";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type CircleHomePlaceholderProps = {
   title?: string;
@@ -46,11 +47,8 @@ export function CircleHomePlaceholder(_props: CircleHomePlaceholderProps = {}) {
     >
       <div className="min-h-0 flex-1 overflow-y-auto pb-8 pt-4">
         {session.loading && session.participants.length === 0 ? (
-          <div
-            className="flex flex-1 items-center justify-center px-6 py-20 text-sm"
-            style={{ color: tokens.colors.textSecondary }}
-          >
-            Loading Circle…
+          <div className="flex flex-1 items-center justify-center px-6 py-20">
+            <LoadingIndicator label="Loading Circle…" />
           </div>
         ) : session.error && session.participants.length === 0 ? (
           <div className="flex flex-col items-center gap-4 px-6 py-20 text-center">

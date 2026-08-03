@@ -583,11 +583,12 @@ export function SettingsSheet({
                 subtitle="Product intro and version"
                 onBack={() => setSection("hub")}
               >
-                {onViewIntro ? (
-                  <SettingsSecondaryButton onClick={onViewIntro}>
-                    View intro
-                  </SettingsSecondaryButton>
-                ) : null}
+                <SettingsSecondaryButton
+                  onClick={() => onViewIntro?.()}
+                  disabled={!onViewIntro}
+                >
+                  View intro
+                </SettingsSecondaryButton>
                 <p className="text-xs" style={{ color: colors.textSubtle }}>
                   Momentra
                 </p>

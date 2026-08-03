@@ -11,6 +11,7 @@ import {
   type SettlementRecord,
 } from "@/lib/api/group";
 import { dedupeFetch } from "@/lib/cache/cacheStore";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type GroupSettlementPanelProps = {
   momentId: string;
@@ -78,12 +79,10 @@ export function GroupSettlementPanel({ momentId }: GroupSettlementPanelProps) {
   if (loading && !preview) {
     return (
       <div
-        className="rounded-2xl p-4 text-sm"
+        className="rounded-2xl p-4"
         style={{ background: colors.surfaceContainer, color: colors.textSecondary }}
-        role="status"
-        aria-live="polite"
       >
-        Loading settlements…
+        <LoadingIndicator label="Loading settlements…" size="sm" />
       </div>
     );
   }

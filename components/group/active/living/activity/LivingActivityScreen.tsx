@@ -8,6 +8,7 @@ import {
   type LivingActivityItem,
   type LivingActivityListResponse,
 } from "@/lib/api/group";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type LivingActivityScreenProps = {
   momentId: string;
@@ -122,7 +123,7 @@ export function LivingActivityScreen({
         </div>
 
         {loading ? (
-          <p className="text-sm opacity-60">Loading activity…</p>
+          <LoadingIndicator label="Loading activity…" className="py-8" />
         ) : error ? (
           <p className="text-sm" style={{ color: colors.error }}>
             {error}

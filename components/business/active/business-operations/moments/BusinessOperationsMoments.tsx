@@ -11,6 +11,7 @@ import {
 } from "../shared/OpsStitchComponents";
 import { VendorLedgerSheet } from "../shared/VendorLedgerSheet";
 import { OPS } from "../shared/opsTheme";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
   momentId: string;
@@ -38,9 +39,7 @@ export function BusinessOperationsMoments({
   if (loading && !data) {
     return (
       <OpsScrollShell bottomPadding={bottomPadding}>
-        <p className="text-sm" style={{ color: OPS.onVariant }}>
-          Loading journey…
-        </p>
+        <LoadingIndicator label="Loading journey…" className="py-10" />
       </OpsScrollShell>
     );
   }

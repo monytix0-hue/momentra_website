@@ -558,6 +558,7 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       {showOnboardingReplay ? (
         <OnboardingScreen
           mode="replay"
+          overlayClassName="z-[70]"
           onFinished={() => setShowOnboardingReplay(false)}
         />
       ) : null}

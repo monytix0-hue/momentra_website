@@ -86,6 +86,7 @@ import { PersonalMomentHeader } from "@/components/personal/shared/PersonalMomen
 import { PersonalMomentManageSheet } from "@/components/personal/shared/PersonalMomentManageSheet";
 import { MomentManageSheet } from "@/components/shared/MomentManageSheet";
 import { MomentInviteSheet } from "@/components/shared/MomentInviteSheet";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 import {
   resolveBusinessMomentManageContext,
   resolveBusinessMomentSwitcherOptions,
@@ -248,6 +249,7 @@ export function ContextHomePlaceholderLegacy({
   const [inviteMoment, setInviteMoment] = useState<{
     momentId: string;
     label: string;
+    typeCode?: string;
   } | null>(null);
   const businessSession = useBusinessSessionStore();
   const selectedBusinessMomentType = businessSession.selectedMomentType;
@@ -2160,7 +2162,7 @@ export function ContextHomePlaceholderLegacy({
     if (memoryLoading && !personalMemory) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
-          <p className="text-sm opacity-70">Loading memoryâ€¦</p>
+          <LoadingIndicator label="Loading memory…" />
         </div>
       );
     }
@@ -2429,7 +2431,7 @@ export function ContextHomePlaceholderLegacy({
     if (businessSession.inventoryPending || businessSessionLoading) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
-          <p className="text-sm opacity-70">Loading moments…</p>
+          <LoadingIndicator label="Loading moments…" />
         </div>
       );
     }
@@ -2661,7 +2663,11 @@ export function ContextHomePlaceholderLegacy({
                 ) {
                   setBusinessSelection(option.typeCode, option.momentId);
                 }
-                setInviteMoment({ momentId: option.momentId, label: option.label });
+                setInviteMoment({
+                  momentId: option.momentId,
+                  label: option.label,
+                  typeCode: option.typeCode,
+                });
               }}
               onDeleteMoment={(option) => {
                 void archiveBusinessMomentOption(option);
@@ -2954,6 +2960,7 @@ export function ContextHomePlaceholderLegacy({
         onClose={() => setInviteMoment(null)}
         momentId={inviteMoment?.momentId ?? null}
         momentLabel={inviteMoment?.label}
+        momentTypeCode={inviteMoment?.typeCode ?? null}
         variant="business"
       />
 

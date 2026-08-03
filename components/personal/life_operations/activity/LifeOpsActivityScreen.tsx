@@ -17,6 +17,7 @@ import {
 } from "@/lib/personal/life_operations/activity/lifeOpsActivityCopy";
 import type { PersonalLifeOpsActivityItem } from "@/lib/api/personal";
 import { getLifeOpsActivity } from "@/lib/api/client";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 import {
   recentActivityCategoryLine,
   recentActivityMetaLine,
@@ -141,7 +142,7 @@ export function LifeOpsActivityScreen({ momentId, onBack, onEditActivity }: Life
 
       <div className="relative z-10 flex-1 overflow-y-auto px-5 py-4">
         {loading ? (
-          <p style={{ opacity: 0.7 }}>Loading activity…</p>
+          <LoadingIndicator label="Loading activity…" className="py-8" />
         ) : error ? (
           <div className="space-y-3">
             <p style={{ color: colors.error }}>{error}</p>

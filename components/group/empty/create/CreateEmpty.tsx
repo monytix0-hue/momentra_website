@@ -66,7 +66,7 @@ export function CreateEmpty({
       title: "Shared Experience",
       badge: "LIFE'S BEST MOMENTS",
       description: "Plan, coordinate and remember every shared experience in one place.",
-      tags: ["Trips", "Weddings", "Birthdays", "Celebrations", "Outings"],
+      tags: ["Trips", "Celebrations", "Birthdays", "Outings", "Events"],
       image: "/group/type-experience.jpg",
       type: "SHARED_EXPERIENCE",
       accent: accentExperience,

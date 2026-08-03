@@ -9,6 +9,7 @@ import type {
   BusinessRendererMeta,
 } from "@/repositories/BusinessActionRepository";
 import { SchemaDrivenRenderer } from "@/components/business/actioncenter/renderers/SchemaDrivenRenderer";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 export type BusinessActionRendererProps = {
   action: BusinessCatalogAction;
@@ -30,9 +31,7 @@ export type BusinessActionRendererProps = {
 };
 
 const loading = () => (
-  <div className="py-10 text-center text-sm opacity-70" role="status">
-    Loading…
-  </div>
+  <LoadingIndicator label="Loading…" className="py-10" size="sm" />
 );
 
 const lazy = <T extends ComponentType<BusinessActionRendererProps>>(
@@ -41,11 +40,7 @@ const lazy = <T extends ComponentType<BusinessActionRendererProps>>(
 
 function SchemaFallback(props: BusinessActionRendererProps) {
   if (!props.rendererMeta) {
-    return (
-      <p className="py-8 text-center text-sm opacity-70" role="status">
-        Loading form…
-      </p>
-    );
+    return <LoadingIndicator label="Loading form…" className="py-8" size="sm" />;
   }
   const amountField = props.rendererMeta.fields.find((f) => f.field_type === "amount");
   return (

@@ -18,6 +18,7 @@ import {
   OpsVendorsCard,
 } from "../shared/OpsStitchComponents";
 import { OPS } from "../shared/opsTheme";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
   data: OpsPulseResponse | null;
@@ -45,9 +46,7 @@ export function BusinessOperationsPulse({
   if (loading && !data) {
     return (
       <OpsScrollShell bottomPadding={bottomPadding}>
-        <p className="text-sm" style={{ color: OPS.onVariant }}>
-          Loading operations…
-        </p>
+        <LoadingIndicator label="Loading operations…" className="py-10" />
       </OpsScrollShell>
     );
   }

@@ -46,6 +46,16 @@ function attentionSignalClick(
   return () => onQuickAdd(actionId ?? undefined);
 }
 
+/** When can_edit is present and false, skip edit; otherwise id is enough. */
+function recentActivityEditClick(
+  item: { id?: string | null; can_edit?: boolean; canEdit?: boolean; activityType?: string },
+  onEditActivity?: (id: string, eventType: string) => void,
+): (() => void) | undefined {
+  if (!item.id || !onEditActivity) return undefined;
+  if (item.can_edit === false || item.canEdit === false) return undefined;
+  return () => onEditActivity(item.id!, item.activityType ?? "UPDATE");
+}
+
 type ExperiencePulseProps = {
   momentId: string;
   onQuickAdd: (actionId?: string) => void;
@@ -499,6 +509,7 @@ export function ExperiencePulse({
       category: item.subtitle ?? "",
       title: item.title,
       time: item.relative_time ?? "",
+      can_edit: item.can_edit,
     }));
     const breakdown = livingData.participation_breakdown ?? { active: 0, pending: 0, inactive: 0 };
     const participationPct = Math.round(livingData.participation_percent ?? 0);
@@ -575,11 +586,7 @@ export function ExperiencePulse({
                   category={item.category}
                   title={item.title}
                   time={item.time}
-                  onClick={
-                    item.id && onEditActivity
-                      ? () => onEditActivity(item.id!, item.activityType)
-                      : onViewAllActivity
-                  }
+                  onClick={recentActivityEditClick(item, onEditActivity)}
                 />
               ))}
             </div>
@@ -637,6 +644,7 @@ export function ExperiencePulse({
       title: item.title,
       time: item.relative_time ?? "",
       activityType: item.activity_type ?? "UPDATE",
+      can_edit: item.can_edit,
     }));
     const breakdown = tripData.participation_breakdown ?? { active: 0, pending: 0, inactive: 0 };
     const participationPct = Math.round(tripData.participation_percent ?? 0);
@@ -768,11 +776,7 @@ export function ExperiencePulse({
                     category={item.category}
                     title={item.title}
                     time={item.time}
-                    onClick={
-                      item.id && onEditActivity
-                        ? () => onEditActivity(item.id!, item.activityType)
-                        : onViewAllActivity
-                    }
+                    onClick={recentActivityEditClick(item, onEditActivity)}
                   />
                 ))}
               </div>
@@ -863,6 +867,7 @@ export function ExperiencePulse({
           category: e.module_code.replace(/_/g, " "),
           title: e.event_action,
           time: e.event_time ? new Date(e.event_time).toLocaleString() : "",
+          activityType: "UPDATE",
         }))
       : [];
 
@@ -976,7 +981,14 @@ export function ExperiencePulse({
           ) : (
             <div className="relative space-y-6 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-px before:bg-white/10">
               {recentActivities.map((a, index) => (
-                <TimelineRow key={a.id || `activity-${index}`} {...a} />
+                <TimelineRow
+                  key={a.id || `activity-${index}`}
+                  icon={a.icon}
+                  category={a.category}
+                  title={a.title}
+                  time={a.time}
+                  onClick={recentActivityEditClick(a, onEditActivity)}
+                />
               ))}
             </div>
           )}

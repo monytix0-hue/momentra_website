@@ -21,6 +21,7 @@ type Props = {
   onRetry: () => void;
   onQuickAdd?: () => void;
   onViewActivity?: () => void;
+  onEditActivity?: (item: TeamOpsEventItem) => void;
 };
 
 export function BusinessRunwayPulse({
@@ -32,6 +33,7 @@ export function BusinessRunwayPulse({
   onRetry,
   onQuickAdd,
   onViewActivity,
+  onEditActivity,
 }: Props) {
   if (loading && !data) {
     return (
@@ -80,7 +82,7 @@ export function BusinessRunwayPulse({
         <RunwayKpiGrid data={data} />
         <RunwayAttentionCards items={data.attention_items.items} onViewAll={onViewActivity} />
         <RunwaySignalsGrid items={data.signals.items} />
-        <RunwayActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} />
+        <RunwayActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} onEditActivity={onEditActivity} />
         <RunwayNextAction item={data.next_best_action.item} onQuickAdd={onQuickAdd} />
       </div>
     </RunwayScrollShell>

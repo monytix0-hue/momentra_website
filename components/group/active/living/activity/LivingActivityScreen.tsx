@@ -152,7 +152,14 @@ export function LivingActivityScreen({
                         {item.subtitle || item.relative_time || item.activity_type}
                       </p>
                     </div>
-                    {item.can_edit ? <Pencil size={16} style={{ color: colors.brandPrimary }} /> : null}
+                    {item.can_edit ? (
+                      <span
+                        className="inline-flex size-10 shrink-0 items-center justify-center"
+                        aria-hidden
+                      >
+                        <Pencil size={18} style={{ color: colors.brandPrimary, opacity: 0.85 }} />
+                      </span>
+                    ) : null}
                   </button>
                 ))}
               </div>

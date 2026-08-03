@@ -37,7 +37,7 @@ export function BusinessLifeHeroVisual() {
   const scale = breatheScale(timeMs);
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-h-[340px]">
+    <div className="relative mx-auto w-full max-h-[min(38vh,340px)]">
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl"
         style={{
@@ -45,13 +45,13 @@ export function BusinessLifeHeroVisual() {
         }}
       />
       <div
-        className="relative size-full overflow-hidden rounded-2xl shadow-lg"
+        className="relative mx-auto flex max-h-[min(38vh,340px)] w-full items-center justify-center overflow-hidden rounded-2xl shadow-lg"
         style={{ transform: `scale(${scale})`, transition: "transform 0.1s linear" }}
       >
         <img
           src={heroImage}
           alt="Business Life orbital hub"
-          className="size-full object-cover"
+          className="max-h-[min(38vh,340px)] w-full object-contain"
         />
       </div>
     </div>

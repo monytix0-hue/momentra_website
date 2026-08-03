@@ -261,11 +261,29 @@ export function TimelineRow({
           {time}
         </p>
       </div>
-      <MaterialIcon
-        name="chevron_right"
-        className="self-center transition-transform group-hover:translate-x-1"
-        style={{ color: colors.textSecondary }}
-      />
+      {interactive ? (
+        <button
+          type="button"
+          className="inline-flex size-10 shrink-0 items-center justify-center self-center border-0 bg-transparent"
+          aria-label="Edit"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.();
+          }}
+        >
+          <MaterialIcon
+            name="more_horiz"
+            className="text-[18px]"
+            style={{ color: colors.textSecondary, opacity: 0.85 }}
+          />
+        </button>
+      ) : (
+        <MaterialIcon
+          name="chevron_right"
+          className="self-center transition-transform group-hover:translate-x-1"
+          style={{ color: colors.textSecondary }}
+        />
+      )}
     </div>
   );
 }

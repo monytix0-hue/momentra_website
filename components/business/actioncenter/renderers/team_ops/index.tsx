@@ -9,7 +9,7 @@ import {
   TextField,
   TextArea,
   MoneyInput,
-  DateInput,
+  DateTimeInput,
   CurrencyPicker,
   ChipSelector,
   MemberPicker,
@@ -178,7 +178,7 @@ export function MeetingRenderer(props: BusinessActionRendererProps) {
             required
             error={errors.title}
           />
-          <DateInput
+          <DateTimeInput
             label="When"
             value={String(state.meeting_at ?? "")}
             onChange={(v) => set("meeting_at", v)}

@@ -366,6 +366,28 @@ export async function patchAppPreferences(
   );
 }
 
+export async function getMePreferences(): Promise<
+  import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse
+> {
+  return requestWithRetry(API_ENDPOINTS.mePreferences, { method: "GET" });
+}
+
+export async function patchMePreferences(
+  body: import("@/lib/api/bootstrapTypes").PersonalPreferencesUpdateRequest,
+): Promise<import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse> {
+  return requestWithRetry(API_ENDPOINTS.mePreferences, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteAccount(): Promise<void> {
+  await requestWithRetry<void>(API_ENDPOINTS.me, {
+    method: "DELETE",
+  });
+  clearTokens();
+}
+
 export async function logout(): Promise<void> {
   try {
     const legacyRefresh = getLegacyRefreshToken();

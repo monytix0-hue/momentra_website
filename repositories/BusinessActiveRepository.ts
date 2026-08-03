@@ -25,6 +25,7 @@ import type {
   RunwayPulseResponse,
   TeamOpsMomentsResponse,
   TeamOpsPulseResponse,
+  VendorLedgerResponse,
 } from "@/lib/api/businessActive";
 import {
   activityFilterKey,
@@ -214,6 +215,18 @@ export async function deleteActivity(momentId: string, eventId: string): Promise
   return deleteAction(momentId, eventId);
 }
 
+
+export async function getVendorLedger(
+  momentId: string,
+  vendorName: string,
+): Promise<VendorLedgerResponse> {
+  const qs = new URLSearchParams({ vendor_name: vendorName }).toString();
+  return requestWithRetry<VendorLedgerResponse>(
+    `/api/v1/business/active/${momentId}/vendors/ledger?${qs}`,
+    { method: "GET" },
+  );
+}
+
 export async function archiveMoment(momentId: string) {
   return BusinessRepository.archiveMoment(momentId);
 }
@@ -235,6 +248,7 @@ export const BusinessActiveRepository = {
   getMemory,
   patchActivity,
   deleteActivity,
+  getVendorLedger,
   archiveMoment,
   completeMoment,
 };

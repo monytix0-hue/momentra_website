@@ -28,6 +28,7 @@ type Props = {
   onRetry: () => void;
   onQuickAdd?: () => void;
   onViewActivity?: () => void;
+  onEditActivity?: (item: import("@/lib/api/businessActive").TeamOpsEventItem) => void;
 };
 
 export function BusinessOperationsPulse({
@@ -39,6 +40,7 @@ export function BusinessOperationsPulse({
   onRetry,
   onQuickAdd,
   onViewActivity,
+  onEditActivity,
 }: Props) {
   if (loading && !data) {
     return (
@@ -94,7 +96,7 @@ export function BusinessOperationsPulse({
         <OpsMonitoringCard data={data} />
         <OpsAttentionCards items={data.attention_items.items} onViewAll={onViewActivity} />
         <OpsSignalsGrid items={data.signals.items} />
-        <OpsActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} />
+        <OpsActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} onEditActivity={onEditActivity} />
         <OpsNextAction item={data.next_best_action.item} onQuickAdd={onQuickAdd} />
       </div>
     </OpsScrollShell>

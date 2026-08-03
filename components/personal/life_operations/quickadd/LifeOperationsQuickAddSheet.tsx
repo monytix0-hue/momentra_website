@@ -1121,6 +1121,15 @@ export function LifeOperationsQuickAddSheet({
   const activeTab = tabs.find((t) => t.event_type === selectedTab);
   const meta = options?.metadata ?? {};
   const submitEnabled = Boolean(moment && canSubmitLifeOpsTab(selectedTab, form));
+  // Only surfaces the account gate — missing title/amount are already visible
+  // as blank fields, but a missing account isn't otherwise obvious.
+  const disabledReason = useMemo(() => {
+    if (selectedTab !== "EXPENSE" || form.accountId) return null;
+    if (!(form.amountMinor > 0 || form.expenseTitle.trim().length > 0)) return null;
+    return options?.accounts?.length
+      ? "Select an account to save this entry."
+      : "Add an account to save this entry.";
+  }, [selectedTab, form.accountId, form.amountMinor, form.expenseTitle, options?.accounts]);
   const dirty =
     isLifeOpsTabDirty(selectedTab, form) ||
     Object.entries(tabDrafts).some(([k, v]) => v && isLifeOpsTabDirty(k, v));
@@ -1444,6 +1453,12 @@ export function LifeOperationsQuickAddSheet({
                 {insight ? (
                   <p className="text-xs" style={{ color: colors.textSecondary, opacity: 0.85 }}>
                     {insight}
+                  </p>
+                ) : null}
+
+                {!submitError && disabledReason ? (
+                  <p className="text-xs" style={{ color: colors.textSecondary }}>
+                    {disabledReason}
                   </p>
                 ) : null}
 

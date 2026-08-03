@@ -47,6 +47,36 @@ const SEVERITY = [
   { value: "critical", label: "Critical" },
 ];
 
+const RISK_TYPES = [
+  { value: "operational", label: "Operational" },
+  { value: "financial", label: "Financial" },
+  { value: "compliance", label: "Compliance" },
+  { value: "technical", label: "Technical" },
+  { value: "market", label: "Market" },
+];
+
+const RUNWAY_IMPACT_MONTHS = [
+  { value: "lt_1_month", label: "Less than 1 month" },
+  { value: "1_3_months", label: "1–3 months" },
+  { value: "3_6_months", label: "3–6 months" },
+  { value: "6_plus_months", label: "6+ months" },
+];
+
+const EXPENSE_PRIORITY = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const DECISION_IMPACT = [
+  { value: "improve_speed", label: "Save time" },
+  { value: "reduce_cost", label: "Reduce cost" },
+  { value: "improve_service", label: "Improve quality" },
+  { value: "reduce_issues", label: "Reduce risk" },
+  { value: "increase_revenue", label: "Increase revenue" },
+  { value: "other", label: "Other" },
+];
+
 const UPDATE_TYPES = [
   { value: "cash_available", label: "Cash available" },
   { value: "monthly_burn", label: "Monthly burn" },
@@ -201,6 +231,12 @@ export function ExpenseBurnRenderer(props: BusinessActionRendererProps) {
             required
             error={errors.expense_category}
           />
+          <ChipSelector
+            label="Priority"
+            value={String(state.priority ?? "medium")}
+            onChange={(v) => set("priority", v)}
+            options={EXPENSE_PRIORITY}
+          />
           <DateInput
             label="Date"
             value={String(state.expense_date ?? "")}
@@ -218,7 +254,7 @@ export function ExpenseBurnRenderer(props: BusinessActionRendererProps) {
     <DedicatedShell
       props={props}
       steps={steps}
-      initialState={{ currency_code: "INR", expense_date: todayISO() }}
+      initialState={{ currency_code: "INR", expense_date: todayISO(), priority: "medium" }}
       draftTitleKey="expense_category"
       saveLabel="Record burn"
       buildPayload={(s) => ({
@@ -226,11 +262,13 @@ export function ExpenseBurnRenderer(props: BusinessActionRendererProps) {
         ...moneyPayload(s),
         expense_category: s.expense_category,
         expense_date: s.expense_date,
+        priority: s.priority || undefined,
         description: s.description || undefined,
       })}
       buildReviewRows={(s) => [
         { label: "Amount", value: formatMoneyDisplay(String(s.amount ?? ""), String(s.currency_code ?? "INR")) },
         { label: "Category", value: chipLabel(EXPENSE_CATEGORIES, String(s.expense_category ?? "")) },
+        { label: "Priority", value: chipLabel(EXPENSE_PRIORITY, String(s.priority ?? "")) },
         { label: "Date", value: String(s.expense_date ?? "") },
       ]}
     />
@@ -263,6 +301,18 @@ export function RunwayRiskRenderer(props: BusinessActionRendererProps) {
             required
             error={errors.severity}
           />
+          <ChipSelector
+            label="Type"
+            value={String(state.risk_type ?? "operational")}
+            onChange={(v) => set("risk_type", v)}
+            options={RISK_TYPES}
+          />
+          <ChipSelector
+            label="Expected impact"
+            value={String(state.expected_impact ?? "")}
+            onChange={(v) => set("expected_impact", v)}
+            options={RUNWAY_IMPACT_MONTHS}
+          />
           <TextArea
             label="Description"
             value={String(state.description ?? "")}
@@ -277,15 +327,20 @@ export function RunwayRiskRenderer(props: BusinessActionRendererProps) {
     <DedicatedShell
       props={props}
       steps={steps}
+      initialState={{ risk_type: "operational" }}
       saveLabel="Log risk"
       buildPayload={(s) => ({
         title: s.title,
         severity: s.severity,
+        risk_type: s.risk_type || undefined,
+        expected_impact: s.expected_impact || undefined,
         description: s.description || undefined,
       })}
       buildReviewRows={(s) => [
         { label: "Title", value: String(s.title ?? "") },
         { label: "Severity", value: chipLabel(SEVERITY, String(s.severity ?? "")) },
+        { label: "Type", value: chipLabel(RISK_TYPES, String(s.risk_type ?? "")) },
+        { label: "Impact", value: chipLabel(RUNWAY_IMPACT_MONTHS, String(s.expected_impact ?? "")) },
         { label: "Description", value: String(s.description || "—") },
       ]}
     />
@@ -384,6 +439,12 @@ export function StrategicDecisionRenderer(props: BusinessActionRendererProps) {
             required
             error={errors.decision_type}
           />
+          <ChipSelector
+            label="Expected impact"
+            value={String(state.expected_impact ?? "")}
+            onChange={(v) => set("expected_impact", v)}
+            options={DECISION_IMPACT}
+          />
           <TextArea
             label="Details"
             value={String(state.description ?? "")}
@@ -402,11 +463,13 @@ export function StrategicDecisionRenderer(props: BusinessActionRendererProps) {
       buildPayload={(s) => ({
         title: s.title,
         decision_type: s.decision_type,
+        expected_impact: s.expected_impact || undefined,
         description: s.description || undefined,
       })}
       buildReviewRows={(s) => [
         { label: "Decision", value: String(s.title ?? "") },
         { label: "Type", value: chipLabel(DECISION_TYPES, String(s.decision_type ?? "")) },
+        { label: "Impact", value: chipLabel(DECISION_IMPACT, String(s.expected_impact ?? "")) },
         { label: "Details", value: String(s.description || "—") },
       ]}
     />

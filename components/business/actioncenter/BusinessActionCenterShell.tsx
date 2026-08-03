@@ -22,6 +22,32 @@ type BusinessActionCenterShellProps = {
   pulseHint?: Record<string, unknown> | null;
 };
 
+function hubHero(momentTypeCode: string): { title: string; subtitle: string } {
+  switch (momentTypeCode.toUpperCase()) {
+    case "TEAM_OPERATIONS":
+      return {
+        title: "Keep your team in sync",
+        subtitle: "Updates, recognition, meetings, issues, and approvals.",
+      };
+    case "BUSINESS_RUNWAY":
+      return {
+        title: "Track your runway",
+        subtitle: "Cash inflows, burn, risks, financial updates, and decisions.",
+      };
+    case "BUSINESS_OPERATIONS":
+    case "DEPARTMENT_OPERATIONS":
+      return {
+        title: "Run your operations",
+        subtitle: "Spend, vendors, approvals, issues, and improvements.",
+      };
+    default:
+      return {
+        title: "Quick Add",
+        subtitle: "Record activity, approvals, and operational updates.",
+      };
+  }
+}
+
 export function BusinessActionCenterShell({
   momentId,
   momentTypeCode,
@@ -47,6 +73,8 @@ export function BusinessActionCenterShell({
 
   const templateId = catalog?.template_id ?? "business.default";
   const Renderer = selectedAction ? resolveBusinessActionRenderer(selectedAction.renderer_id) : null;
+  const hero = hubHero(momentTypeCode);
+  const companyLine = momentName?.trim() || null;
 
   return (
     <BottomSheet open onClose={onClose} ariaLabelledBy="biz-action-center-title" panelClassName="bg-inherit">
@@ -67,7 +95,7 @@ export function BusinessActionCenterShell({
               }}
               className="flex size-10 items-center justify-center rounded-full"
               style={{ background: colors.surfaceContainer }}
-              aria-label={selectedAction ? "Back to Action Center" : "Close"}
+              aria-label={selectedAction ? "Back to Quick Add" : "Close"}
             >
               <X className="size-4" style={{ color: BUSINESS_ACCENT.teal }} />
             </button>
@@ -77,10 +105,10 @@ export function BusinessActionCenterShell({
                 className="text-xl font-semibold"
                 style={{ color: BUSINESS_ACCENT.navy, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
-                Action Center
+                Quick Add
               </h2>
               <p className="text-xs" style={{ color: colors.textSecondary }}>
-                {selectedAction ? selectedAction.label : "What would you like to record?"}
+                {selectedAction ? selectedAction.label : "What would you like to add?"}
               </p>
             </div>
             <div className="size-10" />
@@ -121,10 +149,10 @@ export function BusinessActionCenterShell({
                 momentId={momentId}
                 templateId={templateId}
                 members={catalog?.members ?? []}
+                vendors={catalog?.vendors ?? []}
                 rendererMeta={rendererMeta}
-                onSubmit={async (payload) => {
-                  await submitAction(payload);
-                }}
+                contextLine={companyLine}
+                onSubmit={(payload) => submitAction(payload)}
                 onClose={() => selectAction(null)}
                 onSuccess={onSuccess}
                 onSwitchAction={selectAction}
@@ -140,7 +168,9 @@ export function BusinessActionCenterShell({
               actions={catalog.actions}
               favorites={favorites}
               recentIds={recentIds}
-              momentName={momentName}
+              momentName={companyLine}
+              heroTitle={hero.title}
+              heroSubtitle={hero.subtitle}
               onSelect={selectAction}
               onToggleFavorite={toggleFavorite}
             />

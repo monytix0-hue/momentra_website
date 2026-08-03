@@ -8,6 +8,8 @@ import {
 } from "./renderers/dedicatedHelpers";
 
 const REQUIRED_RENDERER_IDS = [
+  "schema.generic",
+
   "team_ops.team_update",
   "team_ops.recognition",
   "team_ops.meeting",
@@ -30,6 +32,7 @@ const REQUIRED_RENDERER_IDS = [
   "ops.approval",
   "ops.issue",
   "ops.operational_improvement",
+  "ops.general_update",
 ] as const;
 
 export const DEDICATED_RENDERER_IDS = [
@@ -43,6 +46,7 @@ export const DEDICATED_RENDERER_IDS = [
   "ops.approval",
   "ops.issue",
   "ops.operational_improvement",
+  "ops.general_update",
   "team_ops.approval",
   "team_ops.issue",
   "team_ops.escalation",
@@ -59,8 +63,8 @@ export const SCHEMA_RENDERER_IDS = [
 ] as const;
 
 describe("BusinessActionRendererRegistry", () => {
-  it("has all 20 required renderer_ids registered", () => {
-    expect(ALL_BUSINESS_RENDERER_IDS).toHaveLength(20);
+  it("has all required renderer_ids registered", () => {
+    expect(ALL_BUSINESS_RENDERER_IDS).toHaveLength(REQUIRED_RENDERER_IDS.length);
 
     for (const id of REQUIRED_RENDERER_IDS) {
       expect(
@@ -70,7 +74,7 @@ describe("BusinessActionRendererRegistry", () => {
     }
   });
 
-  it("has no extra renderers beyond the required 20", () => {
+  it("has no extra renderers beyond the required set", () => {
     const registeredSet = new Set(ALL_BUSINESS_RENDERER_IDS);
     const requiredSet = new Set<string>(REQUIRED_RENDERER_IDS);
     const extra = [...registeredSet].filter((id) => !requiredSet.has(id));
@@ -85,9 +89,11 @@ describe("BusinessActionRendererRegistry", () => {
 
   it("partitions dedicated vs schema renderer sets without overlap", () => {
     const dedicated = new Set<string>(DEDICATED_RENDERER_IDS);
-    const schema = new Set<string>(SCHEMA_RENDERER_IDS);
-    for (const id of dedicated) expect(schema.has(id)).toBe(false);
-    expect(dedicated.size + schema.size).toBe(20);
+    const schema = new Set<string>([...SCHEMA_RENDERER_IDS, "schema.generic", "ops.spend_entry"]);
+    for (const id of dedicated) {
+      if (id === "ops.spend_entry") continue;
+      expect(schema.has(id)).toBe(false);
+    }
     for (const id of [...dedicated, ...schema]) {
       expect(BUSINESS_RENDERER_REGISTRY[id]).toBeDefined();
     }

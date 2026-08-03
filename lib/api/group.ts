@@ -279,6 +279,7 @@ export type TripPulseResponse = {
       subtitle?: string;
       relative_time?: string;
       activity_type?: string;
+      can_edit?: boolean;
     }>;
   } | null;
   participation_breakdown?: { active: number; pending: number; inactive: number };
@@ -795,6 +796,7 @@ export type LivingPulseResponse = {
     relative_time?: string;
     activity_type?: string;
     icon?: string;
+    can_edit?: boolean;
   }>;
   participation_breakdown?: { active: number; pending: number; inactive: number };
   dashboard_card?: {
@@ -805,6 +807,7 @@ export type LivingPulseResponse = {
       relative_time?: string;
       activity_type?: string;
       icon?: string;
+      can_edit?: boolean;
     }>;
   } | null;
   operations_progress?: { label?: string; percent?: number; subtitle?: string } | null;

@@ -2,7 +2,10 @@
 
 import type { RunwayMomentsResponse, RunwayPulseResponse, TeamOpsEventItem } from "@/lib/api/businessActive";
 import { formatMinorCurrency } from "@/lib/business/runwayApiMappers";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { RUNWAY, runwayBandColor, formatOccurredAt, formatRunwayMonths } from "./runwayTheme";
+
+const MOMENT_TYPE = "BUSINESS_RUNWAY";
 
 export function RunwayScrollShell({
   children,
@@ -47,16 +50,29 @@ function SectionHeader({
   title,
   trailing,
   onTrailing,
+  explainerId,
+  momentTypeCode = MOMENT_TYPE,
 }: {
   title: string;
   trailing?: string;
   onTrailing?: () => void;
+  explainerId?: string;
+  momentTypeCode?: string | null;
 }) {
   return (
     <div className="mb-2 flex items-center justify-between gap-2">
-      <p className="text-sm font-semibold" style={{ fontFamily: RUNWAY.fontDisplay }}>
-        {title}
-      </p>
+      <div className="flex min-w-0 items-center gap-0.5">
+        <p className="text-sm font-semibold" style={{ fontFamily: RUNWAY.fontDisplay }}>
+          {title}
+        </p>
+        {explainerId ? (
+          <WidgetInfoButton
+            explainerId={explainerId}
+            momentTypeCode={momentTypeCode}
+            domain="business"
+          />
+        ) : null}
+      </div>
       {trailing && onTrailing ? (
         <button type="button" className="text-xs font-semibold" style={{ color: RUNWAY.primary }} onClick={onTrailing}>
           {trailing}
@@ -84,9 +100,16 @@ export function RunwayHealthHero({ data }: { data: RunwayPulseResponse }) {
   return (
     <RunwayCard className="!bg-gradient-to-b from-[#292932] to-[#1b1b23]">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: RUNWAY.onVariant }}>
-          Runway Health
-        </p>
+        <div className="flex items-center gap-0.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: RUNWAY.onVariant }}>
+            Runway Health
+          </p>
+          <WidgetInfoButton
+            explainerId="PULSE-001"
+            momentTypeCode={MOMENT_TYPE}
+            domain="business"
+          />
+        </div>
         <Badge text={health?.label ?? "Not started"} tone={tone} />
       </div>
       <p className="mt-2 text-3xl font-bold" style={{ color: tone, fontFamily: RUNWAY.fontDisplay }}>
@@ -136,7 +159,7 @@ export function RunwayKpiGrid({ data }: { data: RunwayPulseResponse }) {
   ];
   return (
     <div>
-      <SectionHeader title="Health Drivers" />
+      <SectionHeader title="Health Drivers" explainerId="PULSE-002" />
       <div className="-mx-1 flex gap-2 overflow-x-auto pb-1">
         {kpis.map((kpi) => (
           <div
@@ -185,6 +208,7 @@ export function RunwayAttentionCards({
     <div>
       <SectionHeader
         title="Attention Needed"
+        explainerId="PULSE-003"
         trailing={items.length ? `View All (${items.length})` : undefined}
         onTrailing={onViewAll}
       />
@@ -230,7 +254,7 @@ export function RunwaySignalsGrid({ items }: { items: RunwayPulseResponse["signa
   if (!items.length) return null;
   return (
     <div>
-      <SectionHeader title="Signals" />
+      <SectionHeader title="Signals" explainerId="PULSE-004" />
       <div className="-mx-1 flex gap-2 overflow-x-auto pb-1">
         {items.map((item) => {
           const tone =
@@ -260,14 +284,17 @@ export function RunwaySignalsGrid({ items }: { items: RunwayPulseResponse["signa
 export function RunwayActivityFeed({
   items,
   onViewAll,
+  onEditActivity,
 }: {
   items: TeamOpsEventItem[];
   onViewAll?: () => void;
+  onEditActivity?: (item: TeamOpsEventItem) => void;
 }) {
   return (
     <div>
       <SectionHeader
         title="Recent Activity"
+        explainerId="PULSE-005"
         trailing={items.length ? "View All Activity" : undefined}
         onTrailing={onViewAll}
       />
@@ -277,26 +304,54 @@ export function RunwayActivityFeed({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {items.slice(0, 5).map((item) => (
-            <div
-              key={item.event_id}
-              className="flex items-center gap-3 rounded-xl p-3"
-              style={{ background: RUNWAY.surfaceLow }}
-            >
+          {items.slice(0, 5).map((item) => {
+            const editable = Boolean(item.is_editable && onEditActivity && item.event_id);
+            return (
               <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                style={{ background: `${RUNWAY.primary}26`, color: RUNWAY.primary }}
+                key={item.event_id}
+                role={editable ? "button" : undefined}
+                tabIndex={editable ? 0 : undefined}
+                className={`flex items-center gap-3 rounded-xl p-3 ${editable ? "cursor-pointer" : ""}`}
+                style={{ background: RUNWAY.surfaceLow }}
+                onClick={() => {
+                  if (editable) onEditActivity?.(item);
+                }}
+                onKeyDown={(e) => {
+                  if (!editable) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onEditActivity?.(item);
+                  }
+                }}
               >
-                {(item.title || "?").slice(0, 1).toUpperCase()}
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                  style={{ background: `${RUNWAY.primary}26`, color: RUNWAY.primary }}
+                >
+                  {(item.title || "?").slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{item.title}</p>
+                  <p className="text-[11px]" style={{ color: RUNWAY.onVariant }}>
+                    {item.action_type.replace(/_/g, " ")} · {formatOccurredAt(item.occurred_at)}
+                  </p>
+                </div>
+                {editable ? (
+                  <button
+                    type="button"
+                    className="inline-flex size-10 shrink-0 items-center justify-center border-0 bg-transparent"
+                    aria-label="Edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditActivity?.(item);
+                    }}
+                  >
+                    <span style={{ opacity: 0.85, fontSize: 18, lineHeight: 1 }}>⋯</span>
+                  </button>
+                ) : null}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{item.title}</p>
-                <p className="text-[11px]" style={{ color: RUNWAY.onVariant }}>
-                  {item.action_type.replace(/_/g, " ")} · {formatOccurredAt(item.occurred_at)}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -313,9 +368,16 @@ export function RunwayNextAction({
   if (!item) return null;
   return (
     <RunwayCard>
-      <p className="text-base font-bold" style={{ fontFamily: RUNWAY.fontDisplay }}>
-        {item.label}
-      </p>
+      <div className="flex items-center gap-0.5">
+        <p className="text-base font-bold" style={{ fontFamily: RUNWAY.fontDisplay }}>
+          {item.label}
+        </p>
+        <WidgetInfoButton
+          explainerId="PULSE-006"
+          momentTypeCode={MOMENT_TYPE}
+          domain="business"
+        />
+      </div>
       {item.reason ? (
         <p className="mt-1 text-xs" style={{ color: RUNWAY.onVariant }}>
           {item.reason}
@@ -352,9 +414,16 @@ export function RunwayMomentsHero({
   return (
     <RunwayCard className="!bg-gradient-to-b from-[#292932] to-[#1b1b23]">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-xl font-bold" style={{ fontFamily: RUNWAY.fontDisplay }}>
-          {data.journey_hero.title}
-        </h2>
+        <div className="flex min-w-0 items-center gap-0.5">
+          <h2 className="text-xl font-bold" style={{ fontFamily: RUNWAY.fontDisplay }}>
+            {data.journey_hero.title}
+          </h2>
+          <WidgetInfoButton
+            explainerId="MOMENT-001"
+            momentTypeCode={MOMENT_TYPE}
+            domain="business"
+          />
+        </div>
         {isActive ? <Badge text="Active" tone={RUNWAY.primary} /> : null}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -394,7 +463,7 @@ export function RunwayMomentsHero({
 export function RunwayTimelineSection({ items }: { items: TeamOpsEventItem[] }) {
   return (
     <div>
-      <SectionHeader title="Moment Timeline" />
+      <SectionHeader title="Moment Timeline" explainerId="MOMENT-002" />
       {items.length === 0 ? (
         <p className="text-sm" style={{ color: RUNWAY.onVariant }}>
           No events yet
@@ -447,7 +516,7 @@ export function RunwayProgressSnapshot({ data }: { data: RunwayMomentsResponse }
 
   return (
     <div>
-      <SectionHeader title="Progress Snapshot" />
+      <SectionHeader title="Progress Snapshot" explainerId="MOMENT-003" />
       <div className="grid grid-cols-2 gap-2">
         {cards.map((card) => (
           <div
@@ -477,7 +546,7 @@ export function RunwayHighlights({ items }: { items: TeamOpsEventItem[] }) {
       <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: RUNWAY.primary }}>
         Recent Wins
       </p>
-      <SectionHeader title="Recent Highlights" />
+      <SectionHeader title="Recent Highlights" explainerId="MOMENT-004" />
       {items.length === 0 ? (
         <p className="text-sm" style={{ color: RUNWAY.onVariant }}>
           No highlights yet
@@ -504,9 +573,16 @@ export function RunwayHighlights({ items }: { items: TeamOpsEventItem[] }) {
 export function RunwayManageBar({ onQuickAdd }: { onQuickAdd?: () => void }) {
   return (
     <div>
-      <p className="text-base font-bold" style={{ fontFamily: RUNWAY.fontDisplay }}>
-        Continue Managing
-      </p>
+      <div className="flex items-center gap-0.5">
+        <p className="text-base font-bold" style={{ fontFamily: RUNWAY.fontDisplay }}>
+          Continue Managing
+        </p>
+        <WidgetInfoButton
+          explainerId="MOMENT-005"
+          momentTypeCode={MOMENT_TYPE}
+          domain="business"
+        />
+      </div>
       <p className="mt-1 text-xs" style={{ color: RUNWAY.onVariant }}>
         Open your Runway workspace to make deeper changes.
       </p>

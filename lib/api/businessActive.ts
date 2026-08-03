@@ -9,6 +9,11 @@ export type TeamOpsEventItem = {
   subtitle?: string | null;
   occurred_at?: string;
   source_moment_id?: string | null;
+  /** Outstanding spend balance for this vendor (minor units), when known. */
+  due_minor?: number | null;
+  /** Server-owned — clients must not infer. */
+  is_editable?: boolean;
+  is_deletable?: boolean;
 };
 
 export type TeamOpsHealth = {
@@ -633,6 +638,36 @@ export type OpsMomentsResponse = {
   key_decisions: TeamOpsSection<{ items: TeamOpsEventItem[] }>;
   timeline: TeamOpsSection<{ items: TeamOpsEventItem[] }>;
   recent_activity: TeamOpsSection<{ items: TeamOpsEventItem[] }>;
+};
+
+export type VendorLedgerItem = {
+  spend_entry_id: string;
+  title: string;
+  amount_minor: number;
+  amount_paid_minor: number;
+  amount_due_minor: number;
+  payment_status: string;
+  payment_method: string;
+  spend_date: string;
+  occurred_at: string;
+};
+
+export type VendorLedgerMonth = {
+  month: string;
+  label: string;
+  month_spent_minor: number;
+  month_paid_minor: number;
+  month_due_minor: number;
+  items: VendorLedgerItem[];
+};
+
+export type VendorLedgerResponse = {
+  vendor_name: string;
+  currency_code: string;
+  balance_due_minor: number;
+  total_spent_minor: number;
+  total_paid_minor: number;
+  months: VendorLedgerMonth[];
 };
 
 export const OPS_PULSE_SECTION_KEYS = [

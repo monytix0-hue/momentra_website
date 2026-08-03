@@ -166,6 +166,7 @@ export function TeamOperationsMemoryContribution({
           sectionIndex={nActions}
           onQuickAdd={onQuickAdd}
           onCreateMoment={onCreateMoment}
+          explainerId="MEMORY-009"
         />
       ) : null}
 

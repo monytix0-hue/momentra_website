@@ -26,24 +26,18 @@ import { useReducedMotion } from "@/lib/motion/useReducedMotion";
 import { AccountsCard } from "@/components/personal/life_operations/accounts/AccountsCard";
 import type { PersonalLifeOperationsPulse, PersonalLifeOpsPulseMetrics } from "@/lib/api/personal";
 import { lifeOpsPulseCopy } from "@/lib/personal/life_operations/pulse/lifeOpsPulseCopy";
-import { quickAddIcon, resolveActivityIcon, SEGMENT_COLORS } from "@/lib/personal/life_operations/pulse/pulseIcons";
+import { quickAddIcon, SEGMENT_COLORS } from "@/lib/personal/life_operations/pulse/pulseIcons";
 import {
   resolveExpenseCategoryColor,
   resolveExpenseCategoryIcon,
   resolveImpactIcon,
 } from "@/lib/personal/life_operations/expenseCategoryIcons";
-import {
-  formatRelativeTime,
-  recentActivityContextLine,
-  recentActivityMoodLabel,
-  recentActivityPrimaryMetric,
-  recentActivityTitle,
-} from "@/lib/personal/life_operations/pulse/recentActivityDisplay";
 import { Brain, Sparkles } from "lucide-react";
 import {
   PersonalWidgetSectionHeader,
   WidgetInfoButton,
 } from "@/components/personal/shared/WidgetInfoButton";
+import { RecentActivityList } from "@/components/personal/life_operations/pulse/widgets/RecentActivityList";
 
 const MOMENT_TYPE = "LIFE_OPERATIONS";
 
@@ -295,75 +289,16 @@ export function LifeOperationsPulse({
         </MotionSection>
 
         <MotionSection>
-        <section style={{ ...personalGlassCardStyle(tokens), borderRadius: 16, padding: 12 }}>
-          <PersonalWidgetSectionHeader
-            title={lifeOpsPulseCopy.recentActivityFeedTitle}
-            explainerId="PULSE-004"
-            momentTypeCode={MOMENT_TYPE}
-            className="mb-2"
-            trailing={
-              <button type="button" onClick={onViewAllActivity} style={{ ...personalTypography.labelSm, fontWeight: 700, color: colors.brandPrimary, background: "none", border: "none" }}>
-                {lifeOpsPulseCopy.viewAll}
-              </button>
-            }
-          />
-          {(pulse.dashboard_card?.recent_items ?? []).length > 0 ? (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {(pulse.dashboard_card?.recent_items ?? []).slice(0, 4).map((item) => {
-                const Icon = resolveActivityIcon(
-                  item.activity_type,
-                  item.icon,
-                  item.category_code,
-                  item.subcategory_code,
-                );
-                const catColor =
-                  resolveExpenseCategoryColor(item.color, item.category_code, item.subcategory_code) ||
-                  colors.brandPrimary;
-                const context = recentActivityContextLine(item);
-                const mood = recentActivityMoodLabel(item);
-                const metric = recentActivityPrimaryMetric(item);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-xl border p-2.5"
-                    style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.05)" }}
-                  >
-                    <div
-                      className="flex size-9 shrink-0 items-center justify-center rounded-xl"
-                      style={{ background: `linear-gradient(160deg, ${catColor}55 0%, ${catColor}22 100%)` }}
-                    >
-                      <Icon size={16} color={catColor} aria-hidden />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="truncate" style={{ fontSize: 12, fontWeight: 700 }}>
-                          {recentActivityTitle(item)}
-                        </p>
-                        {metric ? (
-                          <span className="shrink-0" style={{ fontSize: 12, fontWeight: 700 }}>
-                            {metric}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-0.5 flex items-center justify-between gap-2">
-                        <p className="truncate" style={{ fontSize: 10, opacity: 0.65 }}>
-                          {[context, mood].filter(Boolean).join(" · ")}
-                        </p>
-                        <span className="shrink-0" style={{ fontSize: 10, opacity: 0.45 }}>
-                          {formatRelativeTime(item.occurred_at)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p style={{ ...personalTypography.bodyMd, color: colors.textSecondary, opacity: 0.7 }}>
-              {pulse.dashboard_card?.empty_recent_message ?? lifeOpsPulseCopy.recentActivityEmptyFallback}
-            </p>
-          )}
-        </section>
+        <RecentActivityList
+          items={pulse.dashboard_card?.recent_items ?? []}
+          emptyMessage={pulse.dashboard_card?.empty_recent_message}
+          onViewAll={onViewAllActivity}
+          onEditActivity={onEditActivity}
+          title={lifeOpsPulseCopy.recentActivityFeedTitle}
+          subtitle={lifeOpsPulseCopy.recentActivityListSubtitle}
+          explainerId="PULSE-004"
+          momentTypeCode={MOMENT_TYPE}
+        />
         </MotionSection>
 
         <MotionSection>

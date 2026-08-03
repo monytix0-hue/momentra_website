@@ -25,12 +25,6 @@ export function BusinessActionHeader({
   const { colors } = useThemeTokens();
   return (
     <header className="space-y-1 pb-2">
-      <p
-        className="text-xs font-semibold uppercase tracking-widest"
-        style={{ color: BUSINESS_ACCENT.teal }}
-      >
-        Action Center
-      </p>
       <div className="flex items-baseline justify-between gap-3">
         <h2
           className="text-2xl font-semibold md:text-3xl"
@@ -50,6 +44,16 @@ export function BusinessActionHeader({
         </p>
       ) : null}
     </header>
+  );
+}
+
+export function BusinessContextLine({ text }: { text?: string | null }) {
+  const { colors } = useThemeTokens();
+  if (!text?.trim()) return null;
+  return (
+    <p className="text-sm font-medium" style={{ color: colors.textSecondary }}>
+      {text}
+    </p>
   );
 }
 
@@ -175,24 +179,14 @@ export function BusinessFooter({
   const { colors } = useThemeTokens();
   return (
     <div
-      className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t px-5 py-4"
+      className="sticky bottom-0 -mx-5 mt-6 space-y-2 border-t px-5 py-4"
       style={{ background: colors.background, borderColor: `${colors.textSecondary}20` }}
     >
-      {secondaryLabel && onSecondary ? (
-        <button
-          type="button"
-          onClick={onSecondary}
-          className="flex-1 rounded-full py-3 text-sm font-semibold"
-          style={{ background: colors.surfaceContainer, color: colors.textPrimary }}
-        >
-          {secondaryLabel}
-        </button>
-      ) : null}
       <button
         type="button"
         disabled={primaryDisabled || busy}
         onClick={onPrimary}
-        className="flex-[1.4] rounded-full py-3 text-sm font-bold uppercase tracking-wide disabled:opacity-50"
+        className="w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide disabled:opacity-50"
         style={{
           background: `linear-gradient(135deg, ${BUSINESS_ACCENT.teal} 0%, ${BUSINESS_ACCENT.navy} 100%)`,
           color: "#fff",
@@ -200,6 +194,16 @@ export function BusinessFooter({
       >
         {busy ? "Saving…" : primaryLabel}
       </button>
+      {secondaryLabel && onSecondary ? (
+        <button
+          type="button"
+          onClick={onSecondary}
+          className="w-full py-2 text-sm font-medium"
+          style={{ color: colors.textSecondary }}
+        >
+          {secondaryLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

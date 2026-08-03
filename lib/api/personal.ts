@@ -163,12 +163,16 @@ export interface PulseDashboardRecentItem {
   category_label?: string | null;
   subcategory_label?: string | null;
   mood_label?: string | null;
+  mood_emoji?: string | null;
   mood?: {
     code?: string | null;
     label?: string | null;
+    emoji?: string | null;
     intensity?: string | null;
     source?: string | null;
   } | null;
+  place?: string | null;
+  with_whom?: string | null;
   domain?: string | null;
   domain_label?: string | null;
   type_label?: string | null;

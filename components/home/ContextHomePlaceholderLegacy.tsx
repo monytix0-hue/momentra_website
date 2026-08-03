@@ -2373,6 +2373,7 @@ export function ContextHomePlaceholderLegacy({
     const moments = businessBootstrap?.moments ?? [];
     const home = businessBootstrap?.moments_home;
     const inventoryEmpty =
+      !businessSession.inventoryPending &&
       Boolean(businessBootstrap) &&
       (home?.is_empty === true ||
         (typeof home?.active_moment_count === "number" && home.active_moment_count === 0) ||
@@ -2425,6 +2426,14 @@ export function ContextHomePlaceholderLegacy({
       }
     };
 
+    if (businessSession.inventoryPending || businessSessionLoading) {
+      return (
+        <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
+          <p className="text-sm opacity-70">Loading moments…</p>
+        </div>
+      );
+    }
+
     if (inventoryEmpty) {
       return renderBusinessEmptyShell();
     }
@@ -2432,7 +2441,7 @@ export function ContextHomePlaceholderLegacy({
     if (businessResolved === "loading" && !teamOpsMomentId && !runwayMomentId && !opsMomentId) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
-          <p className="text-sm opacity-70">Loadingâ€¦</p>
+          <p className="text-sm opacity-70">Loading…</p>
         </div>
       );
     }
@@ -2786,10 +2795,12 @@ export function ContextHomePlaceholderLegacy({
         <MasterExpenseOrchestrator
           onBack={() => setShowMasterExpense(false)}
           onSuccess={() => {
-            void revalidateLife();
+            // Pulse/Activity ("Today") first so it never waits behind the
+            // heavier Memory/Life aggregations.
             void revalidatePulse();
             void revalidateMoments();
             void revalidateMemory();
+            void revalidateLife();
             void revalidateTemplateMemory();
             void revalidateTemplateMoments();
           }}

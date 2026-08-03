@@ -7,7 +7,10 @@ import type {
   TeamOpsEventItem,
 } from "@/lib/api/businessActive";
 import { formatMinorCurrency } from "@/lib/business/opsApiMappers";
+import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { OPS, opsBandColor, formatOccurredAt } from "./opsTheme";
+
+const MOMENT_TYPE = "BUSINESS_OPERATIONS";
 
 export function OpsScrollShell({
   children,
@@ -52,16 +55,29 @@ function SectionHeader({
   title,
   trailing,
   onTrailing,
+  explainerId,
+  momentTypeCode = MOMENT_TYPE,
 }: {
   title: string;
   trailing?: string;
   onTrailing?: () => void;
+  explainerId?: string;
+  momentTypeCode?: string | null;
 }) {
   return (
     <div className="mb-2 flex items-center justify-between gap-2">
-      <p className="text-sm font-semibold" style={{ fontFamily: OPS.fontDisplay }}>
-        {title}
-      </p>
+      <div className="flex min-w-0 items-center gap-0.5">
+        <p className="text-sm font-semibold" style={{ fontFamily: OPS.fontDisplay }}>
+          {title}
+        </p>
+        {explainerId ? (
+          <WidgetInfoButton
+            explainerId={explainerId}
+            momentTypeCode={momentTypeCode}
+            domain="business"
+          />
+        ) : null}
+      </div>
       {trailing && onTrailing ? (
         <button type="button" className="text-xs font-semibold" style={{ color: OPS.primary }} onClick={onTrailing}>
           {trailing}
@@ -115,9 +131,16 @@ export function OpsHealthCard({ data }: { data: OpsPulseResponse }) {
   return (
     <OpsCard className="!bg-gradient-to-b from-[#2a3344] to-[#181c23]">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: OPS.onVariant }}>
-          Operations Health
-        </p>
+        <div className="flex items-center gap-0.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: OPS.onVariant }}>
+            Operations Health
+          </p>
+          <WidgetInfoButton
+            explainerId="PULSE-001"
+            momentTypeCode={MOMENT_TYPE}
+            domain="business"
+          />
+        </div>
         <Badge text={health.label || "Not started"} tone={tone} />
       </div>
       <p className="mt-2 text-3xl font-bold" style={{ color: tone, fontFamily: OPS.fontDisplay }}>
@@ -191,7 +214,7 @@ export function OpsKpiGrid({ data }: { data: OpsPulseResponse }) {
   const budgetPct = k.budget_usage_percent != null ? Math.round(k.budget_usage_percent) : null;
   return (
     <div>
-      <SectionHeader title="Health Drivers" />
+      <SectionHeader title="Health Drivers" explainerId="PULSE-002" />
       <div className="flex gap-2 overflow-x-auto pb-1">
         <KpiChip
           label="Budget Usage"
@@ -368,6 +391,7 @@ export function OpsAttentionCards({
     <div>
       <SectionHeader
         title="Attention Needed"
+        explainerId="PULSE-003"
         trailing={`View All (${items.length})`}
         onTrailing={onViewAll}
       />
@@ -407,7 +431,7 @@ export function OpsSignalsGrid({ items }: { items: OpsPulseResponse["signals"]["
   if (!items.length) return null;
   return (
     <div>
-      <SectionHeader title="Signals" />
+      <SectionHeader title="Signals" explainerId="PULSE-004" />
       <div className="flex gap-2 overflow-x-auto pb-1">
         {items.map((item) => {
           const tone =
@@ -437,14 +461,17 @@ export function OpsSignalsGrid({ items }: { items: OpsPulseResponse["signals"]["
 export function OpsActivityFeed({
   items,
   onViewAll,
+  onEditActivity,
 }: {
   items: TeamOpsEventItem[];
   onViewAll?: () => void;
+  onEditActivity?: (item: TeamOpsEventItem) => void;
 }) {
   return (
     <div>
       <SectionHeader
         title="Recent Activity"
+        explainerId="PULSE-005"
         trailing={items.length ? "View All Activity" : undefined}
         onTrailing={onViewAll}
       />
@@ -454,26 +481,54 @@ export function OpsActivityFeed({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {items.slice(0, 5).map((item) => (
-            <div
-              key={item.event_id}
-              className="flex items-center gap-2.5 rounded-xl p-3"
-              style={{ background: OPS.surfaceLow }}
-            >
+          {items.slice(0, 5).map((item) => {
+            const editable = Boolean(item.is_editable && onEditActivity && item.event_id);
+            return (
               <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                style={{ background: `${OPS.primary}26`, color: OPS.primary }}
+                key={item.event_id}
+                role={editable ? "button" : undefined}
+                tabIndex={editable ? 0 : undefined}
+                className={`flex items-center gap-2.5 rounded-xl p-3 ${editable ? "cursor-pointer" : ""}`}
+                style={{ background: OPS.surfaceLow }}
+                onClick={() => {
+                  if (editable) onEditActivity?.(item);
+                }}
+                onKeyDown={(e) => {
+                  if (!editable) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onEditActivity?.(item);
+                  }
+                }}
               >
-                {item.title.slice(0, 1).toUpperCase()}
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                  style={{ background: `${OPS.primary}26`, color: OPS.primary }}
+                >
+                  {item.title.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="text-[11px]" style={{ color: OPS.onVariant }}>
+                    {item.action_type.replace(/_/g, " ")} · {formatOccurredAt(item.occurred_at)}
+                  </p>
+                </div>
+                {editable ? (
+                  <button
+                    type="button"
+                    className="inline-flex size-10 shrink-0 items-center justify-center border-0 bg-transparent"
+                    aria-label="Edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditActivity?.(item);
+                    }}
+                  >
+                    <span style={{ opacity: 0.85, fontSize: 18, lineHeight: 1 }}>⋯</span>
+                  </button>
+                ) : null}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{item.title}</p>
-                <p className="text-[11px]" style={{ color: OPS.onVariant }}>
-                  {item.action_type.replace(/_/g, " ")} · {formatOccurredAt(item.occurred_at)}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -490,9 +545,16 @@ export function OpsNextAction({
   if (!item) return null;
   return (
     <OpsCard>
-      <p className="text-base font-bold" style={{ fontFamily: OPS.fontDisplay }}>
-        {item.title || item.label}
-      </p>
+      <div className="flex items-center gap-0.5">
+        <p className="text-base font-bold" style={{ fontFamily: OPS.fontDisplay }}>
+          {item.title || item.label}
+        </p>
+        <WidgetInfoButton
+          explainerId="PULSE-006"
+          momentTypeCode={MOMENT_TYPE}
+          domain="business"
+        />
+      </div>
       {item.subtitle || item.reason ? (
         <p className="mt-1 text-xs" style={{ color: OPS.onVariant }}>
           {item.subtitle || item.reason}
@@ -524,9 +586,16 @@ export function OpsMomentsHero({
   return (
     <OpsCard className="!bg-gradient-to-b from-[#2a3344] to-[#181c23]">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-xl font-bold" style={{ fontFamily: OPS.fontDisplay }}>
-          {data.journey_hero.title}
-        </h2>
+        <div className="flex min-w-0 items-center gap-0.5">
+          <h2 className="text-xl font-bold" style={{ fontFamily: OPS.fontDisplay }}>
+            {data.journey_hero.title}
+          </h2>
+          <WidgetInfoButton
+            explainerId="MOMENT-001"
+            momentTypeCode={MOMENT_TYPE}
+            domain="business"
+          />
+        </div>
         {isActive ? <Badge text="Active" tone={OPS.primary} /> : null}
       </div>
       <p className="mt-1 text-sm" style={{ color: OPS.onVariant }}>
@@ -576,42 +645,70 @@ export function OpsTimelineSection({
   title,
   items,
   emptyLabel,
+  explainerId,
+  onItemClick,
 }: {
   title: string;
   items: TeamOpsEventItem[];
   emptyLabel?: string;
+  explainerId?: string;
+  onItemClick?: (item: TeamOpsEventItem) => void;
 }) {
   return (
     <div>
-      <SectionHeader title={title} />
+      <SectionHeader title={title} explainerId={explainerId} />
       {items.length === 0 ? (
         <p className="text-sm" style={{ color: OPS.onVariant }}>
           {emptyLabel ?? "Nothing here yet"}
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {items.slice(0, 8).map((item) => (
-            <div
-              key={item.event_id || `${item.action_type}-${item.title}`}
-              className="flex items-center gap-2.5 rounded-xl p-3"
-              style={{ background: OPS.surfaceLow }}
-            >
+          {items.slice(0, 8).map((item) => {
+            const content = (
+              <>
               <div
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                 style={{ background: OPS.surfaceHigh }}
               >
                 <span style={{ color: OPS.secondary }}>•</span>
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 text-left">
                 <p className="text-sm font-semibold">{item.title}</p>
                 <p className="text-[11px]" style={{ color: OPS.onVariant }}>
                   {item.action_type.replace(/_/g, " ")}
                   {item.occurred_at ? ` · ${formatOccurredAt(item.occurred_at)}` : ""}
                 </p>
+                {typeof item.due_minor === "number" && item.due_minor > 0 ? (
+                  <p className="text-[11px] font-medium" style={{ color: OPS.secondary }}>
+                    Balance due · {formatMinorCurrency(item.due_minor)}
+                  </p>
+                ) : null}
               </div>
               <Badge text="Done" tone={OPS.primary} />
-            </div>
-          ))}
+              </>
+            );
+            const className = "flex w-full items-center gap-2.5 rounded-xl p-3";
+            const style = { background: OPS.surfaceLow };
+            const key = item.event_id || `${item.action_type}-${item.title}`;
+            if (onItemClick) {
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={className}
+                  style={style}
+                  onClick={() => onItemClick(item)}
+                >
+                  {content}
+                </button>
+              );
+            }
+            return (
+              <div key={key} className={className} style={style}>
+                {content}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -621,7 +718,7 @@ export function OpsTimelineSection({
 export function OpsMilestonesSection({ items }: { items: OpsMilestoneItem[] }) {
   return (
     <div>
-      <SectionHeader title="Progress Snapshot" />
+      <SectionHeader title="Progress Snapshot" explainerId="MOMENT-003" />
       {items.length === 0 ? (
         <p className="text-sm" style={{ color: OPS.onVariant }}>
           No milestones yet
@@ -692,9 +789,16 @@ export function OpsManageBar({ onQuickAdd }: { onQuickAdd?: () => void }) {
   if (!onQuickAdd) return null;
   return (
     <OpsCard>
-      <p className="text-base font-bold" style={{ fontFamily: OPS.fontDisplay }}>
-        Continue Managing
-      </p>
+      <div className="flex items-center gap-0.5">
+        <p className="text-base font-bold" style={{ fontFamily: OPS.fontDisplay }}>
+          Continue Managing
+        </p>
+        <WidgetInfoButton
+          explainerId="MOMENT-005"
+          momentTypeCode={MOMENT_TYPE}
+          domain="business"
+        />
+      </div>
       <p className="mt-1 text-xs" style={{ color: OPS.onVariant }}>
         Open your Operations workspace
       </p>

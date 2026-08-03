@@ -6,6 +6,7 @@ import {
   fetchRendererMeta,
   createAction,
   type BusinessActionCatalogResponse,
+  type BusinessActivityResponse,
   type BusinessCatalogAction,
   type BusinessRendererMeta,
   type BusinessActivityPayload,
@@ -72,8 +73,23 @@ export type UseBusinessActionCenterReturn = {
   recentIds: string[];
   selectAction: (actionId: string | null) => void;
   toggleFavorite: (actionId: string) => void;
-  submitAction: (payload: Record<string, unknown>) => Promise<void>;
+  submitAction: (payload: Record<string, unknown>) => Promise<BusinessActivityResponse>;
 };
+
+function rendererMetaFromAction(action: BusinessCatalogAction): BusinessRendererMeta | null {
+  const fields = action.fields;
+  if (!fields?.length) return null;
+  return {
+    renderer_id: action.renderer_id,
+    label: action.label,
+    title: action.label,
+    fields,
+    required_fields: action.required_fields,
+    cta_label: action.cta_label,
+    supports: action.supports,
+    review_enabled: action.supports?.review !== false,
+  };
+}
 
 export function useBusinessActionCenter(
   momentId: string,
@@ -136,6 +152,13 @@ export function useBusinessActionCenter(
   useEffect(() => {
     if (!selectedAction) {
       setRendererMeta(null);
+      setRendererLoading(false);
+      return;
+    }
+    const embedded = rendererMetaFromAction(selectedAction);
+    if (embedded) {
+      setRendererMeta(embedded);
+      setRendererLoading(false);
       return;
     }
     let cancelled = false;

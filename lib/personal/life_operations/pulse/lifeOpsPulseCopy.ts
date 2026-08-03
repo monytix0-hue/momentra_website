@@ -1,3 +1,5 @@
+import { getPrivacyModeEnabled } from "@/lib/privacyMode";
+
 export const lifeOpsPulseCopy = {
   screenBreadcrumb: "Personal / Pulse",
   screenTitle: "Life Operations",
@@ -117,6 +119,7 @@ export const lifeOpsPulseCopy = {
     return "→";
   },
   formatInrMinor(minor: number): string {
+    if (getPrivacyModeEnabled()) return "••••";
     const rupees = minor / 100;
     return `₹${rupees.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
   },

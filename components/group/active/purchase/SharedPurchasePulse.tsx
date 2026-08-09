@@ -7,17 +7,10 @@ type SharedPurchasePulseProps = {
   onQuickAdd: (actionId?: string) => void;
   bottomPadding?: number;
   reloadKey?: number;
-  onViewSettlement?: () => void;
 };
 
 /** Live Shared Purchase pulse from `/shared-purchase/.../pulse` with Stitch tokens. */
-export function SharedPurchasePulse({
-  momentId,
-  onQuickAdd,
-  bottomPadding,
-  reloadKey,
-  onViewSettlement,
-}: SharedPurchasePulseProps) {
+export function SharedPurchasePulse({ momentId, onQuickAdd, bottomPadding, reloadKey }: SharedPurchasePulseProps) {
   return (
     <ExperiencePulse
       momentId={momentId}
@@ -25,7 +18,6 @@ export function SharedPurchasePulse({
       bottomPadding={bottomPadding}
       reloadKey={reloadKey}
       template="purchase"
-      onViewSettlement={onViewSettlement}
     />
   );
 }

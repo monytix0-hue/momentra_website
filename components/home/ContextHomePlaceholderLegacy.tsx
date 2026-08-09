@@ -22,12 +22,9 @@ import {
   type LifecycleInventoryItem,
 } from "@/lib/lifecycle/MomentLifecycleCoordinator";
 import {
-  clearBusinessPostActivatePin,
   ensureBusinessBootstrap,
   ensureBusinessCreateOptions,
   getBusinessSessionSnapshot,
-  hasBusinessPostActivatePin,
-  pinBusinessPostActivateSelection,
   refreshBusinessSessionInventory,
   setBusinessSelection,
   patchBusinessMomentInInventory,
@@ -86,7 +83,6 @@ import { PersonalMomentHeader } from "@/components/personal/shared/PersonalMomen
 import { PersonalMomentManageSheet } from "@/components/personal/shared/PersonalMomentManageSheet";
 import { MomentManageSheet } from "@/components/shared/MomentManageSheet";
 import { MomentInviteSheet } from "@/components/shared/MomentInviteSheet";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 import {
   resolveBusinessMomentManageContext,
   resolveBusinessMomentSwitcherOptions,
@@ -103,11 +99,6 @@ import { ContextBottomNav } from "@/components/nav/ContextBottomNav";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
-import { toast } from "@/lib/toast/momentraToastStore";
-import {
-  personalActivationSuccessMessage,
-  businessActivationSuccessMessage,
-} from "@/lib/toast/activationToastCopy";
 import { BUSINESS_CREATE_OPEN_EVENT, BUSINESS_OPEN_MOMENT_EVENT, BUSINESS_SELECT_PULSE_EVENT } from "@/lib/businessShellEvents";
 import type { BottomNavTabId } from "@/lib/bottomNavTabs";
 import { PERSONAL_CREATE_OPEN_EVENT } from "@/lib/personalShellEvents";
@@ -249,7 +240,6 @@ export function ContextHomePlaceholderLegacy({
   const [inviteMoment, setInviteMoment] = useState<{
     momentId: string;
     label: string;
-    typeCode?: string;
   } | null>(null);
   const businessSession = useBusinessSessionStore();
   const selectedBusinessMomentType = businessSession.selectedMomentType;
@@ -735,15 +725,6 @@ export function ContextHomePlaceholderLegacy({
   // Empty inventory wins over ghost selection (deleted/archived last moment).
   useEffect(() => {
     if (variant !== "business" || !businessBootstrap) return;
-    const pinned = getBusinessSessionSnapshot().postActivatePinnedMomentId;
-    if (pinned) {
-      const moments = businessBootstrap.moments ?? [];
-      if (moments.some((m) => m.moment_id === pinned)) {
-        clearBusinessPostActivatePin(pinned);
-      } else {
-        return;
-      }
-    }
     const moments = businessBootstrap.moments ?? [];
     const home = businessBootstrap.moments_home;
     const inventoryEmpty =
@@ -751,7 +732,6 @@ export function ContextHomePlaceholderLegacy({
       (typeof home?.active_moment_count === "number" && home.active_moment_count === 0) ||
       moments.length === 0;
     if (!inventoryEmpty) return;
-    if (hasBusinessPostActivatePin()) return;
     if (selectedBusinessMomentId) {
       setBusinessSelection(selectedBusinessMomentType || "", null);
     }
@@ -793,27 +773,8 @@ export function ContextHomePlaceholderLegacy({
   async function refreshAfterBusinessManage(opts?: {
     momentId?: string | null;
     momentTypeCode?: string | null;
-    forceInventoryRefresh?: boolean;
-    pinSelection?: boolean;
   }) {
-    const force = opts?.forceInventoryRefresh === true;
-    const pin = opts?.pinSelection === true;
-    const typeCode =
-      opts?.momentTypeCode ||
-      getBusinessSessionSnapshot().selectedMomentType ||
-      "TEAM_OPERATIONS";
-    const momentId =
-      opts?.momentId !== undefined
-        ? opts.momentId
-        : getBusinessSessionSnapshot().selectedMomentId || null;
-
-    if (pin && momentId) {
-      pinBusinessPostActivateSelection(typeCode, momentId);
-    } else if (momentId) {
-      setBusinessSelection(typeCode, momentId);
-    }
-
-    await refreshBusinessSessionInventory(force);
+    await refreshBusinessSessionInventory(false);
     const snap = getBusinessSessionSnapshot();
     const moments = snap.bootstrap?.moments ?? [];
     const home = snap.bootstrap?.moments_home;
@@ -822,28 +783,28 @@ export function ContextHomePlaceholderLegacy({
       (typeof home?.active_moment_count === "number" && home.active_moment_count === 0) ||
       moments.length === 0;
 
-    if (
-      snap.postActivatePinnedMomentId &&
-      moments.some((m) => m.moment_id === snap.postActivatePinnedMomentId)
-    ) {
-      clearBusinessPostActivatePin(snap.postActivatePinnedMomentId);
-    }
+    const momentId =
+      opts?.momentId !== undefined
+        ? opts.momentId
+        : snap.selectedMomentId || null;
+    const typeCode =
+      opts?.momentTypeCode ||
+      snap.selectedMomentType ||
+      "TEAM_OPERATIONS";
 
-    if ((inventoryEmpty || !momentId) && !hasBusinessPostActivatePin()) {
+    if (inventoryEmpty || !momentId) {
       setBusinessSelection(typeCode || "", null);
       invalidateBootstrapAfterMutation();
       return;
     }
 
-    if (momentId) {
-      setBusinessSelection(typeCode, momentId);
-      void prefetchBusinessActionCatalog(momentId);
-      const code = typeCode.toUpperCase();
-      if (code === "BUSINESS_RUNWAY") setRunwayReloadKey((k) => k + 1);
-      else if (code === "BUSINESS_OPERATIONS" || code === "DEPARTMENT_OPERATIONS") {
-        setOpsReloadKey((k) => k + 1);
-      } else setTeamOpsReloadKey((k) => k + 1);
-    }
+    setBusinessSelection(typeCode, momentId);
+    void prefetchBusinessActionCatalog(momentId);
+    const code = typeCode.toUpperCase();
+    if (code === "BUSINESS_RUNWAY") setRunwayReloadKey((k) => k + 1);
+    else if (code === "BUSINESS_OPERATIONS" || code === "DEPARTMENT_OPERATIONS") {
+      setOpsReloadKey((k) => k + 1);
+    } else setTeamOpsReloadKey((k) => k + 1);
   }
 
   /** Soft inventory reconcile after setup GET â€” do not force full bootstrap. */
@@ -1118,7 +1079,6 @@ export function ContextHomePlaceholderLegacy({
       invalidatePersonalPulseCache(activatedType);
       invalidatePersonalMomentsCache(activatedType);
       invalidatePersonalMemoryCache(activatedType);
-      toast.success(personalActivationSuccessMessage(activatedType));
     }
     void softRefreshPersonalSession();
     void ensurePersonalCreateOptions(true);
@@ -2162,7 +2122,7 @@ export function ContextHomePlaceholderLegacy({
     if (memoryLoading && !personalMemory) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
-          <LoadingIndicator label="Loading memory…" />
+          <p className="text-sm opacity-70">Loading memoryâ€¦</p>
         </div>
       );
     }
@@ -2375,24 +2335,16 @@ export function ContextHomePlaceholderLegacy({
     const moments = businessBootstrap?.moments ?? [];
     const home = businessBootstrap?.moments_home;
     const inventoryEmpty =
-      !businessSession.inventoryPending &&
       Boolean(businessBootstrap) &&
       (home?.is_empty === true ||
         (typeof home?.active_moment_count === "number" && home.active_moment_count === 0) ||
         moments.length === 0);
 
     // Group parity: Pulse mounts the switcher-bound moment id (no DRAFT re-resolve gate).
-    const pinnedId = getBusinessSessionSnapshot().postActivatePinnedMomentId;
-    const boundId = pinnedId
-      ? selectedBusinessMomentId?.trim() || pinnedId
-      : inventoryEmpty
-        ? null
-        : selectedBusinessMomentId?.trim() || null;
-    const boundType = pinnedId
-      ? (selectedBusinessMomentType || "").toUpperCase()
-      : inventoryEmpty
-        ? ""
-        : (selectedBusinessMomentType || "").toUpperCase();
+    const boundId = inventoryEmpty ? null : selectedBusinessMomentId?.trim() || null;
+    const boundType = inventoryEmpty
+      ? ""
+      : (selectedBusinessMomentType || "").toUpperCase();
     const teamOpsMomentId =
       boundType === "TEAM_OPERATIONS" && boundId ? boundId : null;
     const runwayMomentId =
@@ -2428,14 +2380,6 @@ export function ContextHomePlaceholderLegacy({
       }
     };
 
-    if (businessSession.inventoryPending || businessSessionLoading) {
-      return (
-        <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
-          <LoadingIndicator label="Loading moments…" />
-        </div>
-      );
-    }
-
     if (inventoryEmpty) {
       return renderBusinessEmptyShell();
     }
@@ -2443,7 +2387,7 @@ export function ContextHomePlaceholderLegacy({
     if (businessResolved === "loading" && !teamOpsMomentId && !runwayMomentId && !opsMomentId) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center" style={{ paddingBottom: bottomPadding }}>
-          <p className="text-sm opacity-70">Loading…</p>
+          <p className="text-sm opacity-70">Loadingâ€¦</p>
         </div>
       );
     }
@@ -2663,11 +2607,7 @@ export function ContextHomePlaceholderLegacy({
                 ) {
                   setBusinessSelection(option.typeCode, option.momentId);
                 }
-                setInviteMoment({
-                  momentId: option.momentId,
-                  label: option.label,
-                  typeCode: option.typeCode,
-                });
+                setInviteMoment({ momentId: option.momentId, label: option.label });
               }}
               onDeleteMoment={(option) => {
                 void archiveBusinessMomentOption(option);
@@ -2801,12 +2741,10 @@ export function ContextHomePlaceholderLegacy({
         <MasterExpenseOrchestrator
           onBack={() => setShowMasterExpense(false)}
           onSuccess={() => {
-            // Pulse/Activity ("Today") first so it never waits behind the
-            // heavier Memory/Life aggregations.
+            void revalidateLife();
             void revalidatePulse();
             void revalidateMoments();
             void revalidateMemory();
-            void revalidateLife();
             void revalidateTemplateMemory();
             void revalidateTemplateMoments();
           }}
@@ -2933,14 +2871,12 @@ export function ContextHomePlaceholderLegacy({
                 moment_name: activatedType,
                 status: "ACTIVE",
               });
-              pinBusinessPostActivateSelection(activatedType, activatedId);
+              setBusinessSelection(activatedType, activatedId);
             }
-            toast.success(businessActivationSuccessMessage(activatedType));
+            // Soft inventory reconcile in background â€” activate response already returned.
             void refreshAfterBusinessManage({
               momentId: activatedId,
               momentTypeCode: activatedType,
-              forceInventoryRefresh: true,
-              pinSelection: true,
             }).finally(() => {
               markBusinessSetupBootstrapDone();
             });
@@ -2960,7 +2896,6 @@ export function ContextHomePlaceholderLegacy({
         onClose={() => setInviteMoment(null)}
         momentId={inviteMoment?.momentId ?? null}
         momentLabel={inviteMoment?.label}
-        momentTypeCode={inviteMoment?.typeCode ?? null}
         variant="business"
       />
 

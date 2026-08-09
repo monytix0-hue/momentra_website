@@ -240,7 +240,6 @@ export function useBusinessSetupFlow(
 
   const activate = useCallback(async () => {
     if (!momentId) return false;
-    if (submitting) return false;
     if (draftTimer.current) {
       clearTimeout(draftTimer.current);
       draftTimer.current = null;
@@ -306,7 +305,7 @@ export function useBusinessSetupFlow(
       setSubmitting(false);
       return false;
     }
-  }, [momentId, answers, markLocalActive, applySetup, submitting]);
+  }, [momentId, answers, markLocalActive, applySetup]);
 
   return {
     setup,

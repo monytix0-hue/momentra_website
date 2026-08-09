@@ -52,15 +52,16 @@ export function InviteQrModal({
   refreshing?: boolean;
 }) {
   const { colors } = useThemeTokens();
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"link" | "code" | null>(null);
 
   if (!open) return null;
 
-  async function copyLink() {
+  async function copy(kind: "link" | "code") {
+    const text = kind === "code" ? draft.invite_code : draft.invite_link;
     try {
-      await navigator.clipboard.writeText(draft.invite_link);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      window.setTimeout(() => setCopied(null), 1800);
     } catch {
       /* ignore */
     }
@@ -72,13 +73,6 @@ export function InviteQrModal({
         timeStyle: "short",
       })
     : null;
-
-  let linkHost = "Invite link";
-  try {
-    linkHost = new URL(draft.invite_link).host || linkHost;
-  } catch {
-    /* keep label */
-  }
 
   return (
     <div
@@ -97,7 +91,7 @@ export function InviteQrModal({
           {draft.experience_name || "Invite"}
         </h3>
         <p className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
-          Scan to join
+          Code {draft.invite_code}
           {expiry ? ` · Expires ${expiry}` : null}
         </p>
 
@@ -111,18 +105,24 @@ export function InviteQrModal({
           />
         </div>
 
-        <p className="mt-3 truncate text-center text-xs" style={{ color: colors.textSecondary }}>
-          {linkHost} · Invite link
-        </p>
-
-        <button
-          type="button"
-          className="mt-3 w-full rounded-xl px-3 py-2.5 text-sm font-medium"
-          style={{ background: colors.surfaceContainer }}
-          onClick={() => void copyLink()}
-        >
-          {copied ? "Copied link" : "Copy invite link"}
-        </button>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="rounded-xl px-3 py-2.5 text-sm font-medium"
+            style={{ background: colors.surfaceContainer }}
+            onClick={() => void copy("code")}
+          >
+            {copied === "code" ? "Copied code" : "Copy code"}
+          </button>
+          <button
+            type="button"
+            className="rounded-xl px-3 py-2.5 text-sm font-medium"
+            style={{ background: colors.surfaceContainer }}
+            onClick={() => void copy("link")}
+          >
+            {copied === "link" ? "Copied link" : "Copy link"}
+          </button>
+        </div>
 
         <button
           type="button"

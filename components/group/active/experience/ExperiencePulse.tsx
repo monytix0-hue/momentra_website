@@ -46,16 +46,6 @@ function attentionSignalClick(
   return () => onQuickAdd(actionId ?? undefined);
 }
 
-/** When can_edit is present and false, skip edit; otherwise id is enough. */
-function recentActivityEditClick(
-  item: { id?: string | null; can_edit?: boolean; canEdit?: boolean; activityType?: string },
-  onEditActivity?: (id: string, eventType: string) => void,
-): (() => void) | undefined {
-  if (!item.id || !onEditActivity) return undefined;
-  if (item.can_edit === false || item.canEdit === false) return undefined;
-  return () => onEditActivity(item.id!, item.activityType ?? "UPDATE");
-}
-
 type ExperiencePulseProps = {
   momentId: string;
   onQuickAdd: (actionId?: string) => void;
@@ -64,7 +54,6 @@ type ExperiencePulseProps = {
   template?: GroupPulseTemplate;
   onViewAllActivity?: () => void;
   onEditActivity?: (id: string, eventType: string) => void;
-  onViewSettlement?: () => void;
 };
 
 function metricLabels(template: GroupPulseTemplate) {
@@ -134,138 +123,6 @@ function EmptySection({ label }: { label: string }) {
   );
 }
 
-function GroupSettlementCard({
-  settlementWidget,
-  fallbackCurrency,
-  onViewSettlement,
-}: {
-  settlementWidget?: import("@/lib/api/group").TripSettlementWidget | null;
-  fallbackCurrency: string;
-  onViewSettlement?: () => void;
-}) {
-  const settleCurrency = settlementWidget?.currency_code ?? fallbackCurrency;
-  const settlementPreviewMembers = settlementWidget?.preview_members ?? [];
-  const membersNeedingSettlement = settlementWidget?.members_needing_settlement ?? 0;
-  const settlementTotalPaid = settlementWidget?.total_paid_minor ?? 0;
-  const settlementPending = settlementWidget?.pending_settlement_minor ?? 0;
-  const settlementStatusLine =
-    settlementWidget?.status_line ||
-    (membersNeedingSettlement > 0
-      ? `${membersNeedingSettlement} member${membersNeedingSettlement === 1 ? "" : "s"} need settlement`
-      : "All balances are settled.");
-
-  return (
-    <ExperienceGlassCard>
-      <SectionLabel
-        action={onViewSettlement ? "View Details" : undefined}
-        onAction={onViewSettlement}
-      >
-        Group Settlement
-      </SectionLabel>
-      <div className="mb-6 grid grid-cols-2 gap-4">
-        <div
-          className="rounded-xl p-3"
-          style={{ background: tripStitchTheme.surfaceContainerHigh }}
-        >
-          <span
-            className="mb-1 block text-[10px] uppercase tracking-wider"
-            style={{ color: tripStitchTheme.onSurfaceVariant }}
-          >
-            Total Paid
-          </span>
-          <span className="text-xl font-bold" style={{ color: tripStitchTheme.onSurface }}>
-            {formatMinor(settlementTotalPaid, settleCurrency) ?? "—"}
-          </span>
-        </div>
-        <div
-          className="rounded-xl p-3"
-          style={{ background: tripStitchTheme.surfaceContainerHigh }}
-        >
-          <span
-            className="mb-1 block text-[10px] uppercase tracking-wider"
-            style={{ color: tripStitchTheme.onSurfaceVariant }}
-          >
-            Pending Settlement
-          </span>
-          <span className="text-xl font-bold" style={{ color: tripStitchTheme.tertiary }}>
-            {formatMinor(settlementPending, settleCurrency) ?? "—"}
-          </span>
-        </div>
-      </div>
-      <div className="space-y-3">
-        <p className="text-xs" style={{ color: tripStitchTheme.onSurfaceVariant }}>
-          {settlementStatusLine}
-        </p>
-        {settlementPreviewMembers.length > 0 ? (
-          settlementPreviewMembers.map((m) => {
-            const chipAmt = formatMinor(m.amount_minor, m.currency_code ?? settleCurrency) ?? "";
-            const isReceive = m.status === "will_receive";
-            const chipText =
-              m.chip_label && chipAmt
-                ? `${m.chip_label} ${chipAmt}`
-                : isReceive
-                  ? `Receives ${chipAmt}`
-                  : m.status === "needs_to_pay"
-                    ? `Needs to pay ${chipAmt}`
-                    : chipAmt;
-            return (
-              <div
-                key={m.user_id}
-                className="flex items-center justify-between rounded-xl p-3"
-                style={{ background: tripStitchTheme.surfaceContainerHigh }}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold"
-                    style={{
-                      background: isReceive
-                        ? `${tripStitchTheme.primary}33`
-                        : `${tripStitchTheme.tertiary}33`,
-                      color: isReceive ? tripStitchTheme.primary : tripStitchTheme.tertiary,
-                    }}
-                  >
-                    {(m.display_name || "?").charAt(0).toUpperCase()}
-                  </div>
-                  <span style={{ color: tripStitchTheme.onSurface }}>{m.display_name}</span>
-                </div>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{
-                    background: isReceive ? `${tripStitchTheme.primary}18` : `${tripStitchTheme.tertiary}33`,
-                    color: isReceive ? tripStitchTheme.primary : tripStitchTheme.tertiary,
-                  }}
-                >
-                  {chipText}
-                </span>
-              </div>
-            );
-          })
-        ) : membersNeedingSettlement === 0 &&
-          settlementTotalPaid === 0 &&
-          settlementPending === 0 ? (
-          <EmptySection label="No settlements yet — log an expense to get started." />
-        ) : null}
-      </div>
-      {onViewSettlement ? (
-        <div className="mt-6 border-t border-white/5 pt-4">
-          <button
-            type="button"
-            className="group flex w-full items-center justify-between text-sm font-bold"
-            style={{ color: tripStitchTheme.primary }}
-            onClick={onViewSettlement}
-          >
-            <span>View Settlement</span>
-            <MaterialIcon
-              name="arrow_forward"
-              className="transition-transform group-hover:translate-x-1"
-            />
-          </button>
-        </div>
-      ) : null}
-    </ExperienceGlassCard>
-  );
-}
-
 export function ExperiencePulse({
   momentId,
   onQuickAdd,
@@ -274,7 +131,6 @@ export function ExperiencePulse({
   template = "experience",
   onViewAllActivity,
   onEditActivity,
-  onViewSettlement,
 }: ExperiencePulseProps) {
   const isTrip = template === "experience";
   const isPurchase = template === "purchase";
@@ -311,6 +167,13 @@ export function ExperiencePulse({
       : isLiving
         ? livingHook.reload
         : activeHook.reload;
+  const revalidate = isTrip
+    ? tripHook.revalidate
+    : isPurchase
+      ? purchaseHook.revalidate
+      : isLiving
+        ? livingHook.revalidate
+        : activeHook.revalidate;
   const tripData = tripHook.data;
   const purchaseData = purchaseHook.data;
   const livingData = livingHook.data;
@@ -321,8 +184,8 @@ export function ExperiencePulse({
   const momentTypeCode = templateToMomentType(template);
 
   useEffect(() => {
-    if (reloadKey > 0) void reload();
-  }, [reloadKey, reload]);
+    if (reloadKey > 0) void revalidate();
+  }, [reloadKey, revalidate]);
 
   if (loading && !data && !tripData && !purchaseData && !livingData) {
     return (
@@ -426,11 +289,6 @@ export function ExperiencePulse({
               Active {breakdown.active} · Pending {breakdown.pending} · Inactive {breakdown.inactive}
             </p>
           </ExperienceGlassCard>
-          <GroupSettlementCard
-            settlementWidget={purchaseData.settlement_widget}
-            fallbackCurrency={currency}
-            onViewSettlement={onViewSettlement}
-          />
           {recentActivities.length > 0 ? (
             <div>
               <SectionLabel action="View All" explainerId="PULSE-007" momentTypeCode={momentTypeCode}>Recent Activity</SectionLabel>
@@ -509,7 +367,6 @@ export function ExperiencePulse({
       category: item.subtitle ?? "",
       title: item.title,
       time: item.relative_time ?? "",
-      can_edit: item.can_edit,
     }));
     const breakdown = livingData.participation_breakdown ?? { active: 0, pending: 0, inactive: 0 };
     const participationPct = Math.round(livingData.participation_percent ?? 0);
@@ -569,11 +426,6 @@ export function ExperiencePulse({
               Active {breakdown.active} · Pending {breakdown.pending} · Inactive {breakdown.inactive}
             </p>
           </ExperienceGlassCard>
-          <GroupSettlementCard
-            settlementWidget={livingData.settlement_widget}
-            fallbackCurrency={currency}
-            onViewSettlement={onViewSettlement}
-          />
           {recentActivities.length > 0 ? (
             <div>
               <SectionLabel action="View All" onAction={onViewAllActivity} explainerId="PULSE-007" momentTypeCode={momentTypeCode}>
@@ -586,7 +438,11 @@ export function ExperiencePulse({
                   category={item.category}
                   title={item.title}
                   time={item.time}
-                  onClick={recentActivityEditClick(item, onEditActivity)}
+                  onClick={
+                    item.id && onEditActivity
+                      ? () => onEditActivity(item.id!, item.activityType)
+                      : onViewAllActivity
+                  }
                 />
               ))}
             </div>
@@ -644,7 +500,6 @@ export function ExperiencePulse({
       title: item.title,
       time: item.relative_time ?? "",
       activityType: item.activity_type ?? "UPDATE",
-      can_edit: item.can_edit,
     }));
     const breakdown = tripData.participation_breakdown ?? { active: 0, pending: 0, inactive: 0 };
     const participationPct = Math.round(tripData.participation_percent ?? 0);
@@ -758,11 +613,6 @@ export function ExperiencePulse({
               ))}
             </div>
           </ExperienceGlassCard>
-          <GroupSettlementCard
-            settlementWidget={tripData.settlement_widget}
-            fallbackCurrency={currency}
-            onViewSettlement={onViewSettlement}
-          />
           <ExperienceGlassCard>
             <SectionLabel action="View All" onAction={onViewAllActivity} explainerId="PULSE-007" momentTypeCode={momentTypeCode}>
               Recent Activity
@@ -776,7 +626,11 @@ export function ExperiencePulse({
                     category={item.category}
                     title={item.title}
                     time={item.time}
-                    onClick={recentActivityEditClick(item, onEditActivity)}
+                    onClick={
+                      item.id && onEditActivity
+                        ? () => onEditActivity(item.id!, item.activityType)
+                        : onViewAllActivity
+                    }
                   />
                 ))}
               </div>
@@ -793,6 +647,19 @@ export function ExperiencePulse({
               icon="bolt"
               onClick={onQuickAdd} explainerId="PULSE-008" momentTypeCode={momentTypeCode} />
           ) : null}
+          <ExperienceGlassCard>
+            <SectionLabel>Budget</SectionLabel>
+            <p className="text-lg font-semibold" style={{ color: tripStitchTheme.onSurface }}>
+              {Number(stats.total_expenses_minor ?? 0) <= Number(stats.total_budget_minor ?? 0) && Number(stats.total_budget_minor ?? 0) > 0
+                ? "Budget under control"
+                : Number(stats.total_budget_minor ?? 0) > 0
+                  ? "Budget needs attention"
+                  : "Set a trip budget"}
+            </p>
+            <p className="text-sm" style={{ color: tripStitchTheme.onSurfaceVariant }}>
+              Spent {spentLabel} of {budgetLabel}
+            </p>
+          </ExperienceGlassCard>
           {(tripData.insights ?? []).length > 0 ? (
             <div className="grid gap-3">
               <SectionLabel explainerId="PULSE-009" momentTypeCode={momentTypeCode}>
@@ -867,7 +734,6 @@ export function ExperiencePulse({
           category: e.module_code.replace(/_/g, " "),
           title: e.event_action,
           time: e.event_time ? new Date(e.event_time).toLocaleString() : "",
-          activityType: "UPDATE",
         }))
       : [];
 
@@ -981,14 +847,7 @@ export function ExperiencePulse({
           ) : (
             <div className="relative space-y-6 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-px before:bg-white/10">
               {recentActivities.map((a, index) => (
-                <TimelineRow
-                  key={a.id || `activity-${index}`}
-                  icon={a.icon}
-                  category={a.category}
-                  title={a.title}
-                  time={a.time}
-                  onClick={recentActivityEditClick(a, onEditActivity)}
-                />
+                <TimelineRow key={a.id || `activity-${index}`} {...a} />
               ))}
             </div>
           )}

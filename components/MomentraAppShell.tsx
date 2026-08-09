@@ -27,14 +27,10 @@ import { openGroupCreateOverlay, openGroupMomentAndPulse } from "@/lib/groupShel
 import { openPersonalCreateOverlay } from "@/lib/personalShellEvents";
 import { isBusinessMomentType } from "@/lib/invite/inviteToken";
 import {
-  beginAcceptInvite,
-  clearPendingInviteState,
   consumeInviteJoinedResult,
   consumePendingCompanyInvite,
   consumePendingInvite,
-  endAcceptInvite,
 } from "@/lib/invite/pendingInvite";
-import { resolveInviteAcceptTarget } from "@/lib/invite/inviteAcceptNavigation";
 import type { AppContext } from "@/lib/appContext";
 import {
   clearSwitchError,
@@ -167,10 +163,8 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         const ws = await acceptBusinessWorkspaceInvite(companyToken);
         void MomentraAnalytics.logCustomEvent("company_invite_accept_success");
         setContext("business");
-        if (ws?.id) {
-          await switchBusinessWorkspace(ws.id);
-          setShowCompanyHome(true);
-        }
+        await switchBusinessWorkspace(ws.id);
+        setShowCompanyHome(true);
       } catch {
         void MomentraAnalytics.logCustomEvent("company_invite_accept_failed");
         pendingCompanyInviteHandled.current = false;
@@ -205,7 +199,6 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
 
     const token = consumePendingInvite();
     if (!token) return;
-    if (!beginAcceptInvite(token)) return;
     pendingInviteHandled.current = true;
     void (async () => {
       try {
@@ -213,61 +206,28 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
           source: "pending_after_login",
         });
         const result = await acceptInvite(token);
-        void MomentraAnalytics.logCustomEvent("invite_accept_response_received");
-        // Opaque COMPANY accept may return workspace payload (no moment_id).
-        const companyId =
-          (result as { workspace_id?: string }).workspace_id ||
-          (result as { selected_workspace?: { id?: string } }).selected_workspace?.id ||
-          (result as { selected_company?: { id?: string } }).selected_company?.id;
-        if (companyId && !(result as { moment_id?: string }).moment_id) {
-          void MomentraAnalytics.logCustomEvent("company_invite_accept_success", {
-            source: "pending_invite_drain",
-          });
-          clearPendingInviteState();
-          setContext("business");
-          await switchBusinessWorkspace(String(companyId));
-          setShowCompanyHome(true);
-          return;
-        }
-        const target = resolveInviteAcceptTarget(result);
-        if (!target) {
-          void MomentraAnalytics.logCustomEvent("invite_accept_failed");
-          pendingInviteHandled.current = false;
-          return;
-        }
-        void MomentraAnalytics.logCustomEvent("invite_target_resolved");
         void MomentraAnalytics.logCustomEvent("invite_accept_success", {
-          already_member: target.alreadyMember ? "true" : "false",
+          already_member: Boolean(result.already_member),
         });
-        clearPendingInviteState();
-        const biz = isBusinessMomentType(target.momentType);
+        const biz = isBusinessMomentType(result.moment_type);
         setContext(biz ? "business" : "group");
         window.setTimeout(() => {
           if (biz) {
             openBusinessMomentAndPulse(
-              target.momentId,
-              target.momentType || "TEAM_OPERATIONS",
+              result.moment_id,
+              result.moment_type || "TEAM_OPERATIONS",
             );
-            dispatchInviteJoined({
-              moment_id: target.momentId,
-              moment_name: target.momentName,
-              moment_type: target.momentType,
-              already_member: target.alreadyMember,
-            });
+            dispatchInviteJoined(result);
           } else {
-            void MomentraAnalytics.logCustomEvent("invite_group_selected");
             openGroupMomentAndPulse({
-              moment_id: target.momentId,
-              moment_type: target.momentType,
+              moment_id: result.moment_id,
+              moment_type: result.moment_type,
             });
-            void MomentraAnalytics.logCustomEvent("invite_destination_opened");
           }
         }, 0);
       } catch {
         void MomentraAnalytics.logCustomEvent("invite_accept_failed");
         pendingInviteHandled.current = false;
-      } finally {
-        endAcceptInvite(token);
       }
     })();
   }, [user, setContext]);
@@ -395,33 +355,16 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
         open={showScanInvite}
         onClose={() => setShowScanInvite(false)}
         onJoined={(result) => {
-          clearPendingInviteState();
-          void MomentraAnalytics.logCustomEvent("invite_accept_response_received");
-          const target = resolveInviteAcceptTarget(result);
-          if (!target) return;
-          void MomentraAnalytics.logCustomEvent("invite_target_resolved");
-          const biz = isBusinessMomentType(target.momentType);
+          const biz = isBusinessMomentType(result.moment_type);
           setContext(biz ? "business" : "group");
           window.setTimeout(() => {
             if (biz) {
               openBusinessMomentAndPulse(
-                target.momentId,
-                target.momentType || "TEAM_OPERATIONS",
+                result.moment_id,
+                result.moment_type || "TEAM_OPERATIONS",
               );
-            } else {
-              void MomentraAnalytics.logCustomEvent("invite_group_selected");
-              openGroupMomentAndPulse({
-                moment_id: target.momentId,
-                moment_type: target.momentType,
-              });
-              void MomentraAnalytics.logCustomEvent("invite_destination_opened");
             }
-            dispatchInviteJoined({
-              moment_id: target.momentId,
-              moment_name: target.momentName,
-              moment_type: target.momentType,
-              already_member: target.alreadyMember,
-            });
+            dispatchInviteJoined(result);
           }, 50);
         }}
       />
@@ -558,7 +501,6 @@ export function MomentraAppShell({ children }: MomentraAppShellProps) {
       {showOnboardingReplay ? (
         <OnboardingScreen
           mode="replay"
-          overlayClassName="z-[70]"
           onFinished={() => setShowOnboardingReplay(false)}
         />
       ) : null}

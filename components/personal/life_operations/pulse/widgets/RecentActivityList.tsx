@@ -12,10 +12,8 @@ import {
   groupActivitiesByDate,
   recentActivityContextLine,
   recentActivityIsEditable,
-  recentActivityMoodEmoji,
   recentActivityMoodLabel,
   recentActivityMoodTone,
-  recentActivityPlaceLine,
   recentActivityPrimaryMetric,
   recentActivityTitle,
 } from "@/lib/personal/life_operations/pulse/recentActivityDisplay";
@@ -137,10 +135,8 @@ export function RecentActivityList({
                   const isLast = index === group.items.length - 1;
                   const context = recentActivityContextLine(item);
                   const mood = recentActivityMoodLabel(item);
-                  const moodEmoji = recentActivityMoodEmoji(item);
                   const moodTone = recentActivityMoodTone(item);
                   const metric = recentActivityPrimaryMetric(item);
-                  const placeLine = recentActivityPlaceLine(item);
                   const editable = recentActivityIsEditable(item);
                   const titleText = recentActivityTitle(item);
                   const eventType = item.edit_event_type ?? item.activity_type.toUpperCase();
@@ -148,25 +144,12 @@ export function RecentActivityList({
                   return (
                     <div
                       key={item.id}
-                      role={editable && onEditActivity ? "button" : undefined}
-                      tabIndex={editable && onEditActivity ? 0 : undefined}
-                      className={`group relative flex items-center gap-3 ${isLast ? "" : "border-b pb-3"} ${index > 0 ? "pt-3" : ""} ${editable && onEditActivity ? "cursor-pointer" : ""}`}
+                      className={`group relative flex items-center gap-3 ${isLast ? "" : "border-b pb-3"} ${index > 0 ? "pt-3" : ""}`}
                       style={{ borderColor: "rgba(255,255,255,0.05)" }}
-                      onClick={() => {
-                        if (!editable || !onEditActivity) return;
-                        onEditActivity(item.id, eventType);
-                      }}
-                      onKeyDown={(e) => {
-                        if (!editable || !onEditActivity) return;
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onEditActivity(item.id, eventType);
-                        }
-                      }}
                       onContextMenu={(e) => {
-                        if (!editable || !onEditActivity) return;
+                        if (!editable) return;
                         e.preventDefault();
-                        onEditActivity(item.id, eventType);
+                        onEditActivity?.(item.id, eventType);
                       }}
                     >
                       <div
@@ -207,49 +190,34 @@ export function RecentActivityList({
                             {context && mood ? " · " : null}
                             {mood ? (
                               <span className="inline-flex items-center gap-1">
-                                {moodEmoji ? (
-                                  <span aria-hidden>{moodEmoji}</span>
-                                ) : (
-                                  <span
-                                    aria-hidden
-                                    className="inline-block size-1.5 rounded-full"
-                                    style={{ background: moodDotColor(moodTone, colors) }}
-                                  />
-                                )}
+                                <span
+                                  aria-hidden
+                                  className="inline-block size-1.5 rounded-full"
+                                  style={{ background: moodDotColor(moodTone, colors) }}
+                                />
                                 {mood}
                               </span>
                             ) : null}
                             {!context && !mood ? "\u00A0" : null}
                           </p>
-                          <div className="flex shrink-0 items-center gap-1">
+                          <div className="flex shrink-0 items-center gap-2">
                             <span
                               style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary, opacity: 0.45 }}
                             >
                               {formatRelativeTime(item.occurred_at)}
                             </span>
-                            {editable && onEditActivity ? (
+                            {editable ? (
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEditActivity(item.id, eventType);
-                                }}
-                                className="inline-flex size-10 shrink-0 items-center justify-center border-0 bg-transparent"
+                                onClick={() => onEditActivity?.(item.id, eventType)}
+                                className="border-0 bg-transparent p-1 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                                 aria-label={`Edit ${titleText}`}
                               >
-                                <MoreHorizontal size={18} color={colors.textSecondary} style={{ opacity: 0.85 }} />
+                                <MoreHorizontal size={16} color={colors.textSecondary} style={{ opacity: 0.55 }} />
                               </button>
                             ) : null}
                           </div>
                         </div>
-                        {placeLine ? (
-                          <p
-                            className="mt-0.5 truncate"
-                            style={{ fontSize: 11, fontWeight: 500, color: colors.textSecondary, opacity: 0.55 }}
-                          >
-                            {placeLine}
-                          </p>
-                        ) : null}
                       </div>
                     </div>
                   );

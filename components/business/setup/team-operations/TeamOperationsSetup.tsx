@@ -34,7 +34,6 @@ import {
 import type { BusinessSetupState } from "@/lib/api/business";
 import { markBusinessSetupFirstPaint } from "@/lib/telemetry/businessSetupTelemetry";
 import { SuggestedChipsPicker } from "@/components/setup/shared/SuggestedChipsPicker";
-import { SetupValidationBanner } from "@/components/setup/shared/SetupValidationBanner";
 
 export type TeamMemberDraft = {
   local_id: string;
@@ -193,8 +192,9 @@ export function TeamOperationsSetup({
 
   const go = async (next: number) => {
     if (interactionsDisabled) return;
-    // Continue: cancel debounce → flush (best-effort) → validate → advance
-    await flushPendingSave();
+    // Continue: cancel debounce → flush → validate → advance
+    const flushed = await flushPendingSave();
+    if (!flushed) return;
     if (next > step && !validateStep(step)) return;
     const completed = Array.from({ length: Math.max(0, next - 1) }, (_, i) => i + 1);
     setStep(next);
@@ -351,7 +351,6 @@ export function TeamOperationsSetup({
         <BusinessSetupSkeleton rows={5} />
       ) : (
         <div className="space-y-8">
-          <SetupValidationBanner errors={fieldErrors} />
           {step === 1 ? (
             <>
               <SetupSectionCard title="Team basics">

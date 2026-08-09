@@ -73,7 +73,6 @@ export function TeamOperationsActivity({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [listEditItem, setListEditItem] = useState<BusinessActivityListItem | null>(null);
 
   useEffect(() => {
     if (initialEventId) onSelectEvent(initialEventId);
@@ -119,7 +118,7 @@ export function TeamOperationsActivity({
             onSelectEvent(null);
           }}
           onClose={onClose}
-          onEdit={selected.is_editable ? () => { setListEditItem(null); setEditOpen(true); } : undefined}
+          onEdit={selected.is_editable ? () => setEditOpen(true) : undefined}
           onDelete={selected.is_deletable ? () => setDeleteOpen(true) : undefined}
         />
         <TeamOperationsActivityEditSheet
@@ -228,44 +227,10 @@ export function TeamOperationsActivity({
               item={item}
               actionMeta={actionMeta}
               onSelect={(row) => onSelectEvent(row.event_id)}
-              onEdit={
-                onSaveTitle
-                  ? (row) => {
-                      setListEditItem(row);
-                      setLocalError(null);
-                      setEditOpen(true);
-                    }
-                  : undefined
-              }
             />
           ))}
         </ul>
       )}
-      <TeamOperationsActivityEditSheet
-        open={editOpen && Boolean(listEditItem)}
-        initialTitle={listEditItem?.title || ""}
-        busy={busy}
-        error={localError}
-        onClose={() => {
-          setEditOpen(false);
-          setListEditItem(null);
-          setLocalError(null);
-        }}
-        onSave={async (title) => {
-          if (!onSaveTitle || !listEditItem) return;
-          setBusy(true);
-          setLocalError(null);
-          try {
-            await onSaveTitle(listEditItem.event_id, title);
-            setEditOpen(false);
-            setListEditItem(null);
-          } catch (e) {
-            setLocalError(e instanceof Error ? e.message : "Update failed");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      />
       {totalPages > 1 ? (
         <div className="mt-4 flex items-center justify-between gap-2">
           <button

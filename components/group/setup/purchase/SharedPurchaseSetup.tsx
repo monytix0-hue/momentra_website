@@ -28,7 +28,6 @@ type Props = {
   momentId: string;
   onClose: () => void;
   onActivated: () => void;
-  initialSetup?: import("@/lib/api/personal").PersonalSetupResponse | null;
 };
 
 const TEMPLATE_ID = "shared_purchase" as const;
@@ -87,7 +86,7 @@ function minorToMajorString(minor: number | null): string {
  * Phase 2B — Shared Purchase on GuidedSetupShell.
  * Catalog-driven presentation over useSetupFlow / SetupRepository (no new engine).
  */
-export function SharedPurchaseSetup({ momentId, onClose, onActivated, initialSetup }: Props) {
+export function SharedPurchaseSetup({ momentId, onClose, onActivated }: Props) {
   const tokens = useThemeTokens();
   const { colors } = tokens;
   const {
@@ -103,7 +102,7 @@ export function SharedPurchaseSetup({ momentId, onClose, onActivated, initialSet
     flushPendingSave,
     requestPreview,
     submit,
-  } = useSetupFlow(momentId, { initialSetup });
+  } = useSetupFlow(momentId);
 
   const catalog = groupSetupTemplate(TEMPLATE_ID);
   const steps = useMemo(() => groupGuidedSteps(TEMPLATE_ID), []);

@@ -2,10 +2,6 @@
 export const PENDING_INVITE_KEY = "momentra:pending-invite";
 export const PENDING_COMPANY_INVITE_KEY = "momentra:pending-company-invite";
 export const PENDING_INVITE_RESULT_KEY = "momentra:invite-joined-result";
-export const ACCEPTING_INVITE_KEY = "momentra:accepting-invite";
-
-import { shouldFlagPendingMismatch } from "@/lib/invite/inviteAcceptNavigation";
-import { MomentraAnalytics } from "@/lib/analytics";
 
 export type StashedInviteResult = {
   moment_id: string;
@@ -13,21 +9,12 @@ export type StashedInviteResult = {
   moment_type?: string | null;
   already_member?: boolean;
   participant_id?: string | null;
-  result?: string | null;
-  target_id?: string | null;
 };
-
-function flagPendingMismatch(): void {
-  void MomentraAnalytics.logCustomEvent("invite_pending_code_mismatch");
-}
 
 export function stashPendingInvite(token: string): void {
   if (typeof window === "undefined") return;
   const t = token.trim();
   if (!t) return;
-  const previous = sessionStorage.getItem(PENDING_INVITE_KEY);
-  if (shouldFlagPendingMismatch(previous, t)) flagPendingMismatch();
-  sessionStorage.removeItem(ACCEPTING_INVITE_KEY);
   sessionStorage.setItem(PENDING_INVITE_KEY, t);
 }
 
@@ -42,9 +29,6 @@ export function stashPendingCompanyInvite(token: string): void {
   if (typeof window === "undefined") return;
   const t = token.trim();
   if (!t) return;
-  const previous = sessionStorage.getItem(PENDING_COMPANY_INVITE_KEY);
-  if (shouldFlagPendingMismatch(previous, t)) flagPendingMismatch();
-  sessionStorage.removeItem(ACCEPTING_INVITE_KEY);
   sessionStorage.setItem(PENDING_COMPANY_INVITE_KEY, t);
 }
 
@@ -72,33 +56,4 @@ export function consumeInviteJoinedResult(): StashedInviteResult | null {
   } catch {
     return null;
   }
-}
-
-/** Suppress duplicate accept for the same opaque code. */
-export function beginAcceptInvite(token: string): boolean {
-  if (typeof window === "undefined") return false;
-  const t = token.trim();
-  if (!t) return false;
-  const current = sessionStorage.getItem(ACCEPTING_INVITE_KEY);
-  if (current && current.toUpperCase() === t.toUpperCase()) return false;
-  sessionStorage.setItem(ACCEPTING_INVITE_KEY, t);
-  return true;
-}
-
-export function endAcceptInvite(token: string): void {
-  if (typeof window === "undefined") return;
-  const t = token.trim();
-  const current = sessionStorage.getItem(ACCEPTING_INVITE_KEY);
-  if (current && current.toUpperCase() === t.toUpperCase()) {
-    sessionStorage.removeItem(ACCEPTING_INVITE_KEY);
-  }
-}
-
-/** Clear pending invite state after success, terminal failure, decline, or cancel. */
-export function clearPendingInviteState(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(PENDING_INVITE_KEY);
-  sessionStorage.removeItem(PENDING_COMPANY_INVITE_KEY);
-  sessionStorage.removeItem(PENDING_INVITE_RESULT_KEY);
-  sessionStorage.removeItem(ACCEPTING_INVITE_KEY);
 }

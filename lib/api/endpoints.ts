@@ -9,7 +9,6 @@ export const API_ENDPOINTS = {
     logoutAll: "api/v1/auth/logout-all",
   },
   me: "api/v1/me",
-  mePreferences: "api/v1/me/preferences",
   app: {
     bootstrap: "api/v1/app/bootstrap",
     preferences: "api/v1/app/preferences",

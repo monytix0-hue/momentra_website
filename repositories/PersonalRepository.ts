@@ -77,25 +77,15 @@ export type SubmitQuickAddOptions = {
   momentTypeCode?: PersonalMomentTypeCode;
 };
 
-/**
- * Memory/Life are heavier aggregations. Defer them off the synchronous
- * invalidation path so Pulse/Activity ("Today") consumers never wait on them.
- */
-function deferMemoryAndLifeInvalidation(momentTypeCode: PersonalMomentTypeCode) {
-  setTimeout(() => {
-    invalidatePersonalMemoryCache(momentTypeCode);
-    invalidatePersonalLifeCache();
-  }, 0);
-}
-
 export function invalidateAfterQuickAdd(
   momentTypeCode: PersonalMomentTypeCode = "LIFE_OPERATIONS",
 ) {
   invalidatePersonalPulseCache(momentTypeCode);
+  invalidatePersonalMemoryCache(momentTypeCode);
+  invalidatePersonalLifeCache();
   invalidatePersonalMomentsCache(momentTypeCode);
   invalidateTemplateProjectionCaches(momentTypeCode);
   invalidateQuickAddOptionsCache();
-  deferMemoryAndLifeInvalidation(momentTypeCode);
 }
 
 /** Narrow invalidation for Build Momentum / Future Building saves — no life or bootstrap. */
@@ -126,23 +116,21 @@ export function invalidateAfterRelationshipsQuickAdd() {
 }
 
 export function invalidateAfterMasterExpense(includeRelationships: boolean) {
-  // Invalidate Pulse/Activity first and synchronously so the caller can
-  // dismiss immediately — never block dismiss on the full-projection
-  // (Memory/Life) invalidate.
   invalidatePersonalPulseCache("LIFE_OPERATIONS");
+  invalidatePersonalMemoryCache("LIFE_OPERATIONS");
   invalidatePersonalPulseCache("LIFESTYLE");
   invalidatePersonalMomentsCache("LIFESTYLE");
+  invalidatePersonalMemoryCache("LIFESTYLE");
   if (includeRelationships) {
     invalidatePersonalPulseCache("RELATIONSHIPS");
     invalidatePersonalMomentsCache("RELATIONSHIPS");
+    invalidatePersonalMemoryCache("RELATIONSHIPS");
   }
+  invalidatePersonalLifeCache();
   invalidateQuickAddOptionsCache();
-  setTimeout(() => {
-    invalidatePersonalMemoryCache("LIFE_OPERATIONS");
-    invalidatePersonalMemoryCache("LIFESTYLE");
-    if (includeRelationships) invalidatePersonalMemoryCache("RELATIONSHIPS");
-    invalidatePersonalLifeCache();
-  }, 0);
+  void import("@/hooks/useMasterExpenseOptions").then((m) =>
+    m.invalidateMasterExpenseOptionsCache(),
+  );
 }
 
 export function invalidateAfterTemplateLifecycle(

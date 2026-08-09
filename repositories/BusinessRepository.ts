@@ -3,24 +3,19 @@ import {
   archiveBusinessMoment,
   completeBusinessMoment,
   createBusinessWorkspace,
-  createOpaqueCompanyInvite,
   getBusinessCreateOptions,
-  getBusinessSession,
   getBusinessSessionBootstrap,
   getBusinessWorkspaceMoments,
   getBusinessWorkspaceOverview,
   inviteBusinessWorkspaceMember,
   listBusinessWorkspaceMembers,
-  listOpaqueCompanyInvites,
   patchBusinessMoment,
-  revokeOpaqueCompanyInvite,
   selectBusinessWorkspace,
   updateBusinessWorkspace,
 } from "@/lib/api/client";
 
 export const BusinessRepository = {
   getSessionBootstrap: getBusinessSessionBootstrap,
-  getSession: getBusinessSession,
   getWorkspaceOverview: getBusinessWorkspaceOverview,
   getWorkspaceMoments: getBusinessWorkspaceMoments,
   getCreateOptions: getBusinessCreateOptions,
@@ -33,7 +28,4 @@ export const BusinessRepository = {
   listWorkspaceMembers: listBusinessWorkspaceMembers,
   inviteWorkspaceMember: inviteBusinessWorkspaceMember,
   acceptWorkspaceInvite: acceptBusinessWorkspaceInvite,
-  createOpaqueInvite: createOpaqueCompanyInvite,
-  listOpaqueInvites: listOpaqueCompanyInvites,
-  revokeOpaqueInvite: revokeOpaqueCompanyInvite,
 };

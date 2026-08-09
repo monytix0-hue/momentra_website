@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   BusinessActionHeader,
   BusinessContextChips,
-  BusinessContextLine,
   BusinessFooter,
   BusinessSection,
   BusinessSuccessOverlay,
@@ -18,7 +17,6 @@ import {
   createClientRequestId,
 } from "@/lib/quick_add/draftStore";
 import { emitActionAnalytics, pushRecentAction } from "@/lib/action-center/actionCenterPrefs";
-import { toast } from "@/lib/toast/momentraToastStore";
 import type { BusinessCatalogAction } from "@/repositories/BusinessActionRepository";
 
 export type FormState = Record<string, string | boolean | string[]>;
@@ -52,36 +50,9 @@ type ProgressiveActionFormProps = {
   draftTitleKey?: string;
   initialState?: FormState;
   contextChips?: string[];
-  /** Plain-text company / moment name (not a chip). */
-  contextLine?: string | null;
   saveLabel?: string;
   reviewEnabled?: boolean;
 };
-
-function notificationsCreatedCount(res: unknown): number {
-  if (!res || typeof res !== "object") return 0;
-  const root = res as Record<string, unknown>;
-  if (typeof root.notifications_created === "number") return root.notifications_created;
-  const hint = root.projection_hint;
-  if (hint && typeof hint === "object") {
-    const n = (hint as Record<string, unknown>).notifications_created;
-    if (typeof n === "number") return n;
-  }
-  return 0;
-}
-
-function notifyToastMessage(action: BusinessCatalogAction, count: number): string {
-  const n = Math.max(0, count);
-  const plural = n === 1 ? "" : "s";
-  if (
-    action.renderer_id === "ops.approval" ||
-    action.action_type === "OPS_APPROVAL_REQUEST" ||
-    action.action_id === "ops_approval"
-  ) {
-    return `Approval request sent to ${n} member${plural}`;
-  }
-  return `Notified ${n} member${plural}`;
-}
 
 export function ProgressiveActionForm({
   action,
@@ -97,7 +68,6 @@ export function ProgressiveActionForm({
   draftTitleKey = "title",
   initialState,
   contextChips,
-  contextLine,
   saveLabel = "Save",
   reviewEnabled = false,
 }: ProgressiveActionFormProps) {
@@ -195,10 +165,6 @@ export function ProgressiveActionForm({
         template_id: templateId,
         duration_ms: Date.now() - startedAt.current,
       });
-      const notified = notificationsCreatedCount(res);
-      if (notified > 0) {
-        toast.success(notifyToastMessage(action, notified));
-      }
       setSuccess(true);
     } catch (e) {
       setBanner([e instanceof Error ? e.message : "Failed to save"]);
@@ -287,7 +253,6 @@ export function ProgressiveActionForm({
         subtitle={action.subtitle}
         estimatedTimeSec={action.estimated_time_sec}
       />
-      {contextLine ? <BusinessContextLine text={contextLine} /> : null}
       {contextChips?.length ? <BusinessContextChips chips={contextChips} /> : null}
       <BusinessValidationBanner messages={banner} />
 

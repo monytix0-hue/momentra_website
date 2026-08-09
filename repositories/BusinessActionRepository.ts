@@ -14,12 +14,6 @@ export type BusinessActionCapabilities = {
   offline?: boolean;
 };
 
-export type BusinessNotifyDefaults = {
-  post_to_activity?: boolean;
-  notify_managers?: boolean;
-  notify_approvers?: boolean;
-};
-
 export type BusinessRendererField = {
   key: string;
   label: string;
@@ -52,7 +46,6 @@ export type BusinessCatalogAction = {
   tags?: string[];
   synonyms?: string[];
   priority?: number;
-  notify_defaults?: BusinessNotifyDefaults;
   /** Embedded renderer schema — prefer over GET .../renderer */
   fields?: BusinessRendererField[];
   required_fields?: string[];
@@ -74,21 +67,15 @@ export type BusinessCatalogMember = {
   avatar_url?: string;
 };
 
-export type BusinessCatalogVendor = {
-  value: string;
-  label: string;
-  due_minor?: number;
-};
-
 export type BusinessActionCatalogResponse = {
   moment_id: string;
   moment_type: string;
   template_id: string;
+  /** Bump invalidates client schema caches */
   schema_version?: number;
   categories: BusinessCatalogCategory[];
   actions: BusinessCatalogAction[];
   members: BusinessCatalogMember[];
-  vendors?: BusinessCatalogVendor[];
 };
 
 export type BusinessRendererMeta = {
@@ -173,26 +160,5 @@ export async function deleteAction(
   return requestWithRetry<void>(
     `/api/v1/business/active/${momentId}/activity/${eventId}`,
     { method: "DELETE" },
-  );
-}
-
-/** Optional attachment upload helpers (schema attachment field). */
-export async function requestActivityAttachmentUploadUrl(
-  momentId: string,
-  body: { content_type: string; byte_size: number; purpose: string },
-): Promise<{ upload_url: string; storage_path: string }> {
-  return requestWithRetry(
-    `/api/v1/business/active/${momentId}/activity/attachments/upload-url`,
-    { method: "POST", body: JSON.stringify(body) },
-  );
-}
-
-export async function confirmActivityAttachment(
-  momentId: string,
-  body: { storage_path: string },
-): Promise<{ path: string }> {
-  return requestWithRetry(
-    `/api/v1/business/active/${momentId}/activity/attachments/confirm`,
-    { method: "POST", body: JSON.stringify(body) },
   );
 }

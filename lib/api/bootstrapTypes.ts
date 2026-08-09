@@ -27,44 +27,6 @@ export interface BootstrapPreferences {
   updated_at: string;
 }
 
-export interface BootstrapPersonalPreferences {
-  preference_id: string;
-  user_id: string;
-  week_start_day: "MONDAY" | "SUNDAY" | string;
-  notification_enabled: boolean;
-  quick_add_reminder_enabled: boolean;
-  daily_summary_enabled: boolean;
-  privacy_mode_enabled: boolean;
-  preferred_summary_time: string | null;
-  default_account_id: string | null;
-}
-
-export interface PersonalPreferencesUpdateRequest {
-  week_start_day?: "MONDAY" | "SUNDAY" | string;
-  notification_enabled?: boolean;
-  quick_add_reminder_enabled?: boolean;
-  daily_summary_enabled?: boolean;
-  privacy_mode_enabled?: boolean;
-  preferred_summary_time?: string | null;
-  default_account_id?: string | null;
-}
-
-export interface PersonalPreferencesResponse {
-  preference_id: string;
-  user_id: string;
-  default_currency_code: string;
-  timezone_name: string;
-  notification_enabled: boolean;
-  quick_add_reminder_enabled: boolean;
-  daily_summary_enabled: boolean;
-  privacy_mode_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-  week_start_day: string | null;
-  default_account_id: string | null;
-  preferred_summary_time: string | null;
-}
-
 export interface BootstrapSummaryCounts {
   my_money_moments: number;
   group_moments: number;
@@ -76,7 +38,6 @@ export interface BootstrapSummaryCounts {
 export interface BootstrapResponse {
   user: UserResponse;
   preferences: BootstrapPreferences;
-  personal_preferences?: BootstrapPersonalPreferences | null;
   contexts: BootstrapContextEntry[];
   modules: Record<string, BootstrapModuleEntry>;
   summary_counts: BootstrapSummaryCounts;

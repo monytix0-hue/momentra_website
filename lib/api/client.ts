@@ -41,12 +41,7 @@ import type {
 } from "@/lib/api/personal";
 import {
   endSpan,
-  getActiveCorrelationId,
-  mintCorrelationId,
-  mintRequestId,
-  recordDuplicateRequest,
   recordResponseHeaders,
-  setActiveCorrelationId,
   startSpan,
 } from "@/lib/telemetry/performanceTelemetry";
 import { createClientRequestId } from "@/lib/quick_add/draftStore";
@@ -126,15 +121,6 @@ export class ApiError extends Error {
   get userMessage(): string {
     return getUserMessage(this.code, this.message);
   }
-
-  /** Route missing or method not allowed on an older API build. */
-  get isMissingEndpoint(): boolean {
-    return this.status === 404 || this.status === 405;
-  }
-}
-
-export function isMissingApiEndpoint(err: unknown): boolean {
-  return err instanceof ApiError && err.isMissingEndpoint;
 }
 
 async function parseError(res: Response): Promise<ParsedApiError> {
@@ -250,19 +236,6 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  // End-to-end correlation: child request ID per call; preserve flow correlation.
-  if (!headers.has("X-Request-ID")) {
-    headers.set("X-Request-ID", mintRequestId());
-  }
-  let correlationId = headers.get("X-Correlation-ID");
-  if (!correlationId) {
-    correlationId = getActiveCorrelationId() ?? mintCorrelationId();
-    headers.set("X-Correlation-ID", correlationId);
-  }
-  setActiveCorrelationId(correlationId);
-  const method = (init.method ?? "GET").toUpperCase();
-  recordDuplicateRequest(`${method}:${path}`);
-
   const res = await fetchWithTimeout(
     joinApiUrl(baseUrl, path),
     {
@@ -373,56 +346,6 @@ export async function patchAppPreferences(
     API_ENDPOINTS.app.preferences,
     { method: "PATCH", body: JSON.stringify(body) },
   );
-}
-
-export async function getMePreferences(): Promise<
-  import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse | null
-> {
-  try {
-    return await requestWithRetry(API_ENDPOINTS.mePreferences, { method: "GET" });
-  } catch (err) {
-    // Older API builds omit GET /me/preferences — keep settings UI usable.
-    if (isMissingApiEndpoint(err)) return null;
-    throw err;
-  }
-}
-
-export async function patchMePreferences(
-  body: import("@/lib/api/bootstrapTypes").PersonalPreferencesUpdateRequest,
-): Promise<import("@/lib/api/bootstrapTypes").PersonalPreferencesResponse> {
-  try {
-    return await requestWithRetry(API_ENDPOINTS.mePreferences, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    if (isMissingApiEndpoint(err)) {
-      throw new ApiError(
-        "Personal preferences aren't available on this API yet. Try again after the server updates.",
-        err instanceof ApiError ? err.status : 404,
-        err instanceof ApiError ? err.code : ApiErrorCode.NOT_FOUND,
-      );
-    }
-    throw err;
-  }
-}
-
-export async function deleteAccount(): Promise<void> {
-  try {
-    await requestWithRetry<void>(API_ENDPOINTS.me, {
-      method: "DELETE",
-    });
-  } catch (err) {
-    if (isMissingApiEndpoint(err)) {
-      throw new ApiError(
-        "Account deletion isn't available on this API yet. Try again after the server updates.",
-        err instanceof ApiError ? err.status : 405,
-        err instanceof ApiError ? err.code : undefined,
-      );
-    }
-    throw err;
-  }
-  clearTokens();
 }
 
 export async function logout(): Promise<void> {
@@ -707,100 +630,10 @@ export async function inviteBusinessWorkspaceMember(
 export async function acceptBusinessWorkspaceInvite(
   token: string,
 ): Promise<import("@/lib/api/business").BusinessWorkspaceSummary> {
-  const raw = await requestWithRetry<Record<string, unknown>>(
-    "api/v1/business/workspaces/invites/accept",
-    {
-      method: "POST",
-      body: JSON.stringify({ token }),
-    },
-  );
-  // Opaque accept wraps membership; legacy returns workspace summary directly.
-  if (raw && typeof raw === "object") {
-    const selected = raw.selected_workspace ?? raw.selected_company;
-    if (selected && typeof selected === "object" && "id" in (selected as object)) {
-      return selected as import("@/lib/api/business").BusinessWorkspaceSummary;
-    }
-    if (typeof raw.id === "string") {
-      return raw as unknown as import("@/lib/api/business").BusinessWorkspaceSummary;
-    }
-    if (typeof raw.workspace_id === "string") {
-      return {
-        id: String(raw.workspace_id),
-        name: "Company",
-        role: "MEMBER",
-        status: "ACTIVE",
-      } as import("@/lib/api/business").BusinessWorkspaceSummary;
-    }
-  }
-  return raw as unknown as import("@/lib/api/business").BusinessWorkspaceSummary;
-}
-
-export type CompanyInvitePreview = {
-  invite_type: string;
-  status: string;
-  company?: { display_name?: string; logo_url?: string | null };
-  inviter?: { display_name?: string };
-  role?: { code?: string; display_name?: string };
-  expires_at?: string | null;
-  result_code?: string | null;
-  moment_id?: string | null;
-  moment_type?: string | null;
-};
-
-/** Public preview — must not require an access token. */
-export async function previewCompanyInvite(code: string): Promise<CompanyInvitePreview> {
-  return request<CompanyInvitePreview>(
-    `api/v1/business/company-invites/${encodeURIComponent(code)}`,
-    { method: "GET", authenticated: false },
-  );
-}
-
-export type OpaqueCompanyInviteItem = {
-  invite_id: string;
-  code_suffix: string;
-  invite_type: string;
-  role_code: string | null;
-  status: string;
-  created_at: string;
-  expires_at: string;
-  max_uses: number;
-  use_count: number;
-  invite_url: string | null;
-};
-
-export async function createOpaqueCompanyInvite(
-  workspaceId: string,
-  body: { role_code?: string; expires_in_days?: number; max_uses?: number },
-): Promise<{
-  invite_id: string;
-  code: string;
-  invite_url: string;
-  expires_at: string;
-  role_code: string;
-  max_uses: number;
-  qr_payload?: string;
-}> {
-  return requestWithRetry(`api/v1/business/workspaces/${workspaceId}/invites/opaque`, {
+  return requestWithRetry("api/v1/business/workspaces/invites/accept", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({ token }),
   });
-}
-
-export async function listOpaqueCompanyInvites(
-  workspaceId: string,
-): Promise<{ invites: OpaqueCompanyInviteItem[] }> {
-  return requestWithRetry(`api/v1/business/workspaces/${workspaceId}/invites`, {
-    method: "GET",
-  });
-}
-
-export async function revokeOpaqueCompanyInvite(
-  inviteId: string,
-): Promise<Record<string, unknown>> {
-  return requestWithRetry(
-    `api/v1/business/company-invites/by-id/${encodeURIComponent(inviteId)}/revoke`,
-    { method: "POST" },
-  );
 }
 
 export async function getBusinessCreateOptions(): Promise<import("@/lib/api/business").BusinessCreateOptionsResponse> {

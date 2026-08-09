@@ -8,7 +8,6 @@ import {
   type LivingActivityItem,
   type LivingActivityListResponse,
 } from "@/lib/api/group";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type LivingActivityScreenProps = {
   momentId: string;
@@ -123,7 +122,7 @@ export function LivingActivityScreen({
         </div>
 
         {loading ? (
-          <LoadingIndicator label="Loading activity…" className="py-8" />
+          <p className="text-sm opacity-60">Loading activity…</p>
         ) : error ? (
           <p className="text-sm" style={{ color: colors.error }}>
             {error}
@@ -153,14 +152,7 @@ export function LivingActivityScreen({
                         {item.subtitle || item.relative_time || item.activity_type}
                       </p>
                     </div>
-                    {item.can_edit ? (
-                      <span
-                        className="inline-flex size-10 shrink-0 items-center justify-center"
-                        aria-hidden
-                      >
-                        <Pencil size={18} style={{ color: colors.brandPrimary, opacity: 0.85 }} />
-                      </span>
-                    ) : null}
+                    {item.can_edit ? <Pencil size={16} style={{ color: colors.brandPrimary }} /> : null}
                   </button>
                 ))}
               </div>

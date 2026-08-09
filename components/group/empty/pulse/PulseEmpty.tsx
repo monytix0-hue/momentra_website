@@ -23,7 +23,7 @@ type PulseEmptyProps = {
 const momentTypes = [
   {
     title: "Shared Experience",
-    description: "Trips, celebrations, outings and events.",
+    description: "Trips, weddings, celebrations, outings and events.",
     image: "/group/type-experience.jpg",
     accent: "#FFB598",
   },

@@ -29,19 +29,6 @@ describe("extractInviteToken", () => {
   it("returns raw token when not a URL", () => {
     expect(extractInviteToken("rawtoken12")).toBe("rawtoken12");
   });
-
-  it("rejects short display invite codes (not join secrets)", () => {
-    expect(extractInviteToken("A1B2C3D4")).toBeNull();
-    expect(parseInviteInput("01234567")).toBeNull();
-  });
-
-  it("accepts opaque platform alphabet codes", () => {
-    expect(extractInviteToken("AB7K9Q2M")).toBe("AB7K9Q2M");
-    expect(parseInviteInput("ab7k9q2m")).toEqual({
-      token: "AB7K9Q2M",
-      kind: "moment",
-    });
-  });
 });
 
 describe("company invite tokens", () => {

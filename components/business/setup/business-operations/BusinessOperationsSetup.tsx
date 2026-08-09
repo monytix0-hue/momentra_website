@@ -17,7 +17,6 @@ import { SetupSearchPicker } from "@/components/business/setup/shared/SetupSearc
 import { SetupSectionCard } from "@/components/business/setup/shared/SetupSectionCard";
 import { SetupTextInput } from "@/components/business/setup/shared/SetupTextInput";
 import { SetupToggleReveal } from "@/components/business/setup/shared/SetupToggleReveal";
-import { SetupValidationBanner } from "@/components/setup/shared/SetupValidationBanner";
 import { useBusinessSetupFlow } from "@/hooks/useBusinessSetupFlow";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { buildBusinessLiveSummary } from "@/lib/business/buildBusinessLiveSummary";
@@ -346,7 +345,8 @@ export function BusinessOperationsSetup({
 
   const go = async (next: number) => {
     if (interactionsDisabled) return;
-    await flushPendingSave();
+    const flushed = await flushPendingSave();
+    if (!flushed) return;
     if (next > step && !validateStep(step)) return;
     const completed = Array.from({ length: Math.max(0, next - 1) }, (_, i) => i + 1);
     setStep(next);
@@ -554,7 +554,6 @@ export function BusinessOperationsSetup({
         <BusinessSetupSkeleton rows={5} />
       ) : (
         <div className="space-y-8">
-          <SetupValidationBanner errors={fieldErrors} />
           {step === 1 ? (
             <>
               <SetupSectionCard title="Operations basics">

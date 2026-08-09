@@ -75,24 +75,11 @@ export function RelationshipsRecentActivityList({
             const chips = recentActivityChips(item, 2);
             const editable = recentActivityIsEditable(item);
             const isLast = index === visible.length - 1;
-            const openEdit = () => {
-              if (!editable || !onEditActivity) return;
-              onEditActivity(item.id, item.edit_event_type ?? eventType);
-            };
             return (
               <div
                 key={item.id}
-                role={editable && onEditActivity ? "button" : undefined}
-                tabIndex={editable && onEditActivity ? 0 : undefined}
-                className={`flex items-start gap-3 ${isLast ? "" : "border-b pb-3"} ${index > 0 ? "pt-3" : ""} ${editable && onEditActivity ? "cursor-pointer" : ""}`}
+                className={`flex items-start gap-3 ${isLast ? "" : "border-b pb-3"} ${index > 0 ? "pt-3" : ""}`}
                 style={{ borderColor: "rgba(255,255,255,0.05)" }}
-                onClick={openEdit}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openEdit();
-                  }
-                }}
               >
                 <div
                   className="flex size-9 shrink-0 items-center justify-center rounded-lg"
@@ -137,14 +124,13 @@ export function RelationshipsRecentActivityList({
                       {editable && onEditActivity ? (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit();
-                          }}
-                          className="inline-flex size-10 shrink-0 items-center justify-center border-0 bg-transparent"
+                          onClick={() =>
+                            onEditActivity(item.id, item.edit_event_type ?? eventType)
+                          }
+                          className="border-0 bg-transparent p-1"
                           aria-label={`Edit ${titleText}`}
                         >
-                          <Pencil size={18} color={colors.textSecondary} style={{ opacity: 0.85 }} />
+                          <Pencil size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
                         </button>
                       ) : null}
                     </div>

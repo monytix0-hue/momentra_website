@@ -116,31 +116,28 @@ export const SetupRepository = {
 
   async createDraft(
     body: PersonalMomentCreateRequest,
-  ): Promise<PersonalMomentResponse & { initial_setup?: PersonalSetupResponse | null }> {
+  ): Promise<PersonalMomentResponse> {
     if (isGroupType(body.moment_type_code)) {
       const category = groupCategoryForType(body.moment_type_code)!;
       const created = await createGroupSharedDraft(
         category,
         createBodyForType(body.moment_type_code),
       );
-      const typeCode = created.moment_type_code || body.moment_type_code;
-      groupMomentById.set(created.moment_id, typeCode);
+      groupMomentById.set(created.moment_id, created.moment_type_code || body.moment_type_code);
       notifyMomentMutation("GROUP", {
         contextState: "SETUP",
         pulse: "SETUP",
         moments: "SETUP",
       });
-      const initialSetup = created.setup ? toPersonalSetup(created.setup) : null;
       return {
         moment_id: created.moment_id,
         moment_type_id: created.moment_id,
-        moment_type_code: typeCode,
+        moment_type_code: created.moment_type_code || body.moment_type_code,
         moment_name: body.moment_name ?? "",
         moment_description: null,
         status: "DRAFT",
         current_runtime_state: "SETUP",
         activated_at: null,
-        initial_setup: initialSetup,
       };
     }
     const result = await createPersonalMoment(body);

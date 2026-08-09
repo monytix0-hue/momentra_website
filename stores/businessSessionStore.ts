@@ -5,14 +5,8 @@
  * Clients must not keep a separate selected-moment copy.
  */
 import { useSyncExternalStore } from "react";
-import {
-  dedupeFetch,
-  diskCacheLoad,
-  diskCacheRemove,
-  diskCacheSave,
-} from "@/lib/cache/cacheStore";
+import { dedupeFetch } from "@/lib/cache/cacheStore";
 import type {
-  BusinessCreateOptionCard,
   BusinessCreateOptionsResponse,
   BusinessMomentResponse,
   BusinessSessionBootstrapResponse,
@@ -30,100 +24,9 @@ import {
   clearBusinessMomentReseatMarks,
   getBusinessMomentReseatedIds,
 } from "@/lib/business/businessMomentAccess";
-import { businessProjectionSchemaSegment } from "@/lib/business/businessProjectionSchema";
 
 const CREATE_OPTIONS_FRESH_MS = 60_000;
 const BOOTSTRAP_FRESH_MS = 60_000;
-/** Stale-while-revalidate disk window — paint immediately, refresh in background. */
-const BOOTSTRAP_DISK_TTL_MS = 24 * 60 * 60 * 1000;
-
-function bootstrapDiskKey(workspaceId?: string | null): string {
-  const schema = businessProjectionSchemaSegment();
-  return workspaceId
-    ? `business:${schema}:session_bootstrap:${workspaceId}`
-    : `business:${schema}:session_bootstrap`;
-}
-
-function persistBootstrapDisk(bootstrap: BusinessSessionBootstrapResponse): void {
-  const wsId = bootstrap.selected_workspace?.id ?? null;
-  diskCacheSave(bootstrapDiskKey(wsId), bootstrap);
-  if (wsId) diskCacheSave(bootstrapDiskKey(null), bootstrap);
-}
-
-/** Personal-parity link priority: ACTIVE beats newer DRAFT; same status → prefer first seen (inventory order). */
-function latestMomentByTypeCode(
-  moments: BusinessMomentResponse[],
-): Map<string, BusinessMomentResponse> {
-  const rank = (status: string): number => {
-    const s = status.toUpperCase();
-    if (s === "ACTIVE") return 0;
-    if (s === "PAUSED") return 1;
-    if (s === "COMPLETED") return 2;
-    if (s === "SETUP") return 3;
-    if (s === "DRAFT") return 4;
-    return 99;
-  };
-  const best = new Map<string, BusinessMomentResponse>();
-  for (const m of moments) {
-    const code = (m.moment_type_code ?? "").trim();
-    if (!code || !m.moment_id) continue;
-    const existing = best.get(code);
-    if (!existing) {
-      best.set(code, m);
-      continue;
-    }
-    if (rank(m.status ?? "") < rank(existing.status ?? "")) {
-      best.set(code, m);
-    }
-  }
-  return best;
-}
-
-/** Attach inventory links onto catalog-only create/options payload. */
-export function attachCreateOptionLinksFromInventory(
-  options: BusinessCreateOptionsResponse,
-  moments: BusinessMomentResponse[],
-): BusinessCreateOptionsResponse {
-  const latest = latestMomentByTypeCode(moments);
-  const cards: BusinessCreateOptionCard[] = (options.cards ?? []).map((card) => {
-    const linked = latest.get(card.moment_type_code);
-    const status = (linked?.status ?? "").trim();
-    return {
-      ...card,
-      linked_moment_id: linked?.moment_id ?? null,
-      linked_moment_status: linked ? status || null : null,
-      is_active: Boolean(linked && isActiveBusinessMomentStatus(status || "ACTIVE")),
-    };
-  });
-  const activeCount = moments.filter((m) =>
-    isActiveBusinessMomentStatus(m.status ?? ""),
-  ).length;
-  return {
-    ...options,
-    cards,
-    is_empty: activeCount === 0,
-    active_moment_count: activeCount,
-  };
-}
-
-function hydrateBootstrapFromDisk(workspaceId?: string | null): boolean {
-  if (snapshot.bootstrap != null) return false;
-  const cached =
-    diskCacheLoad<BusinessSessionBootstrapResponse>(
-      bootstrapDiskKey(workspaceId),
-      BOOTSTRAP_DISK_TTL_MS,
-    ) ??
-    diskCacheLoad<BusinessSessionBootstrapResponse>(
-      bootstrapDiskKey(null),
-      BOOTSTRAP_DISK_TTL_MS,
-    );
-  if (!cached) return false;
-  applyInventorySelection(cached, { markInventoryFresh: false });
-  if ((cached.moments?.length ?? 0) === 0) {
-    setSnapshot({ inventoryPending: true });
-  }
-  return true;
-}
 
 export type BusinessSessionSnapshot = {
   bootstrap: BusinessSessionBootstrapResponse | null;
@@ -131,11 +34,7 @@ export type BusinessSessionSnapshot = {
   selectedMomentId: string | null;
   selectedMomentType: string;
   selectedWorkspaceId: string | null;
-  /** After activate: skip empty-inventory wipe until inventory includes this id. */
-  postActivatePinnedMomentId: string | null;
   loading: boolean;
-  /** Chrome painted; soft/fat inventory not settled yet. */
-  inventoryPending: boolean;
   createOptionsLoading: boolean;
   error: string | null;
   lastLoadedAt: number | null;
@@ -149,9 +48,7 @@ let snapshot: BusinessSessionSnapshot = {
   selectedMomentId: null,
   selectedMomentType: "",
   selectedWorkspaceId: null,
-  postActivatePinnedMomentId: null,
   loading: false,
-  inventoryPending: false,
   createOptionsLoading: false,
   error: null,
   lastLoadedAt: null,
@@ -300,11 +197,7 @@ function filterBootstrapByExcludedIds(
   };
 }
 
-function applyInventorySelection(
-  bootstrap: BusinessSessionBootstrapResponse,
-  options?: { markInventoryFresh?: boolean },
-) {
-  const markInventoryFresh = options?.markInventoryFresh !== false;
+function applyInventorySelection(bootstrap: BusinessSessionBootstrapResponse) {
   const reseated = getBusinessMomentReseatedIds();
   const inventory =
     reseated.size > 0 ? filterBootstrapByExcludedIds(bootstrap, reseated) : bootstrap;
@@ -321,9 +214,7 @@ function applyInventorySelection(
     selectedMomentId: next.selectedMomentId,
     selectedMomentType: next.selectedMomentType,
     selectedWorkspaceId,
-    ...(markInventoryFresh
-      ? { lastLoadedAt: Date.now(), inventoryPending: false }
-      : {}),
+    lastLoadedAt: Date.now(),
     error: null,
   });
 }
@@ -361,32 +252,6 @@ export function setBusinessSelection(
   });
 }
 
-/** Pin selection after activate so soft/empty inventory races cannot clear it. */
-export function pinBusinessPostActivateSelection(
-  typeCode: string,
-  momentId: string,
-): void {
-  if (!momentId || !typeCode) return;
-  bumpBusinessSessionGeneration();
-  setSnapshot({
-    selectedMomentType: typeCode,
-    selectedMomentId: momentId,
-    postActivatePinnedMomentId: momentId,
-  });
-}
-
-export function clearBusinessPostActivatePin(momentId?: string | null): void {
-  const pinned = snapshot.postActivatePinnedMomentId;
-  if (!pinned) return;
-  if (momentId == null || momentId === pinned) {
-    setSnapshot({ postActivatePinnedMomentId: null });
-  }
-}
-
-export function hasBusinessPostActivatePin(): boolean {
-  return Boolean(snapshot.postActivatePinnedMomentId);
-}
-
 export function getBusinessSwitcherOptions(): BusinessMomentSwitcherOption[] {
   return resolveBusinessMomentSwitcherOptions(
     snapshot.bootstrap?.moments_home?.cards ?? [],
@@ -401,12 +266,8 @@ export async function ensureBusinessBootstrap(
 ): Promise<BusinessSessionBootstrapResponse | null> {
   const gen = snapshot.generation;
   const targetWs = workspaceId ?? snapshot.selectedWorkspaceId;
-  // Paint disk/session cache immediately — never block chrome on network.
-  const paintedFromDisk = hydrateBootstrapFromDisk(targetWs);
-
   const fresh =
     !force &&
-    !snapshot.inventoryPending &&
     snapshot.bootstrap != null &&
     snapshot.lastLoadedAt != null &&
     Date.now() - snapshot.lastLoadedAt < BOOTSTRAP_FRESH_MS &&
@@ -416,119 +277,9 @@ export async function ensureBusinessBootstrap(
       snapshot.selectedWorkspaceId === targetWs);
   if (fresh) return snapshot.bootstrap;
 
-  // Never block first paint on network — empty shell or disk cache paints immediately.
-  setSnapshot({ loading: false, error: null });
-
+  setSnapshot({ loading: true, error: null });
   const t0 = performance.now();
   try {
-    const wsHint =
-      targetWs ??
-      snapshot.selectedWorkspaceId ??
-      snapshot.bootstrap?.selected_workspace?.id ??
-      null;
-
-    // Soft path: workspace moments + overview when company is known.
-    if (!force && wsHint) {
-      setSnapshot({
-        inventoryPending: (snapshot.bootstrap?.moments?.length ?? 0) === 0,
-      });
-      const softOk = await softRefreshBusinessSession(wsHint);
-      if (gen === snapshot.generation && softOk && snapshot.bootstrap?.workspaces?.length) {
-        persistBootstrapDisk(snapshot.bootstrap);
-        setSnapshot({ loading: false, inventoryPending: false });
-        logBusinessLoad({
-          tab: "session",
-          requestKey: "session_soft",
-          reason: paintedFromDisk ? "disk_revalidate" : "open",
-          cacheSource: paintedFromDisk ? "disk" : "network",
-          durationMs: Math.round(performance.now() - t0),
-          generation: snapshot.generation,
-          success: true,
-          momentId: snapshot.selectedMomentId,
-          momentType: snapshot.selectedMomentType,
-        });
-        return snapshot.bootstrap;
-      }
-    }
-
-    // Cold chrome: thin session then soft inventory (avoid fat bootstrap when possible).
-    if (!force) {
-      try {
-        const session = await dedupeFetch(
-          wsHint ? `business:session_chrome:${wsHint}` : "business:session_chrome",
-          () =>
-            BusinessRepository.getSession(
-              wsHint ? { workspaceId: wsHint } : undefined,
-            ),
-        );
-        if (gen !== snapshot.generation) return snapshot.bootstrap;
-        const prev = snapshot.bootstrap;
-        const chromeBootstrap: BusinessSessionBootstrapResponse = {
-          moments_home: prev?.moments_home ?? {
-            is_empty: true,
-            active_moment_count: 0,
-            cards: [],
-          },
-          moments: prev?.moments ?? [],
-          selected_workspace: session.selected_workspace ?? prev?.selected_workspace ?? null,
-          workspaces: session.workspaces ?? prev?.workspaces ?? [],
-          module_tiles: session.module_tiles ?? prev?.module_tiles ?? [],
-          dashboard: prev?.dashboard,
-        };
-        applyInventorySelection(chromeBootstrap, { markInventoryFresh: false });
-        setSnapshot({ inventoryPending: true });
-        const selectedId =
-          chromeBootstrap.selected_workspace?.id ??
-          snapshot.selectedWorkspaceId ??
-          null;
-        const softOk = selectedId
-          ? await softRefreshBusinessSession(selectedId)
-          : false;
-        if (!softOk) {
-          const cacheKey = targetWs
-            ? `business:session_bootstrap:${targetWs}`
-            : "business:session_bootstrap";
-          const bootstrap = await dedupeFetch(cacheKey, () =>
-            BusinessRepository.getSessionBootstrap(
-              targetWs ? { workspaceId: targetWs } : undefined,
-            ),
-          );
-          applyInventorySelection(bootstrap, { markInventoryFresh: true });
-          persistBootstrapDisk(bootstrap);
-          setSnapshot({ loading: false, inventoryPending: false });
-          logBusinessLoad({
-            tab: "session",
-            requestKey: "session_bootstrap",
-            reason: "soft_fail_recovery",
-            cacheSource: "network",
-            durationMs: Math.round(performance.now() - t0),
-            generation: snapshot.generation,
-            success: true,
-            momentId: snapshot.selectedMomentId,
-            momentType: snapshot.selectedMomentType,
-          });
-          return snapshot.bootstrap;
-        }
-        if (snapshot.bootstrap) persistBootstrapDisk(snapshot.bootstrap);
-        setSnapshot({ loading: false, inventoryPending: false });
-        logBusinessLoad({
-          tab: "session",
-          requestKey: "session_chrome",
-          reason: "open",
-          cacheSource: "network",
-          durationMs: Math.round(performance.now() - t0),
-          generation: snapshot.generation,
-          success: true,
-          momentId: snapshot.selectedMomentId,
-          momentType: snapshot.selectedMomentType,
-        });
-        return snapshot.bootstrap;
-      } catch {
-        // Fall through to full bootstrap.
-      }
-    }
-
-    setSnapshot({ inventoryPending: true });
     const cacheKey = targetWs
       ? `business:session_bootstrap:${targetWs}`
       : "business:session_bootstrap";
@@ -538,11 +289,11 @@ export async function ensureBusinessBootstrap(
       ),
     );
     if (gen !== snapshot.generation && !force) {
-      // Still apply — recovery/force paths need inventory; gen bump is rare here.
+      applyInventorySelection(bootstrap);
+    } else {
+      applyInventorySelection(bootstrap);
     }
-    applyInventorySelection(bootstrap, { markInventoryFresh: true });
-    persistBootstrapDisk(bootstrap);
-    setSnapshot({ loading: false, inventoryPending: false });
+    setSnapshot({ loading: false });
     logBusinessLoad({
       tab: "session",
       requestKey: "session_bootstrap",
@@ -557,12 +308,7 @@ export async function ensureBusinessBootstrap(
     return snapshot.bootstrap;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load Business";
-    // Keep painted shell on refresh failure.
-    setSnapshot({
-      loading: false,
-      inventoryPending: false,
-      error: snapshot.bootstrap != null ? null : message,
-    });
+    setSnapshot({ loading: false, error: message });
     logBusinessLoad({
       tab: "session",
       requestKey: "session_bootstrap",
@@ -573,7 +319,7 @@ export async function ensureBusinessBootstrap(
       success: false,
       errorCode: "bootstrap_failed",
     });
-    return snapshot.bootstrap;
+    return null;
   }
 }
 
@@ -589,40 +335,13 @@ export async function switchBusinessWorkspace(
   workspaceId: string,
 ): Promise<BusinessSessionBootstrapResponse | null> {
   bumpBusinessSessionGeneration();
-  const prev = snapshot.bootstrap;
-  const selected =
-    prev?.workspaces?.find((w) => w.id === workspaceId) ?? null;
-  setSnapshot({
-    selectedWorkspaceId: workspaceId,
-    selectedMomentId: null,
-    selectedMomentType: "",
-    loading: false,
-    error: null,
-    bootstrap: prev
-      ? {
-          ...prev,
-          selected_workspace: selected ?? {
-            id: workspaceId,
-            name: "Company",
-            role: "MEMBER",
-          },
-          moments: [],
-          moments_home: {
-            is_empty: true,
-            active_moment_count: 0,
-            cards: [],
-          },
-        }
-      : null,
-  });
+  setSnapshot({ selectedWorkspaceId: workspaceId, selectedMomentId: null });
   try {
     await BusinessRepository.selectWorkspace(workspaceId);
   } catch {
-    // Preference persist may fail offline; still soft-reload scoped inventory.
+    // Preference persist may fail offline; still reload scoped bootstrap.
   }
-  await softRefreshBusinessSession(workspaceId);
-  if (snapshot.bootstrap) persistBootstrapDisk(snapshot.bootstrap);
-  return snapshot.bootstrap;
+  return ensureBusinessBootstrap(true, workspaceId);
 }
 
 export async function createAndSelectBusinessWorkspace(name: string): Promise<
@@ -663,29 +382,18 @@ export async function createAndSelectBusinessWorkspace(name: string): Promise<
 /**
  * Soft background refresh: prefers workspace moments/overview endpoints when
  * a company is selected; falls back to cached bootstrap TTL (never force).
- * @returns true when inventory was applied successfully
  */
 export async function softRefreshBusinessSession(
   workspaceId?: string | null,
-): Promise<boolean> {
+): Promise<void> {
   const wsId =
     workspaceId ??
     snapshot.selectedWorkspaceId ??
     snapshot.bootstrap?.selected_workspace?.id ??
     null;
   if (!wsId) {
-    // Cold open without a company id — fat bootstrap once for chrome + inventory.
-    try {
-      const cacheKey = "business:session_bootstrap";
-      const bootstrap = await dedupeFetch(cacheKey, () =>
-        BusinessRepository.getSessionBootstrap(),
-      );
-      applyInventorySelection(bootstrap, { markInventoryFresh: true });
-      persistBootstrapDisk(bootstrap);
-      return true;
-    } catch {
-      return false;
-    }
+    await ensureBusinessBootstrap(false);
+    return;
   }
   const gen = snapshot.generation;
   try {
@@ -693,16 +401,8 @@ export async function softRefreshBusinessSession(
       BusinessRepository.getWorkspaceMoments(wsId),
       BusinessRepository.getWorkspaceOverview(wsId),
     ]);
-    if (gen !== snapshot.generation) return false;
+    if (gen !== snapshot.generation) return;
     const prev = snapshot.bootstrap;
-    const selectedFromList =
-      prev?.workspaces?.find((w) => w.id === wsId) ?? null;
-    const selectedWorkspace =
-      selectedFromList ??
-      (prev?.selected_workspace?.id === wsId
-        ? prev.selected_workspace
-        : prev?.selected_workspace) ??
-      null;
     const next: BusinessSessionBootstrapResponse = {
       moments_home:
         momentsPayload.moments_home ??
@@ -712,47 +412,26 @@ export async function softRefreshBusinessSession(
           cards: [],
         },
       moments: momentsPayload.moments ?? prev?.moments ?? [],
-      selected_workspace: selectedWorkspace,
+      selected_workspace: prev?.selected_workspace ?? null,
       workspaces: prev?.workspaces ?? [],
       module_tiles: prev?.module_tiles ?? [],
       dashboard: overview.dashboard ?? prev?.dashboard,
     };
-    applyInventorySelection(next, { markInventoryFresh: true });
-    if (snapshot.createOptions) {
+    if (prev?.selected_workspace?.id === wsId || !prev?.selected_workspace) {
+      applyInventorySelection(next);
+    } else {
       setSnapshot({
-        createOptions: attachCreateOptionLinksFromInventory(
-          snapshot.createOptions,
-          next.moments ?? [],
-        ),
+        bootstrap: {
+          ...next,
+          selected_workspace: prev.selected_workspace,
+          workspaces: prev.workspaces,
+          module_tiles: prev.module_tiles,
+        },
+        lastLoadedAt: Date.now(),
       });
     }
-    persistBootstrapDisk(next);
-    return true;
   } catch {
-    // Soft failure: try thin chrome without stamping freshness — caller fat-recovers.
-    try {
-      const session = await BusinessRepository.getSession({ workspaceId: wsId });
-      if (gen !== snapshot.generation) return false;
-      const prev = snapshot.bootstrap;
-      applyInventorySelection(
-        {
-          moments_home: prev?.moments_home ?? {
-            is_empty: true,
-            active_moment_count: 0,
-            cards: [],
-          },
-          moments: prev?.moments ?? [],
-          selected_workspace: session.selected_workspace ?? prev?.selected_workspace ?? null,
-          workspaces: session.workspaces ?? prev?.workspaces ?? [],
-          module_tiles: session.module_tiles ?? prev?.module_tiles ?? [],
-          dashboard: prev?.dashboard,
-        },
-        { markInventoryFresh: false },
-      );
-    } catch {
-      /* keep painted shell */
-    }
-    return false;
+    await ensureBusinessBootstrap(false, wsId);
   }
 }
 
@@ -840,21 +519,12 @@ export function patchBusinessMomentInInventory(
 export async function ensureBusinessCreateOptions(
   force = false,
 ): Promise<BusinessCreateOptionsResponse | null> {
-  const inventory = inventoryMoments();
   const fresh =
     !force &&
     snapshot.createOptions != null &&
     snapshot.createOptionsLastLoadedAt != null &&
     Date.now() - snapshot.createOptionsLastLoadedAt < CREATE_OPTIONS_FRESH_MS;
-  if (fresh) {
-    // Re-attach links in case inventory changed while catalog TTL was still fresh.
-    const merged = attachCreateOptionLinksFromInventory(
-      snapshot.createOptions,
-      inventory,
-    );
-    setSnapshot({ createOptions: merged });
-    return merged;
-  }
+  if (fresh) return snapshot.createOptions;
 
   const gen = snapshot.generation;
   setSnapshot({ createOptionsLoading: true });
@@ -866,12 +536,8 @@ export async function ensureBusinessCreateOptions(
     if (gen !== snapshot.generation) {
       // Still cache catalog; selection is authoritative elsewhere.
     }
-    const merged = attachCreateOptionLinksFromInventory(
-      options,
-      inventoryMoments(),
-    );
     setSnapshot({
-      createOptions: merged,
+      createOptions: options,
       createOptionsLastLoadedAt: Date.now(),
     });
     logBusinessLoad({
@@ -883,8 +549,8 @@ export async function ensureBusinessCreateOptions(
       generation: snapshot.generation,
       success: true,
     });
-    return merged;
-  } catch {
+    return options;
+  } catch (err) {
     logBusinessLoad({
       tab: "create",
       requestKey: "create_options",
@@ -895,27 +561,20 @@ export async function ensureBusinessCreateOptions(
       success: false,
       errorCode: "create_options_failed",
     });
-    return snapshot.createOptions
-      ? attachCreateOptionLinksFromInventory(snapshot.createOptions, inventory)
-      : null;
+    return snapshot.createOptions;
   } finally {
     setSnapshot({ createOptionsLoading: false });
   }
 }
 
 export function clearBusinessSessionStore(): void {
-  const wsId = snapshot.selectedWorkspaceId ?? snapshot.bootstrap?.selected_workspace?.id;
-  diskCacheRemove(bootstrapDiskKey(wsId));
-  diskCacheRemove(bootstrapDiskKey(null));
   snapshot = {
     bootstrap: null,
     createOptions: null,
     selectedMomentId: null,
     selectedMomentType: "",
     selectedWorkspaceId: null,
-    postActivatePinnedMomentId: null,
     loading: false,
-    inventoryPending: false,
     createOptionsLoading: false,
     error: null,
     lastLoadedAt: null,

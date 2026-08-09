@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   Briefcase,
   ChevronRight,
+  Clock,
   DollarSign,
   FileText,
   Search,
@@ -21,7 +22,6 @@ import {
   MessageSquare,
   ArrowUpCircle,
   Banknote,
-  StickyNote,
 } from "lucide-react";
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
 import { BUSINESS_ACCENT } from "@/components/business/actioncenter/ui/BusinessActionDesignSystem";
@@ -32,9 +32,8 @@ type BusinessActionHubProps = {
   actions: BusinessCatalogAction[];
   favorites: string[];
   recentIds: string[];
+  contextChips?: string[];
   momentName?: string | null;
-  heroTitle?: string;
-  heroSubtitle?: string;
   onSelect: (actionId: string) => void;
   onToggleFavorite: (actionId: string) => void;
 };
@@ -45,42 +44,24 @@ const ICON_MAP: Record<string, typeof Briefcase> = {
   meeting: Calendar,
   issue: AlertTriangle,
   approval: CheckCircle,
-  ops_approval: CheckCircle,
   review: ClipboardList,
   escalation: ArrowUpCircle,
   participation: UserCheck,
   member_update: Users,
   note: FileText,
-  notes: StickyNote,
   cash_inflow: DollarSign,
   expense_burn: TrendingUp,
   runway_risk: Shield,
   financial_update: Banknote,
   strategic_decision: Briefcase,
   spend_entry: DollarSign,
-  shopping_cart: DollarSign,
   vendor_update: Wrench,
-  storefront: Wrench,
   operational_improvement: TrendingUp,
-  trending_up: TrendingUp,
-  general_update: StickyNote,
-  ops_general_update: StickyNote,
-  report_problem: AlertTriangle,
-  ops_issue: AlertTriangle,
-  check_circle: CheckCircle,
 };
 
-function ActionGlyph({ action }: { action: BusinessCatalogAction }) {
-  const keys = [
-    action.icon,
-    action.action_id,
-    action.action_type,
-    action.action_type.split(".").pop(),
-  ]
-    .filter(Boolean)
-    .map((k) => String(k).toLowerCase());
-  const Icon =
-    keys.map((k) => ICON_MAP[k]).find(Boolean) ?? MessageSquare;
+function ActionGlyph({ actionType }: { actionType: string }) {
+  const suffix = actionType.split(".").pop() ?? actionType;
+  const Icon = ICON_MAP[suffix] ?? MessageSquare;
   return <Icon className="size-5" style={{ color: BUSINESS_ACCENT.teal }} />;
 }
 
@@ -98,9 +79,8 @@ export function BusinessActionHub({
   actions,
   favorites,
   recentIds,
+  contextChips,
   momentName,
-  heroTitle = "Quick Add",
-  heroSubtitle = "Record activity, approvals, and operational updates.",
   onSelect,
   onToggleFavorite,
 }: BusinessActionHubProps) {
@@ -125,6 +105,11 @@ export function BusinessActionHub({
       .filter((g) => g.items.length > 0);
   }, [filtered, categories]);
 
+  const chips = useMemo(() => {
+    const raw = contextChips?.length ? contextChips : [momentName ?? "Action Center"];
+    return Array.from(new Set(raw.filter(Boolean)));
+  }, [contextChips, momentName]);
+
   function tile(action: BusinessCatalogAction) {
     const fav = favorites.includes(action.action_id);
     return (
@@ -147,7 +132,7 @@ export function BusinessActionHub({
               className="flex size-12 items-center justify-center rounded-xl"
               style={{ background: `${BUSINESS_ACCENT.teal}1A` }}
             >
-              <ActionGlyph action={action} />
+              <ActionGlyph actionType={action.action_type} />
             </div>
             <div>
               <p
@@ -159,6 +144,11 @@ export function BusinessActionHub({
               {action.subtitle ? (
                 <p className="text-sm" style={{ color: colors.textSecondary }}>
                   {action.subtitle}
+                </p>
+              ) : null}
+              {action.estimated_time_sec != null ? (
+                <p className="mt-0.5 flex items-center gap-1 text-[10px]" style={{ color: colors.textSecondary }}>
+                  <Clock className="size-3" /> ~{action.estimated_time_sec} sec
                 </p>
               ) : null}
             </div>
@@ -185,11 +175,21 @@ export function BusinessActionHub({
 
   return (
     <div className="space-y-8 pb-6">
-      {momentName ? (
-        <p className="text-sm font-medium" style={{ color: colors.textSecondary }}>
-          {momentName}
-        </p>
-      ) : null}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {chips.map((chip, i) => (
+          <span
+            key={`${i}-${chip}`}
+            className="whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium"
+            style={{
+              borderColor: `${BUSINESS_ACCENT.teal}33`,
+              background: `${BUSINESS_ACCENT.teal}1A`,
+              color: BUSINESS_ACCENT.teal,
+            }}
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
 
       <div className="relative h-[180px] overflow-hidden rounded-3xl md:h-[220px]">
         <div
@@ -207,10 +207,10 @@ export function BusinessActionHub({
             className="text-2xl font-semibold md:text-3xl"
             style={{ color: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            {heroTitle}
+            Action Center
           </h3>
           <p className="mt-2 max-w-[85%] text-sm md:text-base" style={{ color: "rgba(255,255,255,0.8)" }}>
-            {heroSubtitle}
+            Record activity, approvals, and operational updates.
           </p>
         </div>
       </div>

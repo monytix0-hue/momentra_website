@@ -9,11 +9,8 @@ import type {
   TeamOpsPulseResponse,
 } from "@/lib/api/businessActive";
 import { AnimatedNumber } from "@/lib/motion/AnimatedNumber";
-import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 import { TEAM_OPS, formatOccurredAt, healthBandColor } from "./teamOpsTheme";
 import { TeamOpsEmptyLine, TeamOpsSectionCard } from "./shared";
-
-const MOMENT_TYPE = "TEAM_OPERATIONS";
 
 export function StitchBadge({ text, tone }: { text: string; tone: string }) {
   return (
@@ -30,29 +27,16 @@ export function StitchSectionHeader({
   title,
   trailing,
   onTrailing,
-  explainerId,
-  momentTypeCode = MOMENT_TYPE,
 }: {
   title: string;
   trailing?: string;
   onTrailing?: () => void;
-  explainerId?: string;
-  momentTypeCode?: string | null;
 }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-0.5">
-        <h3 className="text-sm font-semibold" style={{ color: TEAM_OPS.onSurface }}>
-          {title}
-        </h3>
-        {explainerId ? (
-          <WidgetInfoButton
-            explainerId={explainerId}
-            momentTypeCode={momentTypeCode}
-            domain="business"
-          />
-        ) : null}
-      </div>
+      <h3 className="text-sm font-semibold" style={{ color: TEAM_OPS.onSurface }}>
+        {title}
+      </h3>
       {trailing && onTrailing ? (
         <button
           type="button"
@@ -88,16 +72,9 @@ export function StitchHealthHero({ data }: { data: TeamOpsPulseResponse }) {
   return (
     <TeamOpsSectionCard gradient>
       <div className="mb-2 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-0.5">
-          <p className="text-sm font-medium" style={{ color: TEAM_OPS.onVariant }}>
-            Team Health
-          </p>
-          <WidgetInfoButton
-            explainerId="PULSE-001"
-            momentTypeCode={MOMENT_TYPE}
-            domain="business"
-          />
-        </div>
+        <p className="text-sm font-medium" style={{ color: TEAM_OPS.onVariant }}>
+          Team Health
+        </p>
         {health ? (
           <StitchBadge text={health.label} tone={healthBandColor(health.band)} />
         ) : null}
@@ -150,7 +127,7 @@ export function StitchHealthDrivers({ drivers }: { drivers: TeamOpsHealthDriver[
   if (!drivers.length) return <TeamOpsEmptyLine label="No health drivers yet." />;
   return (
     <section>
-      <StitchSectionHeader title="Health Drivers" explainerId="PULSE-002" />
+      <StitchSectionHeader title="Health Drivers" />
       <div className="flex gap-2 overflow-x-auto pb-1">
         {drivers.map((driver) => (
           <div
@@ -197,7 +174,6 @@ export function StitchAttentionCards({
     <section>
       <StitchSectionHeader
         title="Attention Needed"
-        explainerId="PULSE-003"
         trailing={items.length ? `View All (${items.length})` : undefined}
         onTrailing={onViewAll}
       />
@@ -254,7 +230,7 @@ export function StitchSignalsGrid({
   if (!items.length) return <TeamOpsEmptyLine label="No signals yet." />;
   return (
     <section>
-      <StitchSectionHeader title="Signals" explainerId="PULSE-004" />
+      <StitchSectionHeader title="Signals" />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {items.map((item, index) => (
           <div
@@ -287,17 +263,14 @@ export function StitchSignalsGrid({
 export function StitchActivityFeed({
   items,
   onViewAll,
-  onEditActivity,
 }: {
   items: TeamOpsEventItem[];
   onViewAll?: () => void;
-  onEditActivity?: (item: TeamOpsEventItem) => void;
 }) {
   return (
     <section>
       <StitchSectionHeader
         title="Recent Activity Feed"
-        explainerId="PULSE-005"
         trailing={items.length ? "View All Activity" : undefined}
         onTrailing={onViewAll}
       />
@@ -305,62 +278,31 @@ export function StitchActivityFeed({
         <TeamOpsEmptyLine label="No activity yet — use Action Center to record the first update." />
       ) : (
         <div className="space-y-3">
-          {items.slice(0, 8).map((item) => {
-            const editable = Boolean(item.is_editable && onEditActivity && item.event_id);
-            return (
+          {items.slice(0, 8).map((item) => (
+            <div key={item.event_id} className="flex items-center gap-3">
               <div
-                key={item.event_id}
-                role={editable ? "button" : undefined}
-                tabIndex={editable ? 0 : undefined}
-                className={`flex items-center gap-3 ${editable ? "cursor-pointer" : ""}`}
-                onClick={() => {
-                  if (editable) onEditActivity?.(item);
-                }}
-                onKeyDown={(e) => {
-                  if (!editable) return;
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onEditActivity?.(item);
-                  }
-                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
+                style={{ background: `${TEAM_OPS.primary}33`, color: TEAM_OPS.primary }}
               >
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-                  style={{ background: `${TEAM_OPS.primary}33`, color: TEAM_OPS.primary }}
-                >
-                  {(item.subtitle ?? item.title).slice(0, 2).toUpperCase()}
+                {(item.subtitle ?? item.title).slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs font-semibold" style={{ color: TEAM_OPS.onSurface }}>
+                    {item.title || item.action_type}
+                  </p>
+                  <span className="text-[10px]" style={{ color: TEAM_OPS.onVariant }}>
+                    {formatOccurredAt(item.occurred_at)}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-xs font-semibold" style={{ color: TEAM_OPS.onSurface }}>
-                      {item.title || item.action_type}
-                    </p>
-                    <span className="text-[10px]" style={{ color: TEAM_OPS.onVariant }}>
-                      {formatOccurredAt(item.occurred_at)}
-                    </span>
-                  </div>
-                  {item.subtitle ? (
-                    <p className="truncate text-[10px]" style={{ color: TEAM_OPS.onVariant }}>
-                      {item.subtitle}
-                    </p>
-                  ) : null}
-                </div>
-                {editable ? (
-                  <button
-                    type="button"
-                    className="inline-flex size-10 shrink-0 items-center justify-center border-0 bg-transparent"
-                    aria-label="Edit"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditActivity?.(item);
-                    }}
-                  >
-                    <span style={{ color: TEAM_OPS.onVariant, opacity: 0.85, fontSize: 18, lineHeight: 1 }}>⋯</span>
-                  </button>
+                {item.subtitle ? (
+                  <p className="truncate text-[10px]" style={{ color: TEAM_OPS.onVariant }}>
+                    {item.subtitle}
+                  </p>
                 ) : null}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </section>
@@ -376,19 +318,12 @@ export function StitchNextAction({
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-center gap-0.5">
-        <p
-          className="text-[11px] font-semibold uppercase tracking-wider opacity-80"
-          style={{ color: TEAM_OPS.onVariant }}
-        >
-          Recommended Next Action
-        </p>
-        <WidgetInfoButton
-          explainerId="PULSE-006"
-          momentTypeCode={MOMENT_TYPE}
-          domain="business"
-        />
-      </div>
+      <p
+        className="mb-3 text-[11px] font-semibold uppercase tracking-wider opacity-80"
+        style={{ color: TEAM_OPS.onVariant }}
+      >
+        Recommended Next Action
+      </p>
       {!item ? (
         <TeamOpsEmptyLine label="No recommended next step." />
       ) : (
@@ -454,16 +389,9 @@ export function StitchMomentsHero({
           👥
         </div>
         <div>
-          <div className="flex items-center gap-0.5">
-            <h2 className="text-xl font-bold" style={{ color: TEAM_OPS.onSurface }}>
-              {title}
-            </h2>
-            <WidgetInfoButton
-              explainerId="MOMENT-001"
-              momentTypeCode={MOMENT_TYPE}
-              domain="business"
-            />
-          </div>
+          <h2 className="text-xl font-bold" style={{ color: TEAM_OPS.onSurface }}>
+            {title}
+          </h2>
           <p className="text-[11px]" style={{ color: TEAM_OPS.onVariant }}>
             {activityCount} logged activities
           </p>
@@ -503,7 +431,6 @@ export function StitchTimelineSection({
     <section>
       <StitchSectionHeader
         title="Moment Timeline"
-        explainerId="MOMENT-002"
         trailing={items.length > 5 ? (expanded ? "Show Less" : "Show More") : undefined}
         onTrailing={items.length > 5 ? () => setExpanded((v) => !v) : undefined}
       />
@@ -550,19 +477,12 @@ export function StitchProgressSnapshot({ items }: { items: TeamOpsProgressMetric
   if (!items.length) return <TeamOpsEmptyLine label="Progress snapshot will appear after activity is logged." />;
   return (
     <section>
-      <div className="mb-3 flex items-center gap-0.5">
-        <p
-          className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: TEAM_OPS.onVariant }}
-        >
-          Progress Snapshot
-        </p>
-        <WidgetInfoButton
-          explainerId="MOMENT-003"
-          momentTypeCode={MOMENT_TYPE}
-          domain="business"
-        />
-      </div>
+      <p
+        className="mb-3 text-xs font-semibold uppercase tracking-widest"
+        style={{ color: TEAM_OPS.onVariant }}
+      >
+        Progress Snapshot
+      </p>
       <div className="grid grid-cols-2 gap-2">
         {items.map((metric) => (
           <div
@@ -598,7 +518,7 @@ export function StitchHighlights({ items }: { items: TeamOpsEventItem[] }) {
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: TEAM_OPS.primary }}>
         Recent Wins
       </p>
-      <StitchSectionHeader title="Recent Highlights" explainerId="MOMENT-004" />
+      <StitchSectionHeader title="Recent Highlights" />
       {!items.length ? (
         <TeamOpsEmptyLine label="Highlights appear as team activities are logged." />
       ) : (
@@ -645,16 +565,9 @@ export function StitchContinueManaging({ onQuickAdd }: { onQuickAdd?: () => void
         borderColor: `${TEAM_OPS.outline}33`,
       }}
     >
-      <div className="mb-1 flex items-center justify-center gap-0.5">
-        <h3 className="text-lg font-bold" style={{ color: TEAM_OPS.onSurface }}>
-          Continue Managing
-        </h3>
-        <WidgetInfoButton
-          explainerId="MOMENT-005"
-          momentTypeCode={MOMENT_TYPE}
-          domain="business"
-        />
-      </div>
+      <h3 className="mb-1 text-lg font-bold" style={{ color: TEAM_OPS.onSurface }}>
+        Continue Managing
+      </h3>
       <p className="mb-5 text-sm" style={{ color: TEAM_OPS.onVariant }}>
         Open your Team Operations workspace
       </p>

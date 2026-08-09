@@ -44,22 +44,14 @@ export function chipLabel(options: Array<{ value: string; label: string }>, valu
 }
 
 /** Schema forms store major units under amount field keys; convert to minor int for ActivityEngine. */
-export function schemaAmountToMinor(
-  raw: Record<string, unknown>,
-  amountKeys: string[] = ["amount_minor", "amount", "amount_paid_minor"],
-): Record<string, unknown> {
+export function schemaAmountToMinor(raw: Record<string, unknown>, amountKeys: string[] = ["amount_minor", "amount"]): Record<string, unknown> {
   const out = { ...raw };
   for (const key of amountKeys) {
     if (out[key] == null || out[key] === "") continue;
     if (typeof out[key] === "number" && Number.isInteger(out[key])) continue;
     const major = String(out[key]);
-    const minor = parseAmountMinor(major);
-    if (key === "amount") {
-      out.amount_minor = minor;
-      delete out.amount;
-    } else {
-      out[key] = minor;
-    }
+    out.amount_minor = parseAmountMinor(major);
+    if (key !== "amount_minor") delete out[key];
   }
   if (out.currency && !out.currency_code) {
     out.currency_code = out.currency;

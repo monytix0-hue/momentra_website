@@ -10,7 +10,6 @@ import {
   RunwayTimelineSection,
 } from "../shared/RunwayStitchComponents";
 import { RUNWAY } from "../shared/runwayTheme";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
   data: RunwayMomentsResponse | null;
@@ -34,7 +33,9 @@ export function BusinessRunwayMoments({
   if (loading && !data) {
     return (
       <RunwayScrollShell bottomPadding={bottomPadding}>
-        <LoadingIndicator label="Loading journey…" className="py-10" />
+        <p className="text-sm" style={{ color: RUNWAY.onVariant }}>
+          Loading journey…
+        </p>
       </RunwayScrollShell>
     );
   }

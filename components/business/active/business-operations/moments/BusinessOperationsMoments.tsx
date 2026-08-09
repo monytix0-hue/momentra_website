@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import type { OpsMomentsResponse, TeamOpsEventItem } from "@/lib/api/businessActive";
+import type { OpsMomentsResponse } from "@/lib/api/businessActive";
 import {
   OpsManageBar,
   OpsMilestonesSection,
@@ -9,12 +8,9 @@ import {
   OpsScrollShell,
   OpsTimelineSection,
 } from "../shared/OpsStitchComponents";
-import { VendorLedgerSheet } from "../shared/VendorLedgerSheet";
 import { OPS } from "../shared/opsTheme";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
-  momentId: string;
   data: OpsMomentsResponse | null;
   loading: boolean;
   refreshing?: boolean;
@@ -25,7 +21,6 @@ type Props = {
 };
 
 export function BusinessOperationsMoments({
-  momentId,
   data,
   loading,
   refreshing,
@@ -34,12 +29,12 @@ export function BusinessOperationsMoments({
   onRetry,
   onQuickAdd,
 }: Props) {
-  const [vendorName, setVendorName] = useState<string | null>(null);
-
   if (loading && !data) {
     return (
       <OpsScrollShell bottomPadding={bottomPadding}>
-        <LoadingIndicator label="Loading journey…" className="py-10" />
+        <p className="text-sm" style={{ color: OPS.onVariant }}>
+          Loading journey…
+        </p>
       </OpsScrollShell>
     );
   }
@@ -62,50 +57,33 @@ export function BusinessOperationsMoments({
   if (!data) return null;
 
   return (
-    <>
-      <OpsScrollShell bottomPadding={bottomPadding}>
-        {refreshing ? (
-          <p className="mb-2 text-xs" style={{ color: OPS.onVariant }}>
-            Updating…
-          </p>
-        ) : null}
-        <div className="flex flex-col gap-4">
-          <OpsMomentsHero data={data} onQuickAdd={onQuickAdd} />
-          <OpsTimelineSection title="Spend timeline" items={data.spend_timeline.items} emptyLabel="No spend yet" />
-          <OpsTimelineSection title="Approvals" items={data.approval_timeline.items} emptyLabel="No approvals yet" />
-          <OpsTimelineSection title="Issues" items={data.issue_timeline.items} emptyLabel="No issues yet" />
-          <OpsTimelineSection
-            title="Vendors"
-            items={data.vendor_timeline.items}
-            emptyLabel="No vendor updates yet"
-            onItemClick={(item: TeamOpsEventItem) => {
-              const name = item.title?.trim();
-              if (name) setVendorName(name);
-            }}
-          />
-          <OpsTimelineSection
-            title="Improvements"
-            items={data.improvement_timeline.items}
-            emptyLabel="No improvements yet"
-          />
-          <OpsMilestonesSection items={data.milestones.items} />
-          <OpsTimelineSection title="Key decisions" items={data.key_decisions.items} emptyLabel="No decisions yet" />
-          <OpsTimelineSection title="Moment Timeline" items={data.timeline.items} emptyLabel="No timeline events" explainerId="MOMENT-002" />
-          <OpsTimelineSection
-            title="Recent Highlights"
-            items={data.recent_activity.items}
-            emptyLabel="No recent activity"
-            explainerId="MOMENT-004"
-          />
-          <OpsManageBar onQuickAdd={onQuickAdd} />
-        </div>
-      </OpsScrollShell>
-      <VendorLedgerSheet
-        open={Boolean(vendorName)}
-        momentId={momentId}
-        vendorName={vendorName}
-        onClose={() => setVendorName(null)}
-      />
-    </>
+    <OpsScrollShell bottomPadding={bottomPadding}>
+      {refreshing ? (
+        <p className="mb-2 text-xs" style={{ color: OPS.onVariant }}>
+          Updating…
+        </p>
+      ) : null}
+      <div className="flex flex-col gap-4">
+        <OpsMomentsHero data={data} onQuickAdd={onQuickAdd} />
+        <OpsTimelineSection title="Spend timeline" items={data.spend_timeline.items} emptyLabel="No spend yet" />
+        <OpsTimelineSection title="Approvals" items={data.approval_timeline.items} emptyLabel="No approvals yet" />
+        <OpsTimelineSection title="Issues" items={data.issue_timeline.items} emptyLabel="No issues yet" />
+        <OpsTimelineSection title="Vendors" items={data.vendor_timeline.items} emptyLabel="No vendor updates yet" />
+        <OpsTimelineSection
+          title="Improvements"
+          items={data.improvement_timeline.items}
+          emptyLabel="No improvements yet"
+        />
+        <OpsMilestonesSection items={data.milestones.items} />
+        <OpsTimelineSection title="Key decisions" items={data.key_decisions.items} emptyLabel="No decisions yet" />
+        <OpsTimelineSection title="Moment Timeline" items={data.timeline.items} emptyLabel="No timeline events" />
+        <OpsTimelineSection
+          title="Recent Highlights"
+          items={data.recent_activity.items}
+          emptyLabel="No recent activity"
+        />
+        <OpsManageBar onQuickAdd={onQuickAdd} />
+      </div>
+    </OpsScrollShell>
   );
 }

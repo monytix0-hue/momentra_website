@@ -18,7 +18,6 @@ import {
   OpsVendorsCard,
 } from "../shared/OpsStitchComponents";
 import { OPS } from "../shared/opsTheme";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
   data: OpsPulseResponse | null;
@@ -29,7 +28,6 @@ type Props = {
   onRetry: () => void;
   onQuickAdd?: () => void;
   onViewActivity?: () => void;
-  onEditActivity?: (item: import("@/lib/api/businessActive").TeamOpsEventItem) => void;
 };
 
 export function BusinessOperationsPulse({
@@ -41,12 +39,13 @@ export function BusinessOperationsPulse({
   onRetry,
   onQuickAdd,
   onViewActivity,
-  onEditActivity,
 }: Props) {
   if (loading && !data) {
     return (
       <OpsScrollShell bottomPadding={bottomPadding}>
-        <LoadingIndicator label="Loading operations…" className="py-10" />
+        <p className="text-sm" style={{ color: OPS.onVariant }}>
+          Loading operations…
+        </p>
       </OpsScrollShell>
     );
   }
@@ -95,7 +94,7 @@ export function BusinessOperationsPulse({
         <OpsMonitoringCard data={data} />
         <OpsAttentionCards items={data.attention_items.items} onViewAll={onViewActivity} />
         <OpsSignalsGrid items={data.signals.items} />
-        <OpsActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} onEditActivity={onEditActivity} />
+        <OpsActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} />
         <OpsNextAction item={data.next_best_action.item} onQuickAdd={onQuickAdd} />
       </div>
     </OpsScrollShell>

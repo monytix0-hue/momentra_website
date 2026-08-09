@@ -26,7 +26,6 @@ import {
   useBusinessPulse,
 } from "@/hooks/useBusinessActiveTabs";
 import { BusinessActiveRepository } from "@/repositories/BusinessActiveRepository";
-import { TeamOperationsActivityEditSheet } from "@/components/business/active/team-operations/activity/TeamOperationsActivityEditSheet";
 
 type Tab = "pulse" | "moments" | "life" | "memory" | "activity";
 
@@ -63,12 +62,6 @@ export function TeamOperationsActiveTabs({
   });
   const [page, setPage] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(activityEventId);
-  const [editingActivity, setEditingActivity] = useState<{
-    eventId: string;
-    title: string;
-  } | null>(null);
-  const [editBusy, setEditBusy] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   const pulse = useBusinessPulse(momentId, tab === "pulse", reloadKey, userId);
   const moments = useBusinessMoments(momentId, tab === "moments", reloadKey, userId);
@@ -145,51 +138,17 @@ export function TeamOperationsActiveTabs({
 
   if (tab === "pulse") {
     return (
-      <>
-        <TeamOperationsPulse
-          data={pulseVm}
-          loading={pulse.loading}
-          refreshing={pulse.refreshing}
-          error={pulse.error}
-          bottomPadding={bottomPadding}
-          onRetry={() => void pulse.reload()}
-          onQuickAdd={onQuickAdd}
-          onViewActivity={() => onOpenActivity?.(null)}
-          onSelectActivity={(item) => onOpenActivity?.(item.event_id || null)}
-          onEditActivity={(item) => {
-            if (!item.is_editable || !item.event_id) return;
-            setEditError(null);
-            setEditingActivity({ eventId: item.event_id, title: item.title || "" });
-          }}
-        />
-        <TeamOperationsActivityEditSheet
-          open={Boolean(editingActivity)}
-          initialTitle={editingActivity?.title ?? ""}
-          busy={editBusy}
-          error={editError}
-          onClose={() => {
-            setEditingActivity(null);
-            setEditError(null);
-          }}
-          onSave={async (title) => {
-            if (!editingActivity) return;
-            setEditBusy(true);
-            setEditError(null);
-            try {
-              await BusinessActiveRepository.patchActivity(momentId, editingActivity.eventId, {
-                title,
-              });
-              setEditingActivity(null);
-              onChanged?.();
-              void pulse.reload();
-            } catch (e) {
-              setEditError(e instanceof Error ? e.message : "Update failed");
-            } finally {
-              setEditBusy(false);
-            }
-          }}
-        />
-      </>
+      <TeamOperationsPulse
+        data={pulseVm}
+        loading={pulse.loading}
+        refreshing={pulse.refreshing}
+        error={pulse.error}
+        bottomPadding={bottomPadding}
+        onRetry={() => void pulse.reload()}
+        onQuickAdd={onQuickAdd}
+        onViewActivity={() => onOpenActivity?.(null)}
+        onSelectActivity={(item) => onOpenActivity?.(item.event_id || null)}
+      />
     );
   }
 

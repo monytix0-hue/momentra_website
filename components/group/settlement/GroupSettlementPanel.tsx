@@ -11,7 +11,6 @@ import {
   type SettlementRecord,
 } from "@/lib/api/group";
 import { dedupeFetch } from "@/lib/cache/cacheStore";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type GroupSettlementPanelProps = {
   momentId: string;
@@ -79,10 +78,12 @@ export function GroupSettlementPanel({ momentId }: GroupSettlementPanelProps) {
   if (loading && !preview) {
     return (
       <div
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-4 text-sm"
         style={{ background: colors.surfaceContainer, color: colors.textSecondary }}
+        role="status"
+        aria-live="polite"
       >
-        <LoadingIndicator label="Loading settlements…" size="sm" />
+        Loading settlements…
       </div>
     );
   }
@@ -118,9 +119,6 @@ export function GroupSettlementPanel({ momentId }: GroupSettlementPanelProps) {
         </h4>
       </div>
       <p className="text-xs" style={{ color: colors.textSecondary }}>{preview.balance_insight}</p>
-      <p className="text-[11px]" style={{ color: colors.textSecondary }}>
-        Suggested transfers are debtor → creditor only (who owes whom). Mark settled confirms a transfer was completed.
-      </p>
 
       {preview.suggestions.length > 0 && (
         <div className="space-y-2">

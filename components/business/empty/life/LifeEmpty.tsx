@@ -123,37 +123,32 @@ export function LifeEmpty({ onCreateMoment, bottomPadding = 0 }: LifeEmptyProps)
         {/* How Business Life Works */}
         <section className="space-y-4">
           <h3 className="text-base font-semibold">{copy.howItWorks.sectionTitle}</h3>
-          <div className="-mx-1 overflow-x-auto pb-1 pt-2 [scrollbar-width:none] md:mx-0 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-            <div className="relative flex w-max min-w-full items-start justify-between gap-3 px-1 md:w-full md:gap-0 md:px-0">
-              <div className="absolute left-6 right-6 top-6 z-0 hidden items-center justify-between px-4 opacity-40 md:flex">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <ChevronRight key={i} className="size-4" style={{ color: colors.brandPrimary }} />
-                ))}
-              </div>
-              {copy.howItWorks.steps.map((step, i) => {
-                const Icon = stepIcons[i] ?? CalendarPlus;
-                return (
-                  <div
-                    key={step.label}
-                    className="relative z-10 flex w-[72px] shrink-0 flex-col items-center gap-2 md:w-1/5 md:shrink"
-                  >
-                    <div
-                      className="flex size-10 items-center justify-center rounded-lg border"
-                      style={{
-                        background: `${step.accent}30`,
-                        borderColor: `${step.accent}66`,
-                        color: step.accent,
-                      }}
-                    >
-                      <Icon className="size-5" />
-                    </div>
-                    <p className="whitespace-pre-line text-center text-[9px] font-medium leading-tight opacity-80">
-                      {step.label}
-                    </p>
-                  </div>
-                );
-              })}
+          <div className="relative flex items-start justify-between pt-2">
+            <div className="absolute left-6 right-6 top-6 z-0 flex items-center justify-between px-4 opacity-40">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <ChevronRight key={i} className="size-4" style={{ color: colors.brandPrimary }} />
+              ))}
             </div>
+            {copy.howItWorks.steps.map((step, i) => {
+              const Icon = stepIcons[i] ?? CalendarPlus;
+              return (
+                <div key={step.label} className="relative z-10 flex w-1/5 flex-col items-center gap-2">
+                  <div
+                    className="flex size-10 items-center justify-center rounded-lg border"
+                    style={{
+                      background: `${step.accent}30`,
+                      borderColor: `${step.accent}66`,
+                      color: step.accent,
+                    }}
+                  >
+                    <Icon className="size-5" />
+                  </div>
+                  <p className="whitespace-pre-line text-center text-[9px] font-medium leading-tight opacity-80">
+                    {step.label}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 

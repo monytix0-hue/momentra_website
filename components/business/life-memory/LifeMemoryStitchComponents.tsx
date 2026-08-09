@@ -18,7 +18,6 @@ import {
   TEAM_OPS,
 } from "@/components/business/active/team-operations/shared/teamOpsTheme";
 import { TeamOpsEmptyLine } from "@/components/business/active/team-operations/shared/shared";
-import { WidgetInfoButton } from "@/components/personal/shared/WidgetInfoButton";
 
 const JAKARTA = TEAM_OPS.fontBody;
 
@@ -78,13 +77,11 @@ export function LmNumberedHeader({
   title,
   trailing,
   onTrailing,
-  explainerId,
 }: {
   index: number;
   title: string;
   trailing?: string;
   onTrailing?: () => void;
-  explainerId?: string;
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-2">
@@ -95,17 +92,12 @@ export function LmNumberedHeader({
         >
           {index}
         </span>
-        <div className="flex min-w-0 items-center gap-0.5">
-          <h2
-            className="text-base font-bold tracking-tight"
-            style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}
-          >
-            {title}
-          </h2>
-          {explainerId ? (
-            <WidgetInfoButton explainerId={explainerId} domain="business" />
-          ) : null}
-        </div>
+        <h2
+          className="text-base font-bold tracking-tight"
+          style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}
+        >
+          {title}
+        </h2>
       </div>
       {trailing && onTrailing ? (
         <button
@@ -149,7 +141,7 @@ export function LmBandHero({
 
   return (
     <LmGlassCard glow>
-      <LmNumberedHeader index={1} title="Business Life Health" explainerId="LIFE-001" />
+      <LmNumberedHeader index={1} title="Business Life Health" />
       <div className="mb-4 flex flex-col items-center">
         <div className="relative mb-4 flex h-40 w-40 items-center justify-center">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160" aria-hidden>
@@ -432,17 +424,15 @@ export function LmQuickActions({
   sectionIndex,
   onQuickAdd,
   onCreateMoment,
-  explainerId = "LIFE-010",
 }: {
   sectionIndex: number;
   onQuickAdd?: () => void;
   onCreateMoment?: () => void;
-  explainerId?: string;
 }) {
   if (!onQuickAdd && !onCreateMoment) return null;
   return (
     <LmGlassCard>
-      <LmNumberedHeader index={sectionIndex} title="Quick actions" explainerId={explainerId} />
+      <LmNumberedHeader index={sectionIndex} title="Quick actions" />
       <div className="grid grid-cols-2 gap-3">
         {onCreateMoment ? (
           <button
@@ -770,13 +760,11 @@ export function LmEmptySection({
   title,
   emptyLabel,
   borderAccent,
-  explainerId,
 }: {
   index: number;
   title: string;
   emptyLabel: string;
   borderAccent?: string;
-  explainerId?: string;
 }) {
   return (
     <LmGlassCard
@@ -786,7 +774,7 @@ export function LmEmptySection({
           : undefined
       }
     >
-      <LmNumberedHeader index={index} title={title} explainerId={explainerId} />
+      <LmNumberedHeader index={index} title={title} />
       <TeamOpsEmptyLine label={emptyLabel} />
     </LmGlassCard>
   );
@@ -798,7 +786,6 @@ export function LmConnectionsSection({ sectionIndex }: { sectionIndex: number })
       index={sectionIndex}
       title="Connections & Influence"
       emptyLabel="No connection signals yet."
-      explainerId="LIFE-002"
     />
   );
 }
@@ -813,7 +800,7 @@ export function LmDriftAlertSection({
 }) {
   return (
     <LmGlassCard style={{ borderLeft: `4px solid ${TEAM_OPS.tertiary}` }}>
-      <LmNumberedHeader index={sectionIndex} title="Business Drift Alert" explainerId="LIFE-003" />
+      <LmNumberedHeader index={sectionIndex} title="Business Drift Alert" />
       {signals.length === 0 ? (
         <TeamOpsEmptyLine label="No drift signals yet." />
       ) : (
@@ -885,7 +872,6 @@ export function LmLeverageSection({
         index={sectionIndex}
         title="Highest Business Leverage"
         emptyLabel="No leverage signal yet."
-        explainerId="LIFE-004"
       />
     );
   }
@@ -897,7 +883,7 @@ export function LmLeverageSection({
         borderColor: "rgba(99, 102, 241, 0.3)",
       }}
     >
-      <LmNumberedHeader index={sectionIndex} title="Highest Business Leverage" explainerId="LIFE-004" />
+      <LmNumberedHeader index={sectionIndex} title="Highest Business Leverage" />
       <div className="mb-3">
         <h3 className="text-lg font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
           {best.label}
@@ -933,7 +919,7 @@ export function LmTrendsSection({
   const rows = dimensions.filter((d) => d.band && d.band !== "empty").slice(0, 6);
   return (
     <LmGlassCard>
-      <LmNumberedHeader index={sectionIndex} title="Trends" explainerId="LIFE-005" />
+      <LmNumberedHeader index={sectionIndex} title="Trends" />
       {rows.length === 0 ? (
         <TeamOpsEmptyLine label="No trend signals yet." />
       ) : (
@@ -963,7 +949,6 @@ export function LmDrivesGrowthSection({ sectionIndex }: { sectionIndex: number }
       index={sectionIndex}
       title="Drives Growth"
       emptyLabel="No growth correlations yet."
-      explainerId="LIFE-006"
     />
   );
 }
@@ -974,7 +959,6 @@ export function LmMonthlyChangesSection({ sectionIndex }: { sectionIndex: number
       index={sectionIndex}
       title="What Changed This Month?"
       emptyLabel="No monthly changes yet."
-      explainerId="LIFE-007"
     />
   );
 }
@@ -984,18 +968,14 @@ export function LmJourneySection({
   items,
   sectionIndex,
   title = "Business Journey",
-  explainerId,
 }: {
   items: Array<BusinessMemoryJourneyItem | { kind?: string; title: string; occurred_at?: string | null }>;
   sectionIndex: number;
   title?: string;
-  explainerId?: string;
 }) {
-  const resolvedExplainerId =
-    explainerId ?? (title === "Business Journey" ? "LIFE-008" : undefined);
   return (
     <LmGlassCard>
-      <LmNumberedHeader index={sectionIndex} title={title} explainerId={resolvedExplainerId} />
+      <LmNumberedHeader index={sectionIndex} title={title} />
       {items.length === 0 ? (
         <TeamOpsEmptyLine label="No journey milestones yet." />
       ) : (
@@ -1086,7 +1066,7 @@ export function LmMemoryStrengthHero({
 
   return (
     <LmGlassCard glow>
-      <LmNumberedHeader index={1} title="Business Memory Strength" explainerId="MEMORY-001" />
+      <LmNumberedHeader index={1} title="Business Memory Strength" />
       <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-2">
         <div className="space-y-4">
           <div className="flex items-baseline gap-2">
@@ -1229,7 +1209,6 @@ export function LmBiggestLearningSection({
         index={sectionIndex}
         title="Biggest Learning"
         emptyLabel="No learning derived yet."
-        explainerId="MEMORY-003"
       />
     );
   }
@@ -1242,7 +1221,7 @@ export function LmBiggestLearningSection({
       >
         ✦
       </div>
-      <LmNumberedHeader index={sectionIndex} title="Biggest Learning" explainerId="MEMORY-003" />
+      <LmNumberedHeader index={sectionIndex} title="Biggest Learning" />
       <p className="relative z-10 max-w-[85%] text-base font-semibold leading-snug" style={{ color: TEAM_OPS.onSurface }}>
         {item.title}
       </p>
@@ -1301,7 +1280,6 @@ export function LmPatternNetworkSection({
         index={sectionIndex}
         title="Pattern Network"
         emptyLabel="No patterns detected yet."
-        explainerId="MEMORY-002"
       />
     );
   }
@@ -1312,7 +1290,7 @@ export function LmPatternNetworkSection({
 
   return (
     <LmGlassCard>
-      <LmNumberedHeader index={sectionIndex} title="Pattern Network" explainerId="MEMORY-002" />
+      <LmNumberedHeader index={sectionIndex} title="Pattern Network" />
       <div className="flex flex-wrap items-center justify-center gap-2 py-2">
         {labels.map((label, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -1356,12 +1334,9 @@ export function LmPlaybookSection({
           >
             {sectionIndex}
           </span>
-          <div className="flex items-center gap-0.5">
-            <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
-              Business Playbook
-            </h3>
-            <WidgetInfoButton explainerId="MEMORY-004" domain="business" />
-          </div>
+          <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+            Business Playbook
+          </h3>
         </div>
         <div
           className="rounded-2xl border-l-4 p-4"
@@ -1386,7 +1361,7 @@ export function LmPlaybookSection({
   }
   return (
     <LmGlassCard style={{ borderLeft: `4px solid ${TEAM_OPS.primary}` }}>
-      <LmNumberedHeader index={sectionIndex} title="Business Playbook" explainerId="MEMORY-004" />
+      <LmNumberedHeader index={sectionIndex} title="Business Playbook" />
       <div className="space-y-3">
         {list.map((raw, i) => {
           const p = raw as {
@@ -1436,7 +1411,6 @@ export function LmSuccessMemorySection({
         index={sectionIndex}
         title="Success Memory"
         emptyLabel="No success memory yet."
-        explainerId="MEMORY-005"
       />
     );
   }
@@ -1449,12 +1423,9 @@ export function LmSuccessMemorySection({
         >
           {sectionIndex}
         </span>
-        <div className="flex items-center gap-0.5">
-          <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
-            Success Memory
-          </h3>
-          <WidgetInfoButton explainerId="MEMORY-005" domain="business" />
-        </div>
+        <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+          Success Memory
+        </h3>
       </div>
       <div className="space-y-2">
         {items.map((item, i) => (
@@ -1499,7 +1470,6 @@ export function LmRiskMemorySection({
         index={sectionIndex}
         title="Risk Memory"
         emptyLabel="No risk memory yet."
-        explainerId="MEMORY-006"
       />
     );
   }
@@ -1512,12 +1482,9 @@ export function LmRiskMemorySection({
         >
           {sectionIndex}
         </span>
-        <div className="flex items-center gap-0.5">
-          <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
-            Risk Memory
-          </h3>
-          <WidgetInfoButton explainerId="MEMORY-006" domain="business" />
-        </div>
+        <h3 className="text-sm font-bold" style={{ color: TEAM_OPS.onSurface, fontFamily: JAKARTA }}>
+          Risk Memory
+        </h3>
       </div>
       <div className="space-y-2">
         {items.map((item, i) => (
@@ -1562,7 +1529,6 @@ export function LmWisdomSection({ sectionIndex }: { sectionIndex: number }) {
       index={sectionIndex}
       title="Business Wisdom"
       emptyLabel="No wisdom captured yet."
-      explainerId="MEMORY-007"
     />
   );
 }

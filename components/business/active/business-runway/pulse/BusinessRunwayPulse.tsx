@@ -11,7 +11,6 @@ import {
   RunwaySignalsGrid,
 } from "../shared/RunwayStitchComponents";
 import { RUNWAY } from "../shared/runwayTheme";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 type Props = {
   data: RunwayPulseResponse | null;
@@ -22,7 +21,6 @@ type Props = {
   onRetry: () => void;
   onQuickAdd?: () => void;
   onViewActivity?: () => void;
-  onEditActivity?: (item: TeamOpsEventItem) => void;
 };
 
 export function BusinessRunwayPulse({
@@ -34,12 +32,13 @@ export function BusinessRunwayPulse({
   onRetry,
   onQuickAdd,
   onViewActivity,
-  onEditActivity,
 }: Props) {
   if (loading && !data) {
     return (
       <RunwayScrollShell bottomPadding={bottomPadding}>
-        <LoadingIndicator label="Loading runway…" className="py-10" />
+        <p className="text-sm" style={{ color: RUNWAY.onVariant }}>
+          Loading runway…
+        </p>
       </RunwayScrollShell>
     );
   }
@@ -81,7 +80,7 @@ export function BusinessRunwayPulse({
         <RunwayKpiGrid data={data} />
         <RunwayAttentionCards items={data.attention_items.items} onViewAll={onViewActivity} />
         <RunwaySignalsGrid items={data.signals.items} />
-        <RunwayActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} onEditActivity={onEditActivity} />
+        <RunwayActivityFeed items={data.recent_activity.items} onViewAll={onViewActivity} />
         <RunwayNextAction item={data.next_best_action.item} onQuickAdd={onQuickAdd} />
       </div>
     </RunwayScrollShell>

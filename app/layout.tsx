@@ -13,7 +13,6 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.momentra.tech"),
   title: {
     default: "Momentra — Life Happens in Moments",
     template: "%s — Momentra",
@@ -33,36 +32,7 @@ export const metadata: Metadata = {
     "Group planning app",
   ],
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://www.momentra.tech",
-    siteName: "Momentra",
-    title: "Momentra — Life Happens in Moments",
-    description:
-      "Momentra is a moment-centric platform for organizing personal, group, and business moments—bringing people, plans, money, progress, and memory together.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Momentra — Life Happens in Moments",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Momentra — Life Happens in Moments",
-    description:
-      "Momentra is a moment-centric platform for organizing personal, group, and business moments—bringing people, plans, money, progress, and memory together.",
-    images: ["/og-image.png"],
+    icon: "/favicon.svg",
   },
 };
 

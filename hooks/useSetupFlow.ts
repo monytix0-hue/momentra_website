@@ -7,7 +7,6 @@ import type {
   PersonalSetupPreview,
   PersonalSetupResponse,
 } from "@/lib/api/personal";
-import { diskCacheLoad, diskCacheRemove, diskCacheSave } from "@/lib/cache/cacheStore";
 import {
   enrichAnswersWithTemplateMeta,
   mergeSetupWithTemplate,
@@ -19,17 +18,6 @@ import { TEMPLATE_META_KEYS } from "@/lib/setup/templates/types";
 import { SetupRepository } from "@/repositories/SetupRepository";
 
 export type SetupFlowSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-
-export type UseSetupFlowOptions = {
-  /** From createDraft seed — skip GET /setup on first paint for this moment. */
-  initialSetup?: PersonalSetupResponse | null;
-};
-
-const SETUP_DISK_TTL_MS = 1000 * 60 * 60 * 24; // 24h resume cache
-
-function setupDiskKey(momentId: string): string {
-  return `group_setup_${momentId}`;
-}
 
 function parseSavedAnswers(
   saved: PersonalSetupAnswers | null | undefined,
@@ -47,18 +35,13 @@ function stripTemplateMeta(answers: PersonalSetupAnswers): PersonalSetupAnswers 
 /**
  * Shared setup ViewModel hook — setup UI must use this, never API client directly.
  * Draft autosave is debounced. Preview is on-demand (Review) only — never on keystroke.
- * Create seed / resume disk paint skip blocking GET (Business parity).
  */
-export function useSetupFlow(momentId: string | null, options?: UseSetupFlowOptions) {
-  const initialSetup = options?.initialSetup ?? null;
-  const seed =
-    initialSetup && momentId && initialSetup.moment_id === momentId ? initialSetup : null;
-
+export function useSetupFlow(momentId: string | null) {
   const [setup, setSetup] = useState<PersonalSetupResponse | null>(null);
   const [template, setTemplate] = useState<MomentSetupTemplate | null>(null);
   const [preview, setPreview] = useState<PersonalSetupPreview | null>(null);
   const [answers, setAnswers] = useState<PersonalSetupAnswers>({});
-  const [loading, setLoading] = useState(() => Boolean(momentId) && !seed);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SetupFlowSaveState>("idle");
@@ -66,88 +49,44 @@ export function useSetupFlow(momentId: string | null, options?: UseSetupFlowOpti
   const pendingAnswersRef = useRef<PersonalSetupAnswers | null>(null);
   const templateRef = useRef<MomentSetupTemplate | null>(null);
   const loadedMomentIdRef = useRef<string | null>(null);
-  const requestSeq = useRef(0);
-  const seededRef = useRef(false);
 
-  const applySetup = useCallback((response: PersonalSetupResponse) => {
-    const resolvedTemplate = resolveTemplateForSetup(response);
-    const merged = mergeSetupWithTemplate(response, resolvedTemplate);
-    const saved = parseSavedAnswers(merged.saved_answers);
-    templateRef.current = resolvedTemplate;
-    loadedMomentIdRef.current = merged.moment_id;
-    setTemplate(resolvedTemplate);
-    setSetup(merged);
-    setAnswers(stripTemplateMeta(saved));
-    setPreview(null);
-    setLoading(false);
-    diskCacheSave(setupDiskKey(merged.moment_id), merged);
+  const load = useCallback(async (id: string, force = false) => {
+    if (!force && loadedMomentIdRef.current === id) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await SetupRepository.getSetupState(id);
+      const resolvedTemplate = resolveTemplateForSetup(response);
+      const merged = mergeSetupWithTemplate(response, resolvedTemplate);
+      const saved = parseSavedAnswers(merged.saved_answers);
+      templateRef.current = resolvedTemplate;
+      loadedMomentIdRef.current = id;
+      setTemplate(resolvedTemplate);
+      setSetup(merged);
+      setAnswers(stripTemplateMeta(saved));
+      setPreview(null);
+      setLoading(false);
+    } catch (err) {
+      loadedMomentIdRef.current = null;
+      setError(err instanceof ApiError ? err.message : "Failed to load setup");
+      setLoading(false);
+    }
   }, []);
-
-  const load = useCallback(
-    async (id: string, force = false) => {
-      if (!force && loadedMomentIdRef.current === id) {
-        return;
-      }
-      if (!force && seed && seed.moment_id === id) {
-        applySetup(seed);
-        seededRef.current = true;
-        return;
-      }
-
-      const cached =
-        !force && !seededRef.current
-          ? diskCacheLoad<PersonalSetupResponse>(setupDiskKey(id), SETUP_DISK_TTL_MS)
-          : null;
-      if (cached && cached.moment_id === id) {
-        applySetup(cached);
-        const seq = ++requestSeq.current;
-        try {
-          const response = await SetupRepository.getSetupState(id);
-          if (seq !== requestSeq.current) return;
-          applySetup(response);
-        } catch {
-          /* keep painted cache */
-        }
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      const seq = ++requestSeq.current;
-      try {
-        const response = await SetupRepository.getSetupState(id);
-        if (seq !== requestSeq.current) return;
-        applySetup(response);
-      } catch (err) {
-        if (seq !== requestSeq.current) return;
-        loadedMomentIdRef.current = null;
-        setError(err instanceof ApiError ? err.message : "Failed to load setup");
-        setLoading(false);
-      }
-    },
-    [applySetup, seed],
-  );
 
   useEffect(() => {
     if (!momentId) {
       loadedMomentIdRef.current = null;
-      seededRef.current = false;
       setSetup(null);
       setTemplate(null);
       setPreview(null);
       setAnswers({});
       templateRef.current = null;
-      setLoading(false);
       return;
     }
-    if (seed && seed.moment_id === momentId) {
-      seededRef.current = true;
-      applySetup(seed);
-      return;
-    }
-    seededRef.current = false;
     void load(momentId);
-  }, [momentId, seed, load, applySetup]);
+  }, [momentId, load]);
 
   useEffect(() => {
     return () => {
@@ -161,13 +100,9 @@ export function useSetupFlow(momentId: string | null, options?: UseSetupFlowOpti
       const payload = enrichAnswersWithTemplateMeta(nextAnswers, templateRef.current);
       setSaveStatus("saving");
       try {
-        const saved = await SetupRepository.saveDraft(momentId, payload);
+        await SetupRepository.saveDraft(momentId, payload);
         pendingAnswersRef.current = null;
         setSaveStatus("saved");
-        diskCacheSave(setupDiskKey(momentId), {
-          ...saved,
-          saved_answers: nextAnswers,
-        });
         return true;
       } catch {
         setSaveStatus("error");
@@ -253,7 +188,6 @@ export function useSetupFlow(momentId: string | null, options?: UseSetupFlowOpti
       await flushPendingSave();
       const payload = enrichAnswersWithTemplateMeta(answers, templateRef.current);
       await SetupRepository.activate(momentId, payload);
-      diskCacheRemove(setupDiskKey(momentId));
       setSubmitting(false);
       return true;
     } catch (err) {

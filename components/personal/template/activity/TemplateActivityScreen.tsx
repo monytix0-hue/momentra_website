@@ -24,7 +24,6 @@ import {
   ArrowLeft,
   Heart,
   Leaf,
-  MoreHorizontal,
   Rocket,
   Search,
   Sparkles,
@@ -151,80 +150,68 @@ function TimelineRow({
         ) : null}
       </div>
       <div className={`min-w-0 flex-1 ${isLast ? "pb-2" : "pb-4"}`}>
-        <div className="flex items-start gap-1">
-          <button
-            type="button"
-            onClick={onToggle}
-            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left"
-            aria-expanded={expanded}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl"
-                style={{
-                  background: `linear-gradient(160deg, ${domainColor}55 0%, ${domainColor}18 100%)`,
-                  boxShadow: `inset 0 0 0 1px ${domainColor}33`,
-                }}
-                aria-hidden
-              >
-                <Icon size={18} color={domainColor} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p
-                    className="min-w-0 truncate"
-                    style={{ fontSize: 14, fontWeight: 700, color: colors.textPrimary }}
-                  >
-                    {title}
-                  </p>
-                  {metric ? (
-                    <span className="shrink-0" style={{ fontSize: 14, fontWeight: 700 }}>
-                      {metric}
-                    </span>
-                  ) : null}
-                </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full border-0 bg-transparent p-0 text-left"
+          aria-expanded={expanded}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl"
+              style={{
+                background: `linear-gradient(160deg, ${domainColor}55 0%, ${domainColor}18 100%)`,
+                boxShadow: `inset 0 0 0 1px ${domainColor}33`,
+              }}
+              aria-hidden
+            >
+              <Icon size={18} color={domainColor} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
                 <p
-                  className="mt-0.5 truncate"
-                  style={{ fontSize: 12, color: colors.textSecondary, opacity: 0.75 }}
+                  className="min-w-0 truncate"
+                  style={{ fontSize: 14, fontWeight: 700, color: colors.textPrimary }}
                 >
-                  {context}
+                  {title}
                 </p>
-                <div className="mt-0.5 flex items-center justify-between gap-3">
-                  <p
-                    className="min-w-0 truncate"
-                    style={{ fontSize: 12, color: colors.textSecondary, opacity: 0.7 }}
-                  >
-                    {mood ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className="inline-block size-1.5 rounded-full"
-                          style={{ background: moodDotColor(mood) }}
-                          aria-hidden
-                        />
-                        {mood}
-                      </span>
-                    ) : (
-                      "\u00A0"
-                    )}
-                  </p>
-                  <span style={{ fontSize: 11, opacity: 0.45 }}>
-                    {formatRelativeTime(item.occurred_at)}
+                {metric ? (
+                  <span className="shrink-0" style={{ fontSize: 14, fontWeight: 700 }}>
+                    {metric}
                   </span>
-                </div>
+                ) : null}
+              </div>
+              <p
+                className="mt-0.5 truncate"
+                style={{ fontSize: 12, color: colors.textSecondary, opacity: 0.75 }}
+              >
+                {context}
+              </p>
+              <div className="mt-0.5 flex items-center justify-between gap-3">
+                <p
+                  className="min-w-0 truncate"
+                  style={{ fontSize: 12, color: colors.textSecondary, opacity: 0.7 }}
+                >
+                  {mood ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-block size-1.5 rounded-full"
+                        style={{ background: moodDotColor(mood) }}
+                        aria-hidden
+                      />
+                      {mood}
+                    </span>
+                  ) : (
+                    "\u00A0"
+                  )}
+                </p>
+                <span style={{ fontSize: 11, opacity: 0.45 }}>
+                  {formatRelativeTime(item.occurred_at)}
+                </span>
               </div>
             </div>
-          </button>
-          {editable ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex size-10 shrink-0 items-center justify-center border-0 bg-transparent"
-              aria-label={`Edit ${title}`}
-            >
-              <MoreHorizontal size={18} color={colors.textSecondary} style={{ opacity: 0.85 }} />
-            </button>
-          ) : null}
-        </div>
+          </div>
+        </button>
 
         <div
           className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
@@ -250,6 +237,16 @@ function TimelineRow({
               <p style={{ fontSize: 12, opacity: 0.7 }}>
                 <span style={{ opacity: 0.55 }}>Mood</span> · {mood}
               </p>
+            ) : null}
+            {editable ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="mt-1 text-xs font-bold underline"
+                style={{ color: colors.brandPrimary, background: "none", border: "none", padding: 0 }}
+              >
+                Edit
+              </button>
             ) : null}
           </div>
         </div>

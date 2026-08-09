@@ -3,7 +3,6 @@
 export type RecentActivityMood = {
   code?: string | null;
   label?: string | null;
-  emoji?: string | null;
   intensity?: string | null;
   source?: string | null;
 };
@@ -27,10 +26,7 @@ export type RecentActivityDisplayFields = {
   category_label?: string | null;
   subcategory_label?: string | null;
   mood_label?: string | null;
-  mood_emoji?: string | null;
   mood?: RecentActivityMood | null;
-  place?: string | null;
-  with_whom?: string | null;
   amount_label?: string | null;
   impact_label?: string | null;
   domain_label?: string | null;
@@ -139,23 +135,6 @@ export function recentActivityMoodLabel(item: RecentActivityDisplayFields): stri
   }
   const legacy = (item.mood_label ?? "").trim();
   return legacy || null;
-}
-
-export function recentActivityMoodEmoji(item: RecentActivityDisplayFields): string | null {
-  const fromObj = (item.mood?.emoji ?? "").trim();
-  if (fromObj) return fromObj;
-  const legacy = (item.mood_emoji ?? "").trim();
-  return legacy || null;
-}
-
-/** "at <place>" / "with <who>" — only rendered when the backend has evidence. */
-export function recentActivityPlaceLine(item: RecentActivityDisplayFields): string | null {
-  const place = (item.place ?? "").trim();
-  const withWhom = (item.with_whom ?? "").trim();
-  if (place && withWhom) return `${place} · ${withWhom}`;
-  if (place) return place;
-  if (withWhom) return withWhom;
-  return null;
 }
 
 export function recentActivityMoodTone(

@@ -43,3 +43,9 @@ next-env.d.ts
 
 # Book source archive (extracted PNGs live under public/books/)
 /public/books/*.zip
+
+# Cloudflare / OpenNext
+.wrangler/
+.open-next/
+.dev.vars
+

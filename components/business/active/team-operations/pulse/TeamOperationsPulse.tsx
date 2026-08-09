@@ -33,7 +33,6 @@ type Props = {
   onQuickAdd?: () => void;
   onViewActivity?: () => void;
   onSelectActivity?: (item: TeamOpsEventItem) => void;
-  onEditActivity?: (item: TeamOpsEventItem) => void;
 };
 
 export function TeamOperationsPulse({
@@ -46,7 +45,6 @@ export function TeamOperationsPulse({
   onRetry,
   onQuickAdd,
   onViewActivity,
-  onEditActivity,
 }: Props) {
   const reduced = useReducedMotion();
   const skipEnter = hasAnimatedOnce(motionKey);
@@ -111,7 +109,6 @@ export function TeamOperationsPulse({
           <StitchActivityFeed
             items={data.recent_activity.items}
             onViewAll={onViewActivity}
-            onEditActivity={onEditActivity}
           />
         </motion.div>
         <motion.div variants={card}>

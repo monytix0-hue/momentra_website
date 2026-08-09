@@ -5,147 +5,93 @@ import type { ComponentType } from "react";
 import type {
   BusinessCatalogAction,
   BusinessCatalogMember,
-  BusinessCatalogVendor,
   BusinessRendererMeta,
 } from "@/repositories/BusinessActionRepository";
-import { SchemaDrivenRenderer } from "@/components/business/actioncenter/renderers/SchemaDrivenRenderer";
-import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 export type BusinessActionRendererProps = {
   action: BusinessCatalogAction;
   momentId: string;
   templateId: string;
   members: BusinessCatalogMember[];
-  vendors?: BusinessCatalogVendor[];
   rendererMeta: BusinessRendererMeta | null;
-  onSubmit: (payload: Record<string, unknown>) => Promise<unknown>;
+  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
   onClose: () => void;
-  onSuccess?: (result?: {
-    action_type: string;
-    title: string;
-    mutationResponse?: unknown;
-  }) => void;
+  onSuccess?: (result?: { action_type: string; title: string }) => void;
   onSwitchAction?: (actionId: string) => void;
-  /** Company / moment name shown as plain text on the form (not a chip). */
-  contextLine?: string | null;
 };
 
 const loading = () => (
-  <LoadingIndicator label="Loading…" className="py-10" size="sm" />
+  <div className="py-10 text-center text-sm opacity-70" role="status">
+    Loading action…
+  </div>
 );
 
-const lazy = <T extends ComponentType<BusinessActionRendererProps>>(
-  factory: () => Promise<{ default: T }>,
-) => dynamic(factory, { loading, ssr: false });
-
-function SchemaFallback(props: BusinessActionRendererProps) {
-  if (!props.rendererMeta) {
-    return <LoadingIndicator label="Loading form…" className="py-8" size="sm" />;
-  }
-  const amountField = props.rendererMeta.fields.find((f) => f.field_type === "amount");
-  return (
-    <SchemaDrivenRenderer
-      {...props}
-      rendererMeta={props.rendererMeta}
-      titleKey={
-        props.rendererMeta.fields.some((f) => f.key === "title")
-          ? "title"
-          : props.rendererMeta.fields.find((f) => f.field_type === "text")?.key
-      }
-      amountKey={amountField?.key}
-    />
-  );
+function lazy(loader: () => Promise<{ default: ComponentType<BusinessActionRendererProps> }>) {
+  return dynamic(loader, { loading, ssr: false });
 }
 
-export const BUSINESS_RENDERER_REGISTRY: Record<
-  string,
-  ComponentType<BusinessActionRendererProps>
-> = {
-  "schema.generic": SchemaFallback,
-
-  "team_ops.team_update": SchemaFallback,
-  "team_ops.recognition": SchemaFallback,
+export const BUSINESS_RENDERER_REGISTRY: Record<string, ComponentType<BusinessActionRendererProps>> = {
+  "team_ops.team_update": lazy(() =>
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.TeamUpdateRenderer })),
+  ),
+  "team_ops.recognition": lazy(() =>
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.RecognitionRenderer })),
+  ),
   "team_ops.meeting": lazy(() =>
-    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({
-      default: m.MeetingRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.MeetingRenderer })),
   ),
   "team_ops.issue": lazy(() =>
-    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({
-      default: m.IssueRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.IssueRenderer })),
   ),
   "team_ops.approval": lazy(() =>
-    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({
-      default: m.ApprovalRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.ApprovalRenderer })),
   ),
-  "team_ops.review": SchemaFallback,
+  "team_ops.review": lazy(() =>
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.ReviewRenderer })),
+  ),
   "team_ops.escalation": lazy(() =>
-    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({
-      default: m.EscalationRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.EscalationRenderer })),
   ),
-  "team_ops.participation": SchemaFallback,
+  "team_ops.participation": lazy(() =>
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.ParticipationRenderer })),
+  ),
   "team_ops.member_update": lazy(() =>
-    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({
-      default: m.MemberUpdateRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.MemberUpdateRenderer })),
   ),
-  "team_ops.note": SchemaFallback,
+  "team_ops.note": lazy(() =>
+    import("@/components/business/actioncenter/renderers/team_ops").then((m) => ({ default: m.NoteRenderer })),
+  ),
 
   "runway.cash_inflow": lazy(() =>
-    import("@/components/business/actioncenter/renderers/runway").then((m) => ({
-      default: m.CashInflowRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/runway").then((m) => ({ default: m.CashInflowRenderer })),
   ),
   "runway.expense_burn": lazy(() =>
-    import("@/components/business/actioncenter/renderers/runway").then((m) => ({
-      default: m.ExpenseBurnRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/runway").then((m) => ({ default: m.ExpenseBurnRenderer })),
   ),
   "runway.runway_risk": lazy(() =>
-    import("@/components/business/actioncenter/renderers/runway").then((m) => ({
-      default: m.RunwayRiskRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/runway").then((m) => ({ default: m.RunwayRiskRenderer })),
   ),
   "runway.financial_update": lazy(() =>
-    import("@/components/business/actioncenter/renderers/runway").then((m) => ({
-      default: m.FinancialUpdateRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/runway").then((m) => ({ default: m.FinancialUpdateRenderer })),
   ),
   "runway.strategic_decision": lazy(() =>
-    import("@/components/business/actioncenter/renderers/runway").then((m) => ({
-      default: m.StrategicDecisionRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/runway").then((m) => ({ default: m.StrategicDecisionRenderer })),
   ),
 
-  // Spend uses catalog schema (vendor picker + payment fields) — same as frontend.
-  "ops.spend_entry": SchemaFallback,
+  "ops.spend_entry": lazy(() =>
+    import("@/components/business/actioncenter/renderers/ops").then((m) => ({ default: m.SpendEntryRenderer })),
+  ),
   "ops.vendor_update": lazy(() =>
-    import("@/components/business/actioncenter/renderers/ops").then((m) => ({
-      default: m.VendorUpdateRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/ops").then((m) => ({ default: m.VendorUpdateRenderer })),
   ),
   "ops.approval": lazy(() =>
-    import("@/components/business/actioncenter/renderers/ops").then((m) => ({
-      default: m.OpsApprovalRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/ops").then((m) => ({ default: m.OpsApprovalRenderer })),
   ),
   "ops.issue": lazy(() =>
-    import("@/components/business/actioncenter/renderers/ops").then((m) => ({
-      default: m.OpsIssueRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/ops").then((m) => ({ default: m.OpsIssueRenderer })),
   ),
   "ops.operational_improvement": lazy(() =>
-    import("@/components/business/actioncenter/renderers/ops").then((m) => ({
-      default: m.OperationalImprovementRenderer,
-    })),
-  ),
-  "ops.general_update": lazy(() =>
-    import("@/components/business/actioncenter/renderers/ops").then((m) => ({
-      default: m.OpsGeneralUpdateRenderer,
-    })),
+    import("@/components/business/actioncenter/renderers/ops").then((m) => ({ default: m.OperationalImprovementRenderer })),
   ),
 };
 
@@ -154,6 +100,6 @@ export const ALL_BUSINESS_RENDERER_IDS = Object.keys(BUSINESS_RENDERER_REGISTRY)
 export function resolveBusinessActionRenderer(
   rendererId: string | undefined,
 ): ComponentType<BusinessActionRendererProps> | null {
-  if (!rendererId) return SchemaFallback;
-  return BUSINESS_RENDERER_REGISTRY[rendererId] ?? SchemaFallback;
+  if (!rendererId) return null;
+  return BUSINESS_RENDERER_REGISTRY[rendererId] ?? null;
 }

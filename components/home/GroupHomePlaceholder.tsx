@@ -39,8 +39,6 @@ import { ContextBottomNav } from "@/components/nav/ContextBottomNav";
 import { MomentManageSheet } from "@/components/shared/MomentManageSheet";
 
 import { useThemeTokens } from "@/components/theme/AppContextProvider";
-import { toast } from "@/lib/toast/momentraToastStore";
-import { groupActivationSuccessMessage } from "@/lib/toast/activationToastCopy";
 
 import type { BottomNavTabId } from "@/lib/bottomNavTabs";
 
@@ -591,8 +589,6 @@ export function GroupHomePlaceholder({ title: _title }: GroupHomePlaceholderProp
       setSelectedTab("pulse");
 
       invalidateGroupTabCaches(activatedId);
-
-      toast.success(groupActivationSuccessMessage(activatedType));
 
     }
 

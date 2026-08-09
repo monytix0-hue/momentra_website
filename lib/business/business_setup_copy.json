@@ -214,9 +214,9 @@
     "invite_methods": [
       { "value": "EMAIL", "label": "Email" },
       { "value": "WHATSAPP", "label": "WhatsApp" },
-      { "value": "LINK", "label": "Share link" },
+      { "value": "COPY_LINK", "label": "Share link" },
       { "value": "QR", "label": "QR code" },
-      { "value": "MESSAGE", "label": "Message" }
+      { "value": "SMS", "label": "Message" }
     ]
   },
   "templates": {
@@ -364,22 +364,14 @@
             {
               "key": "moment_name",
               "label": "What should we call this moment?",
-              "helper": "How this runway chapter appears in Momentra.",
-              "placeholder": "Acme Runway",
               "control": "text",
               "maxLength": 60
             },
-            {
-              "key": "runway_name",
-              "label": "Runway name",
-              "helper": "The business or venture this runway tracks.",
-              "control": "text",
-              "maxLength": 60
-            },
+            { "key": "runway_name", "label": "Runway name", "control": "text", "maxLength": 60 },
             {
               "key": "business_stage",
               "label": "Where is the business today?",
-              "control": "cards",
+              "control": "chips",
               "choices": "business_stage"
             },
             {
@@ -496,30 +488,22 @@
             {
               "key": "moment_name",
               "label": "What should we call this moment?",
-              "helper": "How this operating chapter appears in Momentra.",
-              "placeholder": "Retail Operations",
               "control": "text",
               "maxLength": 60
             },
-            {
-              "key": "operations_name",
-              "label": "Operations name",
-              "helper": "The function, department, or portfolio being managed.",
-              "control": "text",
-              "maxLength": 60
-            },
+            { "key": "operations_name", "label": "Operations name", "control": "text", "maxLength": 60 },
             {
               "key": "operations_scope",
               "label": "What part of the business is this?",
               "helper": "Choose the part of the business this moment will monitor.",
-              "control": "cards",
+              "control": "chips",
               "choices": "operations_scope"
             },
             {
               "key": "operating_model",
               "label": "How is work organized?",
               "helper": "How are operating decisions and responsibilities organized?",
-              "control": "cards",
+              "control": "chips",
               "choices": "operating_model"
             },
             {
@@ -543,7 +527,7 @@
           "shortTitle": "Budget",
           "description": "Set the operating budget, vendor risk profile, and how closely Momentra should monitor this.",
           "intro": "Set the operating budget, vendor risk profile, and how closely Momentra should monitor this.",
-          "sections": ["Operating budget", "Vendor and risk profile", "Monitoring and approvals"],
+          "sections": ["Operating budget", "Vendor and risk profile", "Monitoring and alerts"],
           "fields": [
             {
               "key": "monthly_budget_minor",

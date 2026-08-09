@@ -6,7 +6,6 @@ import {
   getBusinessSessionSnapshot,
   resetBusinessSessionStoreForTests,
   setBusinessSelection,
-  switchBusinessWorkspace,
   validateBusinessSelection,
 } from "@/stores/businessSessionStore";
 import type { BusinessMomentResponse } from "@/lib/api/business";
@@ -14,11 +13,7 @@ import type { BusinessMomentResponse } from "@/lib/api/business";
 vi.mock("@/repositories/BusinessRepository", () => ({
   BusinessRepository: {
     getSessionBootstrap: vi.fn(),
-    getSession: vi.fn(),
-    getWorkspaceMoments: vi.fn(),
-    getWorkspaceOverview: vi.fn(),
     getCreateOptions: vi.fn(),
-    selectWorkspace: vi.fn(),
   },
 }));
 
@@ -29,9 +24,6 @@ vi.mock("@/lib/cache/cacheStore", async () => {
   return {
     ...actual,
     dedupeFetch: (_key: string, fn: () => Promise<unknown>) => fn(),
-    diskCacheLoad: () => null,
-    diskCacheSave: () => {},
-    diskCacheRemove: () => {},
   };
 });
 
@@ -56,52 +48,10 @@ describe("businessSessionStore", () => {
     resetBusinessSessionStoreForTests();
     clearBusinessMomentReseatMarks();
     vi.mocked(BusinessRepository.getSessionBootstrap).mockReset();
-    vi.mocked(BusinessRepository.getSession).mockReset();
-    vi.mocked(BusinessRepository.getWorkspaceMoments).mockReset();
-    vi.mocked(BusinessRepository.getWorkspaceOverview).mockReset();
     vi.mocked(BusinessRepository.getCreateOptions).mockReset();
-    vi.mocked(BusinessRepository.selectWorkspace).mockReset();
-    // Cold chrome fails → full bootstrap fallback (keeps existing recovery coverage).
-    vi.mocked(BusinessRepository.getSession).mockRejectedValue(new Error("no chrome"));
   });
 
-  it("ACTIVE startup prefers thin session chrome and skips create-options", async () => {
-    vi.mocked(BusinessRepository.getSession).mockResolvedValue({
-      selected_workspace: {
-        id: "ws1",
-        name: "Acme",
-        role: "OWNER",
-      },
-      workspaces: [{ id: "ws1", name: "Acme", role: "OWNER" }],
-      module_tiles: [],
-    });
-    vi.mocked(BusinessRepository.getWorkspaceMoments).mockResolvedValue({
-      workspace_id: "ws1",
-      moments_home: { is_empty: false, active_moment_count: 1, cards: [] },
-      moments: [
-        moment({
-          moment_id: "m1",
-          moment_type_code: "TEAM_OPERATIONS",
-          status: "ACTIVE",
-        }),
-      ],
-    });
-    vi.mocked(BusinessRepository.getWorkspaceOverview).mockResolvedValue({
-      workspace_id: "ws1",
-      dashboard: {
-        open_moments: 1,
-        pending_approvals: 0,
-        member_count: 1,
-      },
-    });
-    await ensureBusinessBootstrap();
-    expect(BusinessRepository.getSession).toHaveBeenCalledTimes(1);
-    expect(BusinessRepository.getSessionBootstrap).not.toHaveBeenCalled();
-    expect(BusinessRepository.getCreateOptions).not.toHaveBeenCalled();
-    expect(getBusinessSessionSnapshot().selectedMomentId).toBe("m1");
-  });
-
-  it("Opening Create lazily performs at most one create-options request and attaches inventory links", async () => {
+  it("ACTIVE startup performs one session-bootstrap and zero create-options", async () => {
     vi.mocked(BusinessRepository.getSessionBootstrap).mockResolvedValue({
       moments_home: { is_empty: false, active_moment_count: 1, cards: [] },
       moments: [
@@ -112,28 +62,21 @@ describe("businessSessionStore", () => {
         }),
       ],
     });
-    await ensureBusinessBootstrap(true);
+    await ensureBusinessBootstrap();
+    expect(BusinessRepository.getSessionBootstrap).toHaveBeenCalledTimes(1);
+    expect(BusinessRepository.getCreateOptions).not.toHaveBeenCalled();
+    expect(getBusinessSessionSnapshot().selectedMomentId).toBe("m1");
+  });
+
+  it("Opening Create lazily performs at most one create-options request", async () => {
     vi.mocked(BusinessRepository.getCreateOptions).mockResolvedValue({
-      is_empty: true,
+      is_empty: false,
       active_moment_count: 0,
-      cards: [
-        {
-          moment_type_id: "t1",
-          moment_type_code: "TEAM_OPERATIONS",
-          moment_type_name: "Team Operations",
-          display_order: 1,
-          linked_moment_id: null,
-          linked_moment_status: null,
-          is_active: false,
-        },
-      ],
+      cards: [],
     });
     await ensureBusinessCreateOptions();
     await ensureBusinessCreateOptions();
     expect(BusinessRepository.getCreateOptions).toHaveBeenCalledTimes(1);
-    const card = getBusinessSessionSnapshot().createOptions?.cards?.[0];
-    expect(card?.linked_moment_id).toBe("m1");
-    expect(card?.is_active).toBe(true);
   });
 
   it("Changing selected moment bumps generation so old responses can be ignored", () => {
@@ -249,46 +192,6 @@ describe("businessSessionStore", () => {
     expect(snap.selectedMomentId).toBeNull();
     expect(snap.bootstrap?.moments_home?.is_empty).toBe(true);
     expect(snap.bootstrap?.moments).toEqual([]);
-  });
-
-  it("company switch uses soft workspace reload without forced fat bootstrap", async () => {
-    vi.mocked(BusinessRepository.getSessionBootstrap).mockResolvedValue({
-      moments_home: { is_empty: false, active_moment_count: 1, cards: [] },
-      moments: [
-        moment({
-          moment_id: "m1",
-          moment_type_code: "TEAM_OPERATIONS",
-          status: "ACTIVE",
-        }),
-      ],
-      selected_workspace: { id: "ws1", name: "Acme", role: "OWNER" },
-      workspaces: [
-        { id: "ws1", name: "Acme", role: "OWNER" },
-        { id: "ws2", name: "Beta", role: "OWNER" },
-      ],
-    });
-    await ensureBusinessBootstrap(true);
-    vi.mocked(BusinessRepository.getSessionBootstrap).mockClear();
-    vi.mocked(BusinessRepository.selectWorkspace).mockResolvedValue(undefined as never);
-    vi.mocked(BusinessRepository.getWorkspaceMoments).mockResolvedValue({
-      workspace_id: "ws2",
-      moments_home: { is_empty: true, active_moment_count: 0, cards: [] },
-      moments: [],
-    });
-    vi.mocked(BusinessRepository.getWorkspaceOverview).mockResolvedValue({
-      workspace_id: "ws2",
-      dashboard: { open_moments: 0, pending_approvals: 0, member_count: 1 },
-    });
-
-    await switchBusinessWorkspace("ws2");
-
-    expect(BusinessRepository.selectWorkspace).toHaveBeenCalledWith("ws2");
-    expect(BusinessRepository.getWorkspaceMoments).toHaveBeenCalledWith("ws2");
-    expect(BusinessRepository.getSessionBootstrap).not.toHaveBeenCalled();
-    expect(getBusinessSessionSnapshot().selectedWorkspaceId).toBe("ws2");
-    expect(getBusinessSessionSnapshot().bootstrap?.selected_workspace?.id).toBe(
-      "ws2",
-    );
   });
 
   it("ensureBusinessBootstrap excludes reseated moments from inventory", async () => {

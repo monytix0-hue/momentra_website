@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.momentra",
+      "package_name": "com.example.momentra",
       "sha256_cert_fingerprints": [
-        "6C:EE:CA:67:3A:AB:61:2E:B5:BE:2F:23:97:6C:68:ED:0E:91:58:8F:F9:AD:55:F2:14:C6:3C:AC:63:AA:BC:BB"
+        "6CECCA673AAB612EB5BE2F23976C68ED0E91588FF9AD55F214C63CAC63AABCBB"
       ]
     }
   }

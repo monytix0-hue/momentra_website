@@ -67,6 +67,15 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Native invite deep links: /j|/c|/join|/company/{code} → static open-app landing.
+  async rewrites() {
+    return [
+      { source: "/j/:code*", destination: "/join.html" },
+      { source: "/join/:code*", destination: "/join.html" },
+      { source: "/c/:code*", destination: "/join.html" },
+      { source: "/company/:code*", destination: "/join.html" },
+    ];
+  },
   async headers() {
     const apiBase = (
       process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.mallaapp.org"
@@ -126,6 +135,13 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/.well-known/apple-app-site-association",
+        headers: [
+          { key: "Content-Type", value: "application/json" },
+          { key: "Cache-Control", value: "public, max-age=300" },
+        ],
+      },
+      {
+        source: "/apple-app-site-association",
         headers: [
           { key: "Content-Type", value: "application/json" },
           { key: "Cache-Control", value: "public, max-age=300" },
